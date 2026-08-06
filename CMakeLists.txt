@@ -33,6 +33,9 @@ add_custom_target(
     COMMAND "${CMAKE_COMMAND}" -E copy_directory
             "${CMAKE_SOURCE_DIR}/brand"
             "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/brand"
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory
+            "${CMAKE_SOURCE_DIR}/schema"
+            "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/schema"
     COMMENT "Copying ELL libraries and brand assets"
 )
 
@@ -41,3 +44,8 @@ add_dependencies(ell-lsp ell-dev-assets)
 
 install(DIRECTORY lib/ DESTINATION "${CMAKE_INSTALL_DATADIR}/ell/lib")
 install(DIRECTORY brand/ DESTINATION "${CMAKE_INSTALL_DATADIR}/ell/brand")
+install(DIRECTORY schema/ DESTINATION "${CMAKE_INSTALL_DATADIR}/ell/schema")
+install(FILES README.md ELL.md templates.md
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/ell")
+install(EXPORT ell-targets NAMESPACE ell::
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/ell")

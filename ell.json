@@ -1,0 +1,12 @@
+{
+  "$schema": "./schema/ell.schema.json",
+  "include": ["${ELL_LIB}", "${EMAIL_MARKUP_BRAND}", "components"],
+  "imports": [
+    "${ELL_LIB}/builtins.ell",
+    "${EMAIL_MARKUP_BRAND}/brand.ell",
+    "${EMAIL_MARKUP_BRAND}/styles.ell"
+  ],
+  "data": "examples/solution_first.json",
+  "shell": "${EMAIL_MARKUP_BRAND}/shell.ell",
+  "out": "build"
+}

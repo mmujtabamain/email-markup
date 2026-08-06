@@ -162,4 +162,5 @@ TEST_CASE("standard library and Example shell compile the shipped example") {
     CHECK(result.generated.html.find("Reduce the mobile") != std::string::npos);
     CHECK(result.generated.html.find("Unsubscribe") != std::string::npos);
     CHECK(result.generated.html.find("@{") == std::string::npos);
+    CHECK(result.generated.html == read(root / "examples/solution_first.html"));
 }

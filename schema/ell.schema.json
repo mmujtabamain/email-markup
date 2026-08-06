@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ell-lang.dev/schema/ell.schema.json",
+  "title": "ELL project configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "include": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "imports": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "\\.ell$" },
+      "uniqueItems": true
+    },
+    "data": { "type": "string", "description": "Development JSON fixture" },
+    "shell": { "type": "string", "pattern": "\\.ell$" },
+    "out": { "type": "string" }
+  }
+}

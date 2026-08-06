@@ -4,6 +4,7 @@ add_library(
     src/data.cpp
     src/diagnostic.cpp
     src/expr.cpp
+    src/format.cpp
     src/include.cpp
     src/lexer.cpp
     src/lint.cpp

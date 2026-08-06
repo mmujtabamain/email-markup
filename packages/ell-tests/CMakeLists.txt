@@ -20,3 +20,12 @@ target_compile_features(ell-tests PRIVATE cxx_std_23)
 target_compile_definitions(ell-tests PRIVATE ELL_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 
 catch_discover_tests(ell-tests)
+
+add_test(
+    NAME ellc-data-transports
+    COMMAND "${CMAKE_COMMAND}"
+            -DELLC=$<TARGET_FILE:ellc>
+            -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+            -DBINARY_DIR=${CMAKE_BINARY_DIR}
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/cli_contract.cmake
+)
