@@ -70,5 +70,25 @@ export function registerWebFeatures(context: vscode.ExtensionContext): void {
         } : undefined;
       },
     }),
+    vscode.languages.registerColorProvider(selector, {
+      provideDocumentColors(document) {
+        const projection = cssProjection(document.getText());
+        const cssDocument = languageDocument(document, "css", projection.text);
+        return css.findDocumentColors(
+          cssDocument,
+          css.parseStylesheet(cssDocument),
+        ) as unknown as vscode.ColorInformation[];
+      },
+      provideColorPresentations(color, context) {
+        const projection = cssProjection(context.document.getText());
+        const cssDocument = languageDocument(context.document, "css", projection.text);
+        return css.getColorPresentations(
+          cssDocument,
+          css.parseStylesheet(cssDocument),
+          color,
+          context.range,
+        ) as unknown as vscode.ColorPresentation[];
+      },
+    }),
   );
 }
