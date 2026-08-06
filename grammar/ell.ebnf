@@ -1,0 +1,51 @@
+document          = { top-level } ;
+top-level         = text | interpolation | comment | include | definition
+                  | media | control | component ;
+
+text              = { any-character-except-recognised-sigil } ;
+interpolation     = "@{" , expression , "}" ;
+comment           = "@*" , { any-character-except-"*@" } , "*@"
+                  | "@//" , { any-character-except-newline } ;
+escaped-at        = "@@" ;
+
+include           = "@Include(" , string , ");" ;
+component         = "@" , upper-name , [ parameters ] ,
+                    ( ";" | { content }, "@/" , upper-name ) ;
+content           = text | interpolation | comment | control | component | slot ;
+
+control           = if | for ;
+if                = "@If(" , expression , ")" , { content },
+                    [ "@Else" , { content } ], "@/If" ;
+for               = "@For(" , lower-name , "in" , expression , ")" ,
+                    { content }, "@/For" ;
+slot              = "@Slot(" , lower-name , ");"
+                  | "@Slot(" , lower-name , ")" , { content }, "@/Slot" ;
+
+definition        = component-definition | style-definition | token-definition ;
+component-definition = "@DefineComponent(" , named-string , ")",
+                       [ props ], [ slots ], template, "@/DefineComponent" ;
+props             = "@Props" , raw-declaration-lines , "@/Props" ;
+slots             = "@Slots" , raw-slot-lines , "@/Slots" ;
+template          = "@Template" , { content }, "@/Template" ;
+style-definition  = "@DefineStyle(" , named-string , ")",
+                    raw-css-declarations , "@/DefineStyle" ;
+token-definition  = "@DefineToken(" , named-string , ",",
+                    "value:" , expression , ");" ;
+media             = "@Media(" , string , ")", raw-css-rules, "@/Media" ;
+
+parameters        = "(" , named-argument , { [","] , named-argument }, ")" ;
+named-argument    = lower-name , ":" , expression ;
+named-string      = "name:" , string ;
+
+expression        = logical-or ;
+logical-or        = logical-and , { "or" , logical-and } ;
+logical-and       = comparison , { "and" , comparison } ;
+comparison        = addition , { ("==" | "!=" | "<" | "<=" | ">" | ">=") , addition } ;
+addition          = multiplication , { ("+" | "-") , multiplication } ;
+multiplication    = unary , { ("*" | "/" | "%") , unary } ;
+unary             = [ "not" | "-" ] , primary ;
+primary           = number | string | "true" | "false" | "null" | path
+                  | "(" , expression , ")" ;
+path              = lower-name , { "." , lower-name } ;
+upper-name        = upper , { letter | digit | "_" } ;
+lower-name        = (lower | "_") , { letter | digit | "_" } ;

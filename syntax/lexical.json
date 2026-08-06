@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "fileExtensions": [".ell"],
+  "sigil": "@",
+  "namePattern": "[A-Z][A-Za-z0-9_]*",
+  "lineComment": "@//",
+  "blockComment": ["@*", "*@"],
+  "escape": "@@",
+  "rawBodies": ["Props", "Slots", "DefineStyle", "Media"],
+  "keywords": [
+    "DefineComponent",
+    "DefineStyle",
+    "DefineToken",
+    "Else",
+    "For",
+    "If",
+    "Include",
+    "Media",
+    "Props",
+    "Slot",
+    "Slots",
+    "Template"
+  ],
+  "unsupported": [".ellt", "@Engine", "@[", "@Name["]
+}

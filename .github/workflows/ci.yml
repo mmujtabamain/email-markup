@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+        build_type: [debug, release]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: "~4.0"
+          ninjaVersion: latest
+      - name: Record toolchain versions
+        shell: bash
+        run: |
+          cmake --version
+          ninja --version
+          c++ --version || true
+          git -C external/vcpkg rev-parse HEAD
+      - name: Bootstrap vcpkg
+        shell: bash
+        run: |
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            external/vcpkg/bootstrap-vcpkg.bat -disableMetrics
+          else
+            external/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+          fi
+      - name: Configure
+        run: cmake --preset ${{ matrix.build_type }}
+      - name: Build
+        run: cmake --build --preset ${{ matrix.build_type }}
+      - name: Test
+        run: ctest --preset ${{ matrix.build_type }} --output-on-failure
+
+  sanitizers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: "~4.0"
+          ninjaVersion: latest
+      - name: Bootstrap vcpkg
+        run: external/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+      - run: cmake --preset sanitizers
+      - run: cmake --build --preset sanitizers
+      - run: ctest --preset sanitizers --output-on-failure

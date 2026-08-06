@@ -560,6 +560,11 @@ bool CompilationResult::ok() const noexcept { return !has_errors(diagnostics); }
 CompilationResult compile(const CompilationRequest& request, FileResolver& files,
                           const CancellationToken cancellation) {
     CompilationResult result;
+    if (request.entry_path.extension() != ".ell") {
+        result.diagnostics.push_back({"ELL0001", Severity::error,
+            "ELL 1 accepts only .ell source files.", {}});
+        return result;
+    }
     Loader loader{request, files, cancellation};
     std::error_code error;
     const auto project_root = std::filesystem::weakly_canonical(

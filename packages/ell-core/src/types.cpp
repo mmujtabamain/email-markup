@@ -143,6 +143,15 @@ bool validate_prop(const PropDeclaration& declaration, const Json& value,
             return false;
         }
     }
+    if (declaration.type == "color") {
+        static const std::regex color{
+            R"(^(#[0-9a-fA-F]{3,8}|rgba?\([^)]*\)|hsla?\([^)]*\)|[A-Za-z]+)$)"};
+        if (!std::regex_match(value.get_ref<const std::string&>(), color)) {
+            error(diagnostics, "ELL0425", "Prop “" + declaration.name +
+                      "” is not a CSS color.", value_range);
+            return false;
+        }
+    }
     if (declaration.has_range) {
         const auto measured = value.is_string()
                                   ? static_cast<double>(value.get_ref<const std::string&>().size())

@@ -32,6 +32,15 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
+    },
+    {
+      "name": "sanitizers",
+      "displayName": "ELL Debug with ASan and UBSan",
+      "inherits": "debug",
+      "binaryDir": "${sourceDir}/build/sanitizers",
+      "cacheVariables": {
+        "ELL_SANITIZERS": "address,undefined"
+      }
     }
   ],
   "buildPresets": [
@@ -42,6 +51,10 @@
     {
       "name": "release",
       "configurePreset": "release"
+    },
+    {
+      "name": "sanitizers",
+      "configurePreset": "sanitizers"
     }
   ],
   "testPresets": [
@@ -55,6 +68,13 @@
     {
       "name": "release",
       "configurePreset": "release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "sanitizers",
+      "configurePreset": "sanitizers",
       "output": {
         "outputOnFailure": true
       }

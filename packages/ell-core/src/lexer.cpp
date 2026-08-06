@@ -136,6 +136,16 @@ LexResult lex(const SourceId source, const std::string_view text,
             }
             continue;
         }
+        if (next == '[') {
+            flush(start);
+            const auto end = text.find(']', position + 2);
+            const auto stop = end == std::string_view::npos ? text.size() : end + 1;
+            add_error(result, {source, start, stop}, "ELL0107",
+                      "Square-bracket macro syntax is not part of ELL 1.",
+                      diagnostic_limit);
+            position = stop;
+            continue;
+        }
         if (!name_start(next)) {
             if (buffer.empty()) buffer_start = position;
             buffer.push_back('@');
@@ -147,6 +157,11 @@ LexResult lex(const SourceId source, const std::string_view text,
         position += 2;
         while (position < text.size() && name_continue(text[position])) ++position;
         const auto name = std::string{text.substr(start + 1, position - start - 1)};
+        if (name == "Engine") {
+            add_error(result, {source, start, position}, "ELL0108",
+                      "@Engine is deferred syntax and is not part of ELL 1.",
+                      diagnostic_limit);
+        }
         std::string parameters;
         if (position < text.size() && text[position] == '(') {
             const auto end = delimited(text, position, '(', ')', parameters);

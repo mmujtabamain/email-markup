@@ -3,6 +3,7 @@ include(Catch)
 add_executable(
     ell-tests
     src/expression_tests.cpp
+    src/conformance_tests.cpp
     src/lexer_parser_tests.cpp
     src/render_tests.cpp
     src/source_tests.cpp
@@ -28,4 +29,14 @@ add_test(
             -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
             -DBINARY_DIR=${CMAKE_BINARY_DIR}
             -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/cli_contract.cmake
+)
+
+add_test(
+    NAME installed-prefix-smoke
+    COMMAND "${CMAKE_COMMAND}"
+            -DELLC=$<TARGET_FILE:ellc>
+            -DBUILD_DIR=${CMAKE_BINARY_DIR}
+            -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+            -DINSTALL_DIR=${CMAKE_BINARY_DIR}/install-smoke
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/install_contract.cmake
 )

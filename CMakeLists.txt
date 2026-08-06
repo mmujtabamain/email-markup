@@ -13,6 +13,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
+set(ELL_SANITIZERS "" CACHE STRING "Comma-separated sanitizers for development builds")
+if(ELL_SANITIZERS AND CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    add_compile_options("-fsanitize=${ELL_SANITIZERS}" -fno-omit-frame-pointer)
+    add_link_options("-fsanitize=${ELL_SANITIZERS}" -fno-omit-frame-pointer)
+endif()
+
 include(GNUInstallDirs)
 include(CTest)
 
@@ -45,6 +51,8 @@ add_dependencies(ell-lsp ell-dev-assets)
 install(DIRECTORY lib/ DESTINATION "${CMAKE_INSTALL_DATADIR}/ell/lib")
 install(DIRECTORY brand/ DESTINATION "${CMAKE_INSTALL_DATADIR}/ell/brand")
 install(DIRECTORY schema/ DESTINATION "${CMAKE_INSTALL_DATADIR}/ell/schema")
+install(DIRECTORY grammar/ DESTINATION "${CMAKE_INSTALL_DATADIR}/ell/grammar")
+install(DIRECTORY syntax/ DESTINATION "${CMAKE_INSTALL_DATADIR}/ell/syntax")
 install(FILES README.md ELL.md templates.md
         DESTINATION "${CMAKE_INSTALL_DATADIR}/ell")
 install(EXPORT ell-targets NAMESPACE ell::
