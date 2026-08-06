@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 4.0)
 
 project(
     ell
-    VERSION 0.1.0
+    VERSION 1.0.0
     DESCRIPTION "The ELL email layout language"
     LANGUAGES CXX
 )
@@ -53,7 +53,8 @@ install(DIRECTORY brand/ DESTINATION "${CMAKE_INSTALL_DATADIR}/ell/brand")
 install(DIRECTORY schema/ DESTINATION "${CMAKE_INSTALL_DATADIR}/ell/schema")
 install(DIRECTORY grammar/ DESTINATION "${CMAKE_INSTALL_DATADIR}/ell/grammar")
 install(DIRECTORY syntax/ DESTINATION "${CMAKE_INSTALL_DATADIR}/ell/syntax")
-install(FILES README.md ELL.md templates.md
+install(DIRECTORY docs/ DESTINATION "${CMAKE_INSTALL_DATADIR}/ell/docs")
+install(FILES README.md ELL.md templates.md LICENSE
         DESTINATION "${CMAKE_INSTALL_DATADIR}/ell")
 install(EXPORT ell-targets NAMESPACE ell::
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/ell")
