@@ -17,5 +17,6 @@ target_link_libraries(
 )
 
 target_compile_features(ell-tests PRIVATE cxx_std_23)
+target_compile_definitions(ell-tests PRIVATE ELL_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 
 catch_discover_tests(ell-tests)

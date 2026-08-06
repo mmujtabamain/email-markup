@@ -1,0 +1,21 @@
+@Heading A faster website for @{business.name} @/Heading
+
+@Paragraph
+  I noticed a few opportunities to make your website easier to find and faster
+  for prospective customers.
+@/Paragraph
+
+@If(business.review_count > 0)
+  @Callout
+    Your @{business.rating}-star rating across @{business.review_count} reviews
+    is strong social proof worth putting closer to the first call to action.
+  @/Callout
+@/If
+
+@Bullets
+  @For(opportunity in opportunities)
+    @Item @{opportunity} @/Item
+  @/For
+@/Bullets
+
+@Button(url: call_url) See the recommendations @/Button

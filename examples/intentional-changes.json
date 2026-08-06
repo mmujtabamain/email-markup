@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "changes": [
+    "Built-ins are ordinary ELL component definitions; native renderers were removed.",
+    "Bullets and Item compose through ordinary nested slots.",
+    "Columns calculates half of its gap with compiler arithmetic.",
+    "Spacer rejects heights outside 4 through 120 instead of clamping.",
+    "Shell wrapper overrides were removed; alternative wrappers are .ell files.",
+    "All recipient data is resolved by ellc before final HTML is returned."
+  ]
+}

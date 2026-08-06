@@ -1,4 +1,5 @@
 #include <filesystem>
+#include <fstream>
 #include <memory>
 #include <optional>
 #include <string>
@@ -134,4 +135,31 @@ TEST_CASE("compiler detects include cycles") {
     request.source = resolver.files.at("/project/a.ell");
 
     CHECK_FALSE(ell::compile(request, resolver).ok());
+}
+
+TEST_CASE("standard library and Example shell compile the shipped example") {
+    const auto root = std::filesystem::path{ELL_SOURCE_DIR};
+    const auto read = [](const std::filesystem::path& path) {
+        std::ifstream stream(path, std::ios::binary);
+        return std::string{std::istreambuf_iterator<char>{stream}, {}};
+    };
+    ell::DiskFileResolver resolver;
+    ell::CompilationRequest request;
+    request.entry_path = root / "examples/solution_first.ell";
+    request.source = read(request.entry_path);
+    request.data = ell::Json::parse(read(root / "examples/solution_first.json"));
+    request.include_directories = {root / "lib", root / "brand/example"};
+    request.allowed_roots = {root};
+    request.imports = {root / "lib/builtins.ell", root / "brand/example/brand.ell",
+                       root / "brand/example/styles.ell"};
+    request.shell = root / "brand/example/shell.ell";
+
+    const auto result = ell::compile(request, resolver);
+
+    INFO((result.diagnostics.empty() ? "" : result.diagnostics.front().message));
+    REQUIRE(result.ok());
+    CHECK(result.generated.html.find("Northstar Dental") != std::string::npos);
+    CHECK(result.generated.html.find("Reduce the mobile") != std::string::npos);
+    CHECK(result.generated.html.find("Unsubscribe") != std::string::npos);
+    CHECK(result.generated.html.find("@{") == std::string::npos);
 }
