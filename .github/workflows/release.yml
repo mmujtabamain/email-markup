@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  platform:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            platform: darwin-x64
+          - os: macos-15-arm64
+            platform: darwin-arm64
+          - os: windows-2025
+            platform: win32-x64
+          - os: ubuntu-24.04
+            platform: linux-x64
+          - os: ubuntu-24.04-arm
+            platform: linux-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: "~4.0"
+          ninjaVersion: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: extensions/vscode/package-lock.json
+      - name: Record release toolchain
+        shell: bash
+        run: |
+          cmake --version
+          ninja --version
+          c++ --version || true
+          node --version
+          git -C external/vcpkg rev-parse HEAD
+      - name: Bootstrap vcpkg
+        shell: bash
+        run: |
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            external/vcpkg/bootstrap-vcpkg.bat -disableMetrics
+          else
+            external/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+          fi
+      - run: cmake --preset release
+      - run: cmake --build --preset release
+      - run: ctest --preset release --output-on-failure
+      - name: Install release tree
+        run: cmake --install build/release --prefix stage/ell
+      - name: Build platform VSIX
+        working-directory: extensions/vscode
+        run: |
+          npm ci
+          npm test
+          npm run package
+      - name: Archive and checksum
+        shell: bash
+        run: |
+          cd stage
+          cmake -E tar cf "../ell-${{ matrix.platform }}.zip" --format=zip ell
+          cd ..
+          cmake -E sha256sum "ell-${{ matrix.platform }}.zip" > "ell-${{ matrix.platform }}.zip.sha256"
+          cp extensions/vscode/ell-language-*.vsix "ell-language-${{ matrix.platform }}.vsix"
+          cmake -E sha256sum "ell-language-${{ matrix.platform }}.vsix" > "ell-language-${{ matrix.platform }}.vsix.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ell-${{ matrix.platform }}
+          path: |
+            ell-${{ matrix.platform }}.zip
+            ell-${{ matrix.platform }}.zip.sha256
+            ell-language-${{ matrix.platform }}.vsix
+            ell-language-${{ matrix.platform }}.vsix.sha256
+
+  publish:
+    if: github.event_name == 'push'
+    needs: platform
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ell-*
+          merge-multiple: true
+          path: release
+      - name: Verify checksums
+        working-directory: release
+        run: sha256sum --check *.sha256
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" release/* --verify-tag --generate-notes

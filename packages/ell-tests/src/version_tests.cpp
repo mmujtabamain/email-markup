@@ -2,6 +2,6 @@
 
 #include "ell/core/version.hpp"
 
-TEST_CASE("the development version is available") {
-    CHECK(ell::version() == "0.1.0-dev");
+TEST_CASE("the release version is available") {
+    CHECK(ell::version() == "1.0.0");
 }
