@@ -64,6 +64,39 @@ def command_latency(binary: Path, source: Path, iterations: int) -> list[float]:
     return samples
 
 
+def build_latency(binary: Path, root: Path, iterations: int) -> list[float]:
+    samples: list[float] = []
+    with tempfile.TemporaryDirectory(prefix="ell-build-benchmark-") as directory:
+        project = Path(directory)
+        (project / "message.ell").write_text(
+            (root / "examples/solution_first.ell").read_text(encoding="utf-8"), encoding="utf-8"
+        )
+        (project / "data.json").write_text(
+            (root / "examples/solution_first.json").read_text(encoding="utf-8"), encoding="utf-8"
+        )
+        (project / "ell.json").write_text(json.dumps({
+            "include": [str(root / "lib"), str(root / "brand/example")],
+            "imports": [
+                str(root / "lib/builtins.ell"),
+                str(root / "brand/example/brand.ell"),
+                str(root / "brand/example/styles.ell"),
+            ],
+            "data": "data.json",
+            "shell": str(root / "brand/example/shell.ell"),
+            "out": "out",
+        }), encoding="utf-8")
+        for _ in range(iterations):
+            started = time.perf_counter()
+            subprocess.run(
+                [str(binary), "build", str(project)],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            samples.append((time.perf_counter() - started) * 1000)
+    return samples
+
+
 def diagnostic_latency(server: Path, root: Path, source: Path, iterations: int) -> list[float]:
     process = subprocess.Popen(
         [str(server)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL
@@ -129,6 +162,7 @@ def main() -> int:
         parser.error("--iterations must be at least 5")
     source = root / "examples/component_gallery/gallery.ell"
     cli = command_latency(build / "ellc", source, arguments.iterations)
+    project_build = build_latency(build / "ellc", root, arguments.iterations)
     benchmark_root = root / "build"
     benchmark_root.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="ell-maximum-", dir=benchmark_root) as directory:
@@ -139,6 +173,7 @@ def main() -> int:
     print(json.dumps({
         "iterations": arguments.iterations,
         "ellc_compile": summary(cli),
+        "ellc_build": summary(project_build),
         "ellc_compile_900kb": summary(maximum_cli),
         "edit_to_diagnostics": summary(diagnostics),
         "peak_child_rss_mib": round(peak_mebibytes(), 2),

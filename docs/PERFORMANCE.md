@@ -14,6 +14,7 @@ python3 tools/benchmark.py --iterations 30
 | Workload | Budget |
 | --- | ---: |
 | Representative `ellc compile`, p95 | 100 ms |
+| Representative `ellc build`, p95 | 100 ms |
 | Persistent edit-to-diagnostics, p95 | 50 ms |
 | 900 KB near-limit `ellc compile`, p95 | 1,500 ms |
 | Peak child RSS across the benchmark | 64 MiB |
@@ -31,11 +32,12 @@ representative iterations:
 
 | Workload | p50 | p95 |
 | --- | ---: | ---: |
-| Representative `ellc compile` (1,135-byte source) | 9.836 ms | 14.021 ms |
-| Persistent edit-to-diagnostics | 6.793 ms | 7.029 ms |
-| 900 KB near-limit compile (10 iterations) | 873.706 ms | 1,065.453 ms |
+| Representative `ellc compile` (1,135-byte source) | 9.545 ms | 17.879 ms |
+| Representative one-file `ellc build` | 9.553 ms | 11.670 ms |
+| Persistent edit-to-diagnostics | 6.379 ms | 6.588 ms |
+| 900 KB near-limit compile (10 iterations) | 849.748 ms | 858.746 ms |
 
-Observed peak child RSS was 13.2 MiB. All measurements passed their ELL 1
+Observed peak child RSS was 12.12 MiB. All measurements passed their ELL 1
 budgets. These figures are a reproducible local baseline, not a claim that every
 platform has identical timings; release CI supplies platform build and test
 coverage.
