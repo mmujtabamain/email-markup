@@ -2,6 +2,7 @@
 #include <cctype>
 #include <cstdlib>
 #include <filesystem>
+#include <functional>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -396,6 +397,10 @@ private:
             auto parsed = ell::parse(0, source);
             for (const auto& [name, definition] : parsed.document.components)
                 components_[name] = definition;
+            for (const auto& [name, definition] : parsed.document.styles)
+                styles_.insert(name);
+            for (const auto& [name, definition] : parsed.document.tokens)
+                tokens_.insert(name);
         }
     }
 
@@ -417,7 +422,8 @@ private:
             items.push_back({{"label", "@" + std::string{keyword}}, {"kind", 14},
                              {"insertText", "@" + std::string{keyword}}});
         }
-        for (const auto& [name, definition] : metadata(*open)) {
+        const auto definitions = metadata(*open);
+        for (const auto& [name, definition] : definitions) {
             std::string snippet = "@" + name;
             if (!definition.props.empty()) {
                 snippet += "(";
@@ -436,7 +442,52 @@ private:
             snippet += body ? "\n  ${0}\n@/" + name : ";";
             items.push_back({{"label", "@" + name}, {"kind", 7},
                              {"insertTextFormat", 2}, {"insertText", snippet}});
+            for (const auto& prop : definition.props)
+                items.push_back({{"label", prop.name}, {"kind", 5},
+                                 {"detail", "ELL prop: " + prop.type}});
+            for (const auto& slot : definition.slots)
+                items.push_back({{"label", "@Slot(" + slot.name + ")"}, {"kind", 5},
+                                 {"insertText", "@Slot(" + slot.name + ")"}});
         }
+        auto parsed = ell::parse(0, open->text);
+        auto style_names = styles_;
+        auto token_names = tokens_;
+        for (const auto& [name, definition] : parsed.document.styles) style_names.insert(name);
+        for (const auto& [name, definition] : parsed.document.tokens) token_names.insert(name);
+        for (const auto& name : style_names)
+            items.push_back({{"label", name}, {"kind", 12}, {"detail", "ELL style bundle"}});
+        for (const auto& name : token_names)
+            items.push_back({{"label", "token." + name}, {"kind", 21},
+                             {"detail", "ELL design token"}});
+
+        const auto request = compilation_request(*open);
+        std::function<void(const Json&, const std::string&)> add_data;
+        add_data = [&](const Json& value, const std::string& prefix) {
+            if (!value.is_object()) return;
+            for (const auto& [key, child] : value.items()) {
+                const auto path = prefix.empty() ? key : prefix + "." + key;
+                items.push_back({{"label", path}, {"kind", child.is_object() ? 9 : 6},
+                                 {"detail", "Compile data"}});
+                add_data(child, path);
+            }
+        };
+        add_data(request.data, "");
+
+        std::set<std::string> include_items;
+        auto include_directories = request.include_directories;
+        include_directories.insert(include_directories.begin(), open->path.parent_path());
+        for (const auto& directory : include_directories) {
+            std::error_code error;
+            for (std::filesystem::directory_iterator it{directory, error}, end;
+                 !error && it != end; it.increment(error)) {
+                if (!it->is_regular_file(error) || it->path().extension() != ".ell") continue;
+                include_items.insert(it->path().filename().generic_string());
+            }
+        }
+        for (const auto& path : include_items)
+            items.push_back({{"label", path}, {"kind", 17},
+                             {"insertText", "@Include(\"" + path + "\");"},
+                             {"detail", "ELL include"}});
         respond(id, {{"isIncomplete", false}, {"items", std::move(items)}});
     }
 
@@ -582,6 +633,8 @@ private:
     std::vector<std::filesystem::path> workspace_roots_;
     std::unordered_map<std::string, OpenDocument> documents_;
     std::unordered_map<std::string, ell::ComponentDefinition> components_;
+    std::set<std::string> styles_;
+    std::set<std::string> tokens_;
     std::unordered_set<std::string> cancelled_;
     bool shutdown_requested_{};
     bool exiting_{};
