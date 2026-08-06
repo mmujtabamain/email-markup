@@ -54,6 +54,14 @@ jobs:
           npm ci
           npm test
           npm run package
+      - name: Test VS Code extension host
+        if: matrix.build_type == 'debug' && runner.os != 'Linux'
+        working-directory: extensions/vscode
+        run: npm run test:host
+      - name: Test VS Code extension host on Linux
+        if: matrix.build_type == 'debug' && runner.os == 'Linux'
+        working-directory: extensions/vscode
+        run: xvfb-run -a npm run test:host
 
   sanitizers:
     runs-on: ubuntu-latest

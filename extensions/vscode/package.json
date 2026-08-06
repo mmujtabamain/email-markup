@@ -35,6 +35,7 @@
     "generate": "node scripts/generate-syntax.mjs",
     "compile": "npm run generate && tsc -p . && node scripts/build-extension.mjs",
     "test": "npm run compile && node --test dist/test/*.test.js",
+    "test:host": "npm run compile && node dist/test/runTest.js",
     "package": "npm run compile && npx @vscode/vsce package --allow-missing-repository"
   },
   "contributes": {
@@ -117,6 +118,7 @@
   "devDependencies": {
     "@types/node": "^22.10.0",
     "@types/vscode": "^1.95.0",
+    "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^3.2.1",
     "esbuild": "^0.28.1",
     "typescript": "^5.7.2"
