@@ -1,0 +1,33 @@
+#pragma once
+
+#include <cstddef>
+#include <string>
+#include <vector>
+
+#include "ell/core/source.hpp"
+
+namespace ell {
+
+struct ExpansionFrame {
+    std::string component;
+    SourceRange call_site;
+    SourceRange definition;
+    bool operator==(const ExpansionFrame&) const = default;
+};
+
+struct OutputSegment {
+    std::size_t output_start{};
+    std::size_t output_end{};
+    SourceRange origin;
+    std::vector<ExpansionFrame> expansion_stack;
+};
+
+struct GeneratedHtml {
+    std::string html;
+    std::vector<OutputSegment> segments;
+
+    void append(std::string_view text, SourceRange origin,
+                const std::vector<ExpansionFrame>& stack = {});
+};
+
+}  // namespace ell

@@ -2,6 +2,10 @@ include(Catch)
 
 add_executable(
     ell-tests
+    src/expression_tests.cpp
+    src/lexer_parser_tests.cpp
+    src/render_tests.cpp
+    src/source_tests.cpp
     src/version_tests.cpp
 )
 

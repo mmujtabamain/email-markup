@@ -1,5 +1,19 @@
 add_library(
     ell-core
+    src/css.cpp
+    src/data.cpp
+    src/diagnostic.cpp
+    src/expr.cpp
+    src/include.cpp
+    src/lexer.cpp
+    src/lint.cpp
+    src/parser.cpp
+    src/provenance.cpp
+    src/registry.cpp
+    src/render.cpp
+    src/source.cpp
+    src/styles.cpp
+    src/types.cpp
     src/version.cpp
 )
 
