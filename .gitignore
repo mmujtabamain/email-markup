@@ -2,3 +2,8 @@
 build/
 out/
 .cache/
+node_modules/
+dist/
+*.vsix
+extensions/vscode/server/*/ell-lsp
+extensions/vscode/server/*/ell-lsp.exe

@@ -1,0 +1,104 @@
+{
+  "name": "ell-language",
+  "displayName": "ELL Language Support",
+  "description": "Language support and secure final-HTML preview for ELL email documents.",
+  "version": "0.1.0",
+  "publisher": "ell-lang",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Grammar highlighting remains available; the server, data loading, external paths, and preview are disabled."
+    }
+  },
+  "activationEvents": [
+    "onLanguage:ell",
+    "onCommand:ell.preview"
+  ],
+  "main": "./dist/extension.js",
+  "files": [
+    "dist/extension.js",
+    "syntaxes",
+    "language-configuration.json",
+    "server",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "generate": "node scripts/generate-syntax.mjs",
+    "compile": "npm run generate && tsc -p . && node scripts/build-extension.mjs",
+    "test": "npm run compile && node --test dist/test/*.test.js",
+    "package": "npm run compile && npx @vscode/vsce package --allow-missing-repository"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "ell",
+        "aliases": [
+          "ELL",
+          "ell"
+        ],
+        "extensions": [
+          ".ell"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ell",
+        "scopeName": "source.ell",
+        "path": "./syntaxes/ell.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "ell.preview",
+        "title": "ELL: Open Secure Preview"
+      },
+      {
+        "command": "ell.previewWithData",
+        "title": "ELL: Preview with JSON Data"
+      },
+      {
+        "command": "ell.loadRemoteImages",
+        "title": "ELL: Load Remote Preview Images"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "ell.preview",
+          "when": "editorLangId == ell",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "ELL",
+      "properties": {
+        "ell.server.path": {
+          "type": "string",
+          "default": "",
+          "description": "Trusted-workspace override for the ell-lsp executable."
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/vscode": "^1.95.0",
+    "@vscode/vsce": "^3.2.1",
+    "esbuild": "^0.28.1",
+    "typescript": "^5.7.2"
+  }
+}

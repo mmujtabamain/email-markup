@@ -222,6 +222,7 @@ private:
         if (method == "textDocument/foldingRange") { folding(id, params); return; }
         if (method == "textDocument/signatureHelp") { signature(id, params); return; }
         if (method == "textDocument/formatting") { formatting(id, params); return; }
+        if (method == "ell/protocolVersion") { respond(id, {{"version", 1}}); return; }
         if (method == "ell/preview") { preview(id, params); return; }
         if (has_id) error(id, -32601, "Method not found: " + method);
     }

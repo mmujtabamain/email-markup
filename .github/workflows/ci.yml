@@ -41,6 +41,19 @@ jobs:
         run: cmake --build --preset ${{ matrix.build_type }}
       - name: Test
         run: ctest --preset ${{ matrix.build_type }} --output-on-failure
+      - uses: actions/setup-node@v4
+        if: matrix.build_type == 'debug'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: extensions/vscode/package-lock.json
+      - name: Build and test VS Code extension
+        if: matrix.build_type == 'debug'
+        working-directory: extensions/vscode
+        run: |
+          npm ci
+          npm test
+          npm run package
 
   sanitizers:
     runs-on: ubuntu-latest
