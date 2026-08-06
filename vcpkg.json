@@ -1,0 +1,11 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "ell",
+  "version-semver": "0.1.0",
+  "description": "The ELL compiler, CLI, language server, and conformance tests",
+  "dependencies": [
+    "catch2",
+    "fmt",
+    "nlohmann-json"
+  ]
+}
