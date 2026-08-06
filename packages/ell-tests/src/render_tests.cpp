@@ -164,3 +164,31 @@ TEST_CASE("standard library and Example shell compile the shipped example") {
     CHECK(result.generated.html.find("@{") == std::string::npos);
     CHECK(result.generated.html == read(root / "examples/solution_first.html"));
 }
+
+TEST_CASE("all standard components compile to the component gallery golden") {
+    const auto root = std::filesystem::path{ELL_SOURCE_DIR};
+    const auto gallery = root / "examples/component_gallery";
+    const auto read = [](const std::filesystem::path& path) {
+        std::ifstream stream(path, std::ios::binary);
+        return std::string{std::istreambuf_iterator<char>{stream}, {}};
+    };
+    ell::DiskFileResolver resolver;
+    ell::CompilationRequest request;
+    request.entry_path = gallery / "gallery.ell";
+    request.source = read(request.entry_path);
+    request.data = ell::Json::parse(read(gallery / "gallery.json"));
+    request.include_directories = {root / "lib", root / "brand/example"};
+    request.allowed_roots = {root};
+    request.imports = {root / "lib/builtins.ell", root / "brand/example/brand.ell",
+                       root / "brand/example/styles.ell"};
+
+    const auto result = ell::compile(request, resolver);
+
+    INFO((result.diagnostics.empty() ? "" : result.diagnostics.front().message));
+    REQUIRE(result.ok());
+    auto golden = read(gallery / "gallery.html");
+    if (golden.ends_with('\n')) golden.pop_back();
+    CHECK(result.generated.html == golden);
+    CHECK(result.generated.html.find("<style>") == std::string::npos);
+    CHECK(result.generated.html.find("class=\"gallery-card\" style=") != std::string::npos);
+}

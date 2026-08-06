@@ -1,0 +1,34 @@
+@Shell
+  <style>
+    .gallery-card { background: #faf9fd; color: #25232b; }
+    .gallery-card strong { color: #7357d8; }
+  </style>
+  <main class="gallery-card">
+    @Heading Component gallery for @{business.name} @/Heading
+    @Paragraph Every ELL 1 standard component renders in this fixture. @/Paragraph
+
+    @Callout(accent: "#7357d8") Class styles are inlined before final lint. @/Callout
+    @Quote(attribution: "ELL compiler") Ordinary ELL definitions own the markup. @/Quote
+
+    @Bullets
+      @Item First unordered item @/Item
+      @Item Second unordered item @/Item
+    @/Bullets
+    @Numbered
+      @Item First ordered item @/Item
+      @Item Second ordered item @/Item
+    @/Numbered
+
+    @Panel(accent: "#7357d8") <strong>Panel content</strong> @/Panel
+    @Columns(gap: 24)
+      @Slot(left) Left column @/Slot
+      @Slot(right) Right column @/Slot
+    @/Columns
+
+    @Image(src: image_url, alt: "A generated website preview", href: call_url);
+    @Divider;
+    @Spacer(height: 20);
+    @Button(url: call_url) Book a call @/Button
+    @Unsubscribe(text: "You are receiving this component gallery.");
+  </main>
+@/Shell
