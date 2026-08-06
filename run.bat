@@ -66,7 +66,7 @@ echo.
 echo Commands:
 echo   build      Configure and build all targets
 echo   test       Build and run the test suite
-echo   ellc       Build and run the compiler stub
-echo   ell-lsp    Build and run the language-server stub
+echo   ellc       Build and run the compiler
+echo   ell-lsp    Build and run the language server
 echo   help       Show this help
 exit /b 0

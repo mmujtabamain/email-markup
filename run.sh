@@ -84,8 +84,8 @@ case "$COMMAND" in
       "Commands:" \
       "  build      Configure and build all targets" \
       "  test       Build and run the test suite" \
-      "  ellc       Build and run the compiler stub" \
-      "  ell-lsp    Build and run the language-server stub" \
+      "  ellc       Build and run the compiler" \
+      "  ell-lsp    Build and run the language server" \
       "  help       Show this help"
     ;;
   *)

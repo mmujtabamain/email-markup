@@ -113,6 +113,7 @@ explicitly enables them for the current preview.
 - `grammar/ell.ebnf` — normative grammar
 - `schema/ell.schema.json` — project configuration schema
 - `docs/PERFORMANCE.md` — latency, memory, and limits
+- `docs/LANGUAGE_REVIEW.md` — recorded ELL 1 syntax and optimization decisions
 - `docs/RELEASE.md` — release contents and verification
 - `templates.md` — future deferred-templating proposal, not ELL 1
 
