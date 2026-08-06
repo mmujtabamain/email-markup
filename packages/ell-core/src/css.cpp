@@ -3,7 +3,9 @@
 #include <algorithm>
 #include <cctype>
 #include <regex>
+#include <set>
 #include <sstream>
+#include <vector>
 
 namespace ell {
 namespace {
@@ -75,8 +77,13 @@ std::string apply_root_styles(std::string html, const CssDeclarations& additions
 std::string inline_css(std::string html) {
     static const std::regex style_block{R"(<style\b[^>]*>([\s\S]*?)</style\s*>)",
                                         std::regex::icase};
-    static const std::regex class_rule{R"(\.([A-Za-z_][A-Za-z0-9_-]*)\s*\{([^{}]*)\})"};
-    std::map<std::string, CssDeclarations> classes;
+    static const std::regex css_rule{R"(([^{}]+)\{([^{}]*)\})"};
+    static const std::regex class_selector{R"(^\.([A-Za-z_][A-Za-z0-9_-]*)$)"};
+    struct ClassRule {
+        std::string name;
+        CssDeclarations declarations;
+    };
+    std::vector<ClassRule> classes;
     std::string without_styles;
     std::size_t position = 0;
     for (std::sregex_iterator it{html.begin(), html.end(), style_block}, end; it != end; ++it) {
@@ -86,11 +93,17 @@ std::string inline_css(std::string html) {
         if (body.find("@media") != std::string::npos) {
             without_styles += it->str();
         } else {
-            for (std::sregex_iterator rule{body.begin(), body.end(), class_rule}, rules_end;
+            for (std::sregex_iterator rule{body.begin(), body.end(), css_rule}, rules_end;
                  rule != rules_end; ++rule) {
                 const auto parsed = parse_declarations((*rule)[2].str());
-                auto& target = classes[(*rule)[1].str()];
-                for (const auto& [name, value] : parsed) target[name] = value;
+                std::istringstream selectors{(*rule)[1].str()};
+                std::string selector;
+                while (std::getline(selectors, selector, ',')) {
+                    std::smatch match;
+                    selector = trim(std::move(selector));
+                    if (std::regex_match(selector, match, class_selector))
+                        classes.push_back({match[1].str(), parsed});
+                }
             }
         }
         position = static_cast<std::size_t>(it->position() + it->length());
@@ -113,11 +126,13 @@ std::string inline_css(std::string html) {
         std::smatch class_match;
         if (std::regex_search(tag, class_match, class_attribute)) {
             CssDeclarations merged;
-            std::istringstream names{class_match[2].str()};
+            std::set<std::string> names;
+            std::istringstream class_names{class_match[2].str()};
             std::string name;
-            while (names >> name) {
-                if (const auto found = classes.find(name); found != classes.end())
-                    for (const auto& [property, value] : found->second)
+            while (class_names >> name) names.insert(name);
+            for (const auto& rule : classes) {
+                if (names.contains(rule.name))
+                    for (const auto& [property, value] : rule.declarations)
                         merged[property] = value;
             }
             std::smatch style_match;

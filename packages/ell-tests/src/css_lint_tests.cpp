@@ -19,6 +19,16 @@ TEST_CASE("media CSS survives inlining for the shell") {
     CHECK(html.find("@media") != std::string::npos);
 }
 
+TEST_CASE("class CSS follows stylesheet order and supports selector lists") {
+    const auto html = ell::inline_css(
+        "<style>.second { color: blue; }.first, .shared { color: red; padding: 4px; }"
+        ".second { padding: 8px; }</style>"
+        "<div class=\"first second shared\">Hello</div>");
+
+    CHECK(html.find("color: red;") != std::string::npos);
+    CHECK(html.find("padding: 8px;") != std::string::npos);
+}
+
 TEST_CASE("deliverability lint distinguishes content and shell") {
     const auto content = ell::lint_html("<p>Hello</p>", ell::LintRole::content, {});
     CHECK(content.empty());

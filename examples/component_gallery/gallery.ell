@@ -1,7 +1,6 @@
 @Shell
   <style>
     .gallery-card { background: #faf9fd; color: #25232b; }
-    .gallery-card strong { color: #7357d8; }
   </style>
   <main class="gallery-card">
     @Heading Component gallery for @{business.name} @/Heading
