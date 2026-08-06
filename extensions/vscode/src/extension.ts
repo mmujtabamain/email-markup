@@ -8,6 +8,7 @@ import {
 } from "vscode-languageclient/node";
 
 import { previewDocument } from "./preview";
+import { registerWebFeatures } from "./webFeatures";
 
 const protocolVersion = 1;
 
@@ -105,6 +106,7 @@ async function openPreview(withData: boolean): Promise<void> {
 }
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
+  registerWebFeatures(context);
   context.subscriptions.push(
     vscode.commands.registerCommand("ell.preview", () => openPreview(false)),
     vscode.commands.registerCommand("ell.previewWithData", () => openPreview(true)),

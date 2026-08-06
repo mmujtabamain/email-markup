@@ -15,7 +15,8 @@ const grammar = {
     { include: "#interpolation" },
     { include: "#close" },
     { include: "#construct" },
-    { include: "#escaped" }
+    { include: "#escaped" },
+    { include: "text.html.basic" }
   ],
   repository: {
     comments: {
@@ -59,13 +60,14 @@ const grammar = {
 
 const languageConfiguration = {
   comments: { lineComment: lexical.lineComment, blockComment: lexical.blockComment },
-  brackets: [["(", ")"], ["{", "}"]],
+  brackets: [["(", ")"], ["{", "}"], ["<", ">"]],
   autoClosingPairs: [
     { open: "(", close: ")" },
     { open: "{", close: "}" },
+    { open: "<", close: ">" },
     { open: "\"", close: "\"", notIn: ["string", "comment"] }
   ],
-  surroundingPairs: [["(", ")"], ["{", "}"], ["\"", "\""]],
+  surroundingPairs: [["(", ")"], ["{", "}"], ["<", ">"], ["\"", "\""]],
   folding: { markers: { start: "^\\s*@[A-Z][A-Za-z0-9_]*(?:\\([^)]*\\))?\\s*$", end: "^\\s*@/[A-Z][A-Za-z0-9_]*\\s*$" } },
   indentationRules: {
     increaseIndentPattern: "^.*@[A-Z][A-Za-z0-9_]*(?:\\([^)]*\\))?\\s*$",
@@ -73,6 +75,22 @@ const languageConfiguration = {
   }
 };
 
+const injectionGrammar = {
+  $schema: grammar.$schema,
+  name: "ELL in HTML and CSS",
+  scopeName: "ell.injection",
+  injectionSelector: "L:text.html.basic, L:source.css",
+  patterns: [
+    { include: "source.ell#comments" },
+    { include: "source.ell#interpolation" },
+    { include: "source.ell#close" },
+    { include: "source.ell#construct" },
+    { include: "source.ell#escaped" },
+  ],
+  metadata: { generatedFrom: "syntax/lexical.json", version: lexical.version },
+};
+
 await mkdir(resolve(extension, "syntaxes"), { recursive: true });
 await writeFile(resolve(extension, "syntaxes/ell.tmLanguage.json"), `${JSON.stringify(grammar, null, 2)}\n`);
+await writeFile(resolve(extension, "syntaxes/ell.injection.tmLanguage.json"), `${JSON.stringify(injectionGrammar, null, 2)}\n`);
 await writeFile(resolve(extension, "language-configuration.json"), `${JSON.stringify(languageConfiguration, null, 2)}\n`);

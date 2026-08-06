@@ -17,6 +17,9 @@
     },
     {
       "include": "#escaped"
+    },
+    {
+      "include": "text.html.basic"
     }
   ],
   "repository": {
