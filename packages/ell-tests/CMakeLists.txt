@@ -4,6 +4,7 @@ add_executable(
     ell-tests
     src/expression_tests.cpp
     src/conformance_tests.cpp
+    src/css_lint_tests.cpp
     src/lexer_parser_tests.cpp
     src/render_tests.cpp
     src/source_tests.cpp
