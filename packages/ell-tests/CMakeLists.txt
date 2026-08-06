@@ -40,3 +40,12 @@ add_test(
             -DINSTALL_DIR=${CMAKE_BINARY_DIR}/install-smoke
             -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/install_contract.cmake
 )
+
+add_test(
+    NAME ell-lsp-protocol
+    COMMAND "${CMAKE_COMMAND}"
+            -DELL_LSP=$<TARGET_FILE:ell-lsp>
+            -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+            -DBINARY_DIR=${CMAKE_BINARY_DIR}
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/lsp_contract.cmake
+)
