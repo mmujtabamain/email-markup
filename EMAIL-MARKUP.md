@@ -136,9 +136,9 @@ inlined into each matching class. An element’s existing inline property wins.
 Non-media style blocks are then removed. Validated media rules are collected into
 the shell because they cannot be represented as inline declarations.
 
-The Example assets split palette/company tokens (`brand.em`), named styles
-(`styles.em`), and the complete wrapper (`shell.em`). Brand values are data,
-not C++ constants.
+Themes, named styles, and final shells are ordinary project-owned Email Markup
+files. The compiler and installed standard library contain no company-specific
+values.
 
 ## Includes and projects
 
@@ -147,7 +147,7 @@ not C++ constants.
 ```
 
 Resolution tries the including document’s directory and then each `-I` directory
-in order. `${EMAIL_MARKUP_LIB}` and `${EMAIL_MARKUP_BRAND}` are available in config and paths.
+in order. `${EMAIL_MARKUP_LIB}` is available in config and paths.
 Canonical targets must remain under the project, explicit include roots, or
 installed asset roots. Symlink escapes, non-regular files, unsupported
 extensions, oversized sources, include cycles, and excess depth are errors.
@@ -161,10 +161,10 @@ The nearest `em.json` supports:
 ```json
 {
   "$schema": "./schema/em.schema.json",
-  "include": ["${EMAIL_MARKUP_LIB}", "${EMAIL_MARKUP_BRAND}", "components"],
-  "imports": ["${EMAIL_MARKUP_LIB}/builtins.em", "${EMAIL_MARKUP_BRAND}/brand.em"],
+  "include": ["${EMAIL_MARKUP_LIB}", "theme", "components"],
+  "imports": ["${EMAIL_MARKUP_LIB}/builtins.em", "theme/styles.em"],
   "data": "examples/recipient.json",
-  "shell": "${EMAIL_MARKUP_BRAND}/shell.em",
+  "shell": "theme/shell.em",
   "out": "build"
 }
 ```

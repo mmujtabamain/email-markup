@@ -323,14 +323,11 @@ public:
         : executable_(std::move(executable)) {
         const auto binary = executable_.parent_path();
         library_ = binary / "lib";
-        brand_ = binary / "brand/example";
         const auto installed = binary.parent_path() / "share/email-markup";
         if (!std::filesystem::exists(library_) && std::filesystem::exists(installed / "lib")) {
             library_ = installed / "lib";
-            brand_ = installed / "brand/example";
         }
         if (const char* value = std::getenv("EMAIL_MARKUP_LIB")) library_ = value;
-        if (const char* value = std::getenv("EMAIL_MARKUP_BRAND")) brand_ = value;
         load_library_metadata();
     }
 
@@ -505,7 +502,6 @@ private:
                 value.replace(position, token.size(), path.string());
         };
         replace("${EMAIL_MARKUP_LIB}", library_);
-        replace("${EMAIL_MARKUP_BRAND}", brand_);
         std::filesystem::path path{value};
         return path.is_absolute() ? path : base / path;
     }
@@ -516,11 +512,9 @@ private:
         request.entry_path = open.path;
         request.source = open.text;
         request.data = preview_data ? *preview_data : Json::object();
-        request.include_directories = {library_, brand_};
-        request.allowed_roots = {open.path.parent_path(), library_, brand_};
-        request.imports = {library_ / "builtins.em", brand_ / "brand.em",
-                           brand_ / "styles.em"};
-        request.shell = brand_ / "shell.em";
+        request.include_directories = {library_};
+        request.allowed_roots = {open.path.parent_path(), library_};
+        request.imports = {library_ / "builtins.em"};
         if (const auto config_path = project_config(open.path)) {
             try {
                 const auto config = Json::parse(read_file(*config_path));
@@ -582,8 +576,7 @@ private:
     }
 
     void load_library_metadata() {
-        for (const auto& path : {library_ / "builtins.em", brand_ / "brand.em",
-                                 brand_ / "styles.em"}) {
+        for (const auto& path : {library_ / "builtins.em"}) {
             const auto source = read_file(path);
             if (source.empty()) continue;
             auto parsed = email_markup::parse(0, source);
@@ -1046,7 +1039,6 @@ private:
 
     std::filesystem::path executable_;
     std::filesystem::path library_;
-    std::filesystem::path brand_;
     std::vector<std::filesystem::path> workspace_roots_;
     std::unordered_map<std::string, OpenDocument> documents_;
     std::unordered_map<std::string, email_markup::ComponentDefinition> components_;

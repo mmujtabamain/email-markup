@@ -52,7 +52,6 @@ foreach(REQUIRED
     "textDocument/publishDiagnostics"
     "\\\"id\\\":2"
     "@Paragraph"
-    "token.accent"
     "Compile data"
     "builtins.em"
     "Email Markup prop: string"

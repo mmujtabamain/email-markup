@@ -41,9 +41,6 @@ test("every staged language server includes its runtime assets", () => {
   for (const platform of platforms) {
     const staged = path.join(serverRoot, platform);
     assert.doesNotThrow(() => readFileSync(path.join(staged, "lib/builtins.em")));
-    assert.doesNotThrow(() => readFileSync(path.join(staged, "brand/example/brand.em")));
-    assert.doesNotThrow(() => readFileSync(path.join(staged, "brand/example/styles.em")));
-    assert.doesNotThrow(() => readFileSync(path.join(staged, "brand/example/shell.em")));
   }
 });
 

@@ -37,19 +37,15 @@ add_custom_target(
             "${CMAKE_SOURCE_DIR}/lib"
             "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/lib"
     COMMAND "${CMAKE_COMMAND}" -E copy_directory
-            "${CMAKE_SOURCE_DIR}/brand"
-            "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/brand"
-    COMMAND "${CMAKE_COMMAND}" -E copy_directory
             "${CMAKE_SOURCE_DIR}/schema"
             "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/schema"
-    COMMENT "Copying Email Markup libraries and brand assets"
+    COMMENT "Copying Email Markup runtime assets"
 )
 
 add_dependencies(emc email-markup-dev-assets)
 add_dependencies(email-markup-lsp email-markup-dev-assets)
 
 install(DIRECTORY lib/ DESTINATION "${CMAKE_INSTALL_DATADIR}/email-markup/lib")
-install(DIRECTORY brand/ DESTINATION "${CMAKE_INSTALL_DATADIR}/email-markup/brand")
 install(DIRECTORY schema/ DESTINATION "${CMAKE_INSTALL_DATADIR}/email-markup/schema")
 install(DIRECTORY grammar/ DESTINATION "${CMAKE_INSTALL_DATADIR}/email-markup/grammar")
 install(DIRECTORY syntax/ DESTINATION "${CMAKE_INSTALL_DATADIR}/email-markup/syntax")

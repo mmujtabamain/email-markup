@@ -13,8 +13,8 @@ The release matrix builds and tests:
 
 Each platform publishes an installed compiler/server ZIP, a matching self-contained
 VSIX, and SHA-256 files for both. The install tree contains `emc`, `email-markup-lsp`, the
-core library and headers, the Email Markup standard library, Example brand and shell,
-grammar, syntax metadata, config schema, documentation, and license. The VSIX
+core library and headers, the Email Markup standard library, grammar, syntax
+metadata, config schema, documentation, and license. The VSIX
 bundles the server matching its platform and architecture.
 
 ## Local release verification

@@ -35,8 +35,6 @@ add_custom_command(
     COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:email-markup-lsp>" "${EMAIL_MARKUP_VSCODE_SERVER_DIR}/"
     COMMAND "${CMAKE_COMMAND}" -E copy_directory
             "${CMAKE_SOURCE_DIR}/lib" "${EMAIL_MARKUP_VSCODE_SERVER_DIR}/lib"
-    COMMAND "${CMAKE_COMMAND}" -E copy_directory
-            "${CMAKE_SOURCE_DIR}/brand" "${EMAIL_MARKUP_VSCODE_SERVER_DIR}/brand"
     COMMENT "Staging email-markup-lsp and its runtime assets for the VS Code extension package"
 )
 

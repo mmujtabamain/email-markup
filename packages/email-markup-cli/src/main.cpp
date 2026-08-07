@@ -112,21 +112,18 @@ std::string replace_all(std::string value, const std::string_view needle,
 
 struct AssetPaths {
     std::filesystem::path library;
-    std::filesystem::path brand;
     std::filesystem::path schema;
 };
 
 AssetPaths locate_assets(const std::filesystem::path& executable) {
     const auto binary = executable.parent_path();
-    AssetPaths paths{binary / "lib", binary / "brand/example", binary / "schema/em.schema.json"};
+    AssetPaths paths{binary / "lib", binary / "schema/em.schema.json"};
     const auto installed = binary.parent_path() / "share/email-markup";
     if (!std::filesystem::exists(paths.library) && std::filesystem::exists(installed / "lib")) {
         paths.library = installed / "lib";
-        paths.brand = installed / "brand/example";
         paths.schema = installed / "schema/em.schema.json";
     }
     if (const char* value = std::getenv("EMAIL_MARKUP_LIB")) paths.library = value;
-    if (const char* value = std::getenv("EMAIL_MARKUP_BRAND")) paths.brand = value;
     return paths;
 }
 
@@ -148,7 +145,6 @@ std::filesystem::path expand_path(const std::string& raw,
                                   const std::filesystem::path& base,
                                   const AssetPaths& assets) {
     auto expanded = replace_all(raw, "${EMAIL_MARKUP_LIB}", assets.library.string());
-    expanded = replace_all(expanded, "${EMAIL_MARKUP_BRAND}", assets.brand.string());
     std::filesystem::path path{expanded};
     if (path.is_relative()) path = base / path;
     return path.lexically_normal();
@@ -176,10 +172,8 @@ ProjectConfig load_config(const std::filesystem::path& input,
         return config;
     }
     config.path = std::filesystem::absolute(input).parent_path() / "em.json";
-    config.includes = {assets.library, assets.brand};
-    config.imports = {assets.library / "builtins.em", assets.brand / "brand.em",
-                      assets.brand / "styles.em"};
-    config.shell = assets.brand / "shell.em";
+    config.includes = {assets.library};
+    config.imports = {assets.library / "builtins.em"};
     config.output = std::filesystem::absolute(input).parent_path() / "build";
     return config;
 }

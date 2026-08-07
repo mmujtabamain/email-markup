@@ -122,12 +122,12 @@ arrays, and objects must be handled explicitly rather than silently stringified.
 2. each `-I` directory in command-line order;
 3. failure with a diagnostic listing every attempted path.
 
-`${EMAIL_MARKUP_LIB}` and `${EMAIL_MARKUP_BRAND}` are compiler-defined path variables available
-in include paths, search directories, and project configuration.
+`${EMAIL_MARKUP_LIB}` is a compiler-defined path variable available in include
+paths, search directories, and project configuration.
 
 After canonicalisation and symlink resolution, a target must remain under an
-allowed root: the project root, an explicit `-I` directory, `${EMAIL_MARKUP_LIB}`, or
-`${EMAIL_MARKUP_BRAND}`. Non-regular files, oversized files, unsupported extensions,
+allowed root: the project root, an explicit `-I` directory, or
+`${EMAIL_MARKUP_LIB}`. Non-regular files, oversized files, unsupported extensions,
 and paths outside those roots are errors.
 
 Includes are parsed as separate documents, not textually spliced. Include-once
@@ -152,11 +152,10 @@ forms are compile errors. Nothing is silently coerced.
 it is expanded completely by `emc`. It is not the deferred external-engine
 templating functionality postponed to `templates.md`.
 
-`brand/example/brand.em` owns palette and company tokens,
-`brand/example/styles.em` owns style bundles, and
-`brand/example/shell.em` owns the complete email wrapper. The compiler performs
-the existing three-layer style cascade, media validation, CSS inlining, and
-email-client hardening without embedding brand values in C++.
+Themes, style bundles, and complete email wrappers remain ordinary project
+files. The compiler performs the existing three-layer style cascade, media
+validation, CSS inlining, and email-client hardening without embedding
+company-specific values in C++.
 
 Email Markup source normalisation ports the prototype's `_normalise` and `_trim`
 behaviour for ordinary text and component-template indentation. There is no
@@ -194,8 +193,7 @@ email-markup/
 │   └── email-markup-tests/               Catch2 suites and golden fixtures
 ├── lib/
 │   └── builtins.em             fifteen built-in components in Email Markup
-├── brand/example/                brand.em, styles.em, shell.em
-├── examples/                    final-HTML `.em` examples plus JSON fixtures
+├── examples/                    final-HTML `.em` examples, neutral theme, and JSON fixtures
 ├── extensions/vscode/           thin LSP client and secure HTML preview
 ├── grammar/email-markup.ebnf             normative grammar and recovery boundaries
 ├── schema/em.schema.json       project configuration schema
@@ -233,7 +231,7 @@ Move the template build files to the repository root and rewrite them:
   vcpkg submodule commit is the dependency baseline.
 - Root `CMakeLists.txt` lists sources explicitly and adds each package as a
   subdirectory.
-- Dev builds copy `lib/` and `brand/` next to the binaries.
+- Dev builds copy `lib/` next to the binaries.
 - `setup.sh`/`run.sh` and their `.bat` siblings remain behaviorally aligned.
 - User-facing Bash follows the repository's Bash 3.2 and safety conventions.
 
@@ -336,7 +334,7 @@ limits, render, CSS, and lint suites pass under supported sanitizers.
 
 ---
 
-## Phase 2 — built-ins, brand, shell, and examples in Email Markup
+## Phase 2 — built-ins, themes, shells, and examples in Email Markup
 
 Create `lib/builtins.em` from the fifteen Python renderers using
 `@DefineComponent` and `@Template`. Supported inputs preserve prototype markup
@@ -355,16 +353,15 @@ Known intentional changes include:
 - Conditional logo, tagline, attribution, address, and link markup use compiler
   `@If` and slots.
 
-Move Example palette, company details, style bundles, and shell markup into
-`brand/example/`. C++ contains mechanisms, never brand constants or a component
-name list.
+Keep reusable neutral theme and shell fixtures under `examples/_shared/`. C++
+contains mechanisms, never company constants or a component name list.
 
 Every example has at least one JSON fixture and checked-in final HTML golden.
 Examples demonstrate direct JSON interpolation, compile-time conditions and
 loops, components, includes, styles, shell wrapping, and failure diagnostics.
 
 **Checkpoint:** `emc` can compile `examples/solution_first.em` with its JSON
-fixture into complete branded HTML, and shell lint validates unsubscribe and
+fixture into complete HTML, and shell lint validates unsubscribe and
 media requirements.
 
 ---
@@ -399,10 +396,10 @@ so recipient data does not appear in process listings or shell history.
 ```json
 {
   "$schema": "./schema/em.schema.json",
-  "include": ["${EMAIL_MARKUP_LIB}", "${EMAIL_MARKUP_BRAND}", "components"],
-  "imports": ["${EMAIL_MARKUP_LIB}/builtins.em", "${EMAIL_MARKUP_BRAND}/brand.em"],
+  "include": ["${EMAIL_MARKUP_LIB}", "theme", "components"],
+  "imports": ["${EMAIL_MARKUP_LIB}/builtins.em", "theme/styles.em"],
   "data": "fixtures/development.json",
-  "shell": "${EMAIL_MARKUP_BRAND}/shell.em",
+  "shell": "theme/shell.em",
   "out": "build"
 }
 ```
@@ -417,7 +414,7 @@ recipient payload or secret values.
 
 Outputs are atomic. Duplicate output paths are errors, and failed builds leave
 previous files untouched. `cmake --install` creates a relocatable prefix with
-`emc`, `email-markup-lsp`, `lib/`, brand assets, schema, documentation, and licenses.
+`emc`, `email-markup-lsp`, `lib/`, schema, documentation, and licenses.
 
 **Checkpoint:** direct, stdin, and file JSON modes produce byte-identical final
 HTML; an installed prefix performs the same build without the source tree.
@@ -560,7 +557,7 @@ Release gates, in order:
    Catch2, fuzz, and supported sanitizer suites.
 3. Direct, stdin, and file JSON inputs produce identical final HTML and never
    expose values in diagnostics.
-4. Every built-in, brand file, shell, and example passes final-HTML golden tests;
+4. Every built-in, theme, shell, and example passes final-HTML golden tests;
    intentional prototype differences are recorded.
 5. CLI commands, exit codes, atomic outputs, JSON diagnostics, configuration
    schema, and installed-prefix behavior pass contract tests.
