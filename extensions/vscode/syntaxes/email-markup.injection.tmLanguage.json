@@ -1,0 +1,42 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Email Markup in HTML and CSS",
+  "scopeName": "email-markup.injection",
+  "injectionSelector": "L:text.html.basic, L:source.css",
+  "patterns": [
+    {
+      "include": "source.email-markup#comments"
+    },
+    {
+      "include": "source.email-markup#interpolation"
+    },
+    {
+      "include": "source.email-markup#props"
+    },
+    {
+      "include": "source.email-markup#slots"
+    },
+    {
+      "include": "source.email-markup#defineStyle"
+    },
+    {
+      "include": "source.email-markup#media"
+    },
+    {
+      "include": "source.email-markup#close"
+    },
+    {
+      "include": "source.email-markup#invocation"
+    },
+    {
+      "include": "source.email-markup#construct"
+    },
+    {
+      "include": "source.email-markup#escaped"
+    }
+  ],
+  "metadata": {
+    "generatedFrom": "syntax/lexical.json",
+    "version": 1
+  }
+}

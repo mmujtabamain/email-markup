@@ -1,10 +1,10 @@
-# ELL
+# Email Markup
 
-ELL is a typed, component-based language for HTML email. ELL 1 compiles one
-`.ell` document plus one JSON object into complete, CSS-inlined, linted HTML.
+Email Markup (EM) is a typed, component-based language for HTML email. Email Markup 1 compiles one
+`.em` document plus one JSON object into complete, CSS-inlined, linted HTML.
 The compiler never leaves merge syntax for another template engine.
 
-```ell
+```email-markup
 @Heading A faster website for @{business.name} @/Heading
 
 @For(opportunity in opportunities)
@@ -15,11 +15,11 @@ The compiler never leaves merge syntax for another template engine.
 ```
 
 ```bash
-ellc compile message.ell --data-file recipient.json -o message.html
+emc compile message.em --data-file recipient.json -o message.html
 ```
 
-The repository contains the C++23 compiler library, `ellc`, `ell-lsp`, fifteen
-ELL-defined email components, the Example brand and shell, conformance tests, and
+The repository contains the C++23 `email-markup-core` compiler library, `emc`,
+`email-markup-lsp`, fifteen email components defined in Email Markup, the Example brand and shell, conformance tests, and
 a self-contained VS Code extension.
 
 ## Build from source
@@ -39,32 +39,32 @@ Studio developer shell. A release install can be created with:
 ```bash
 cmake --preset release
 cmake --build --preset release
-cmake --install build/release --prefix ./stage/ell
+cmake --install build/release --prefix ./stage/email-markup
 ```
 
-## Use `ellc`
+## Use `emc`
 
 ```bash
 # One document, with equivalent JSON transports
-ellc compile message.ell --data-json '{"business":{"name":"Northstar"}}' -o message.html
-ellc compile message.ell --data-file recipient.json -o message.html
-printf '%s' "$RECIPIENT_JSON" | ellc compile message.ell --data-stdin -o message.html
+emc compile message.em --data-json '{"business":{"name":"Northstar"}}' -o message.html
+emc compile message.em --data-file recipient.json -o message.html
+printf '%s' "$RECIPIENT_JSON" | emc compile message.em --data-stdin -o message.html
 
 # Validate, lint, format, or build a project tree
-ellc check message.ell --data-file recipient.json
-ellc lint message.ell --role content --data-file recipient.json
-ellc fmt message.ell
-ellc fmt message.ell --write
-ellc build .
+emc check message.em --data-file recipient.json
+emc lint message.em --role content --data-file recipient.json
+emc fmt message.em
+emc fmt message.em --write
+emc build .
 
 # Automation-friendly diagnostics and the installed config schema
-ellc check message.ell --json
-ellc schema
+emc check message.em --json
+emc schema
 ```
 
-`ellc` finds the nearest `ell.json`. The repository’s config demonstrates all
+`emc` finds the nearest `em.json`. The repository’s config demonstrates all
 supported keys: include roots, definition imports, a development JSON fixture,
-the final shell, and the build output directory. `${ELL_LIB}` and
+the final shell, and the build output directory. `${EMAIL_MARKUP_LIB}` and
 `${EMAIL_MARKUP_BRAND}` resolve to the installed assets. Explicit `-I`, `--import`,
 `--shell`, and data options override or extend project configuration.
 
@@ -73,9 +73,9 @@ Diagnostics do not print JSON values.
 
 ## Standard library and HTML/CSS
 
-`lib/builtins.ell` defines `Paragraph`, `Heading`, `Bullets`, `Numbered`, `Item`,
+`lib/builtins.em` defines `Paragraph`, `Heading`, `Bullets`, `Numbered`, `Item`,
 `Callout`, `Quote`, `Button`, `Image`, `Divider`, `Spacer`, `Panel`, `Columns`,
-`Unsubscribe`, and `Shell` in ELL itself. Raw HTML remains valid source.
+`Unsubscribe`, and `Shell` in Email Markup itself. Raw HTML remains valid source.
 
 Ordinary class selectors declared in `<style>` blocks are inlined into matching
 HTML elements during compilation. Existing inline declarations take precedence.
@@ -88,7 +88,7 @@ JSON fixtures and checked-in final-HTML output. Run `./examples/compile.sh` (or
 
 ## VS Code
 
-Build `extensions/vscode` after the C++ build has staged `ell-lsp`:
+Build `extensions/vscode` after the C++ build has staged `email-markup-lsp`:
 
 ```bash
 cd extensions/vscode
@@ -97,10 +97,10 @@ npm test
 npm run package
 ```
 
-`.ell` files use an `@` file icon. The grammar layers ELL scopes over VS Code’s
+`.em` files use an `@` file icon. The grammar layers Email Markup scopes over VS Code’s
 HTML grammar and embeds CSS in `<style>`, while the extension adds HTML and CSS
 completion, hover, document symbols, linked-tag editing, CSS colors, and local
-class-name completion. `ell-lsp` provides ELL diagnostics, component completion,
+class-name completion. `email-markup-lsp` provides Email Markup diagnostics, component completion,
 navigation, formatting, and final-HTML preview.
 
 In untrusted workspaces only grammar highlighting is enabled. Preview scripts and
@@ -109,12 +109,12 @@ explicitly enables them for the current preview.
 
 ## Reference and release evidence
 
-- `ELL.md` — implemented ELL 1 language and tooling reference
-- `grammar/ell.ebnf` — normative grammar
-- `schema/ell.schema.json` — project configuration schema
+- `EMAIL-MARKUP.md` — implemented Email Markup 1 language and tooling reference
+- `grammar/email-markup.ebnf` — normative grammar
+- `schema/em.schema.json` — project configuration schema
 - `docs/PERFORMANCE.md` — latency, memory, and limits
-- `docs/LANGUAGE_REVIEW.md` — recorded ELL 1 syntax and optimization decisions
+- `docs/LANGUAGE_REVIEW.md` — recorded Email Markup 1 syntax and optimization decisions
 - `docs/RELEASE.md` — release contents and verification
-- `templates.md` — future deferred-templating proposal, not ELL 1
+- `templates.md` — future deferred-templating proposal, not Email Markup 1
 
-ELL is licensed under the MIT License.
+Email Markup is licensed under the MIT License.

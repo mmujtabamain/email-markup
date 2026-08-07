@@ -54,28 +54,28 @@ build() {
 
 case "$COMMAND" in
   build)
-    step "Step 1/1 — Build ELL ($BUILD_MODE)"
+    step "Step 1/1 — Build Email Markup ($BUILD_MODE)"
     build
-    success "Built ellc, ell-lsp, and ell-tests."
+    success "Built emc, email-markup-lsp, and email-markup-tests."
     ;;
   test)
-    step "Step 1/2 — Build ELL ($BUILD_MODE)"
+    step "Step 1/2 — Build Email Markup ($BUILD_MODE)"
     build
     step "Step 2/2 — Run tests"
     run ctest --preset "$BUILD_MODE"
-    success "All ELL tests passed."
+    success "All Email Markup tests passed."
     ;;
-  ellc)
-    step "Step 1/2 — Build ELL ($BUILD_MODE)"
+  emc)
+    step "Step 1/2 — Build Email Markup ($BUILD_MODE)"
     build
-    step "Step 2/2 — Run ellc"
-    run "$REPO_DIR/build/$BUILD_MODE/bin/ellc"
+    step "Step 2/2 — Run emc"
+    run "$REPO_DIR/build/$BUILD_MODE/bin/emc"
     ;;
-  ell-lsp)
-    step "Step 1/2 — Build ELL ($BUILD_MODE)"
+  email-markup-lsp)
+    step "Step 1/2 — Build Email Markup ($BUILD_MODE)"
     build
-    step "Step 2/2 — Run ell-lsp"
-    run "$REPO_DIR/build/$BUILD_MODE/bin/ell-lsp"
+    step "Step 2/2 — Run email-markup-lsp"
+    run "$REPO_DIR/build/$BUILD_MODE/bin/email-markup-lsp"
     ;;
   help|-h|--help)
     printf '%s\n' \
@@ -84,8 +84,8 @@ case "$COMMAND" in
       "Commands:" \
       "  build      Configure and build all targets" \
       "  test       Build and run the test suite" \
-      "  ellc       Build and run the compiler" \
-      "  ell-lsp    Build and run the language server" \
+      "  emc       Build and run the compiler" \
+      "  email-markup-lsp    Build and run the language server" \
       "  help       Show this help"
     ;;
   *)

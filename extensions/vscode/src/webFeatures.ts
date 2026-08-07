@@ -9,8 +9,8 @@ import {
   webCompletionLanguage,
 } from "./webProjection";
 
-const selector: vscode.DocumentSelector = [{ language: "ell", scheme: "file" }];
-const embeddedScheme = "ell-embedded";
+const selector: vscode.DocumentSelector = [{ language: "email-markup", scheme: "file" }];
+const embeddedScheme = "email-markup-embedded";
 
 class EmbeddedDocuments implements vscode.TextDocumentContentProvider {
   private readonly contents = new Map<string, string>();
@@ -86,7 +86,7 @@ export function registerWebFeatures(context: vscode.ExtensionContext): void {
         for (const name of localClasses(source)) {
           if (labels.has(name)) continue;
           const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.Value);
-          item.detail = "CSS class declared in this ELL document";
+          item.detail = "CSS class declared in this Email Markup document";
           forwarded.items.push(item);
         }
         return forwarded;

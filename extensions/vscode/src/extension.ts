@@ -30,9 +30,9 @@ function platformDirectory(): string {
 }
 
 function serverExecutable(context: vscode.ExtensionContext): string {
-  const configured = vscode.workspace.getConfiguration("ell").get<string>("server.path", "").trim();
+  const configured = vscode.workspace.getConfiguration("email-markup").get<string>("server.path", "").trim();
   if (configured) return configured;
-  const executable = process.platform === "win32" ? "ell-lsp.exe" : "ell-lsp";
+  const executable = process.platform === "win32" ? "email-markup-lsp.exe" : "email-markup-lsp";
   return context.asAbsolutePath(path.join("server", platformDirectory(), executable));
 }
 
@@ -47,29 +47,29 @@ async function startServer(context: vscode.ExtensionContext): Promise<void> {
     run: { command: executable, transport: TransportKind.stdio },
     debug: { command: executable, transport: TransportKind.stdio },
   };
-  const watcher = vscode.workspace.createFileSystemWatcher("**/{*.ell,ell.json,*.json}");
+  const watcher = vscode.workspace.createFileSystemWatcher("**/{*.em,em.json,*.json}");
   context.subscriptions.push(watcher);
   const clientOptions: LanguageClientOptions = {
-    documentSelector: [{ scheme: "file", language: "ell" }],
+    documentSelector: [{ scheme: "file", language: "email-markup" }],
     outputChannel: output,
     synchronize: { fileEvents: watcher },
   };
-  client = new LanguageClient("ell", "ELL Language Server", serverOptions, clientOptions);
+  client = new LanguageClient("email-markup", "Email Markup Language Server", serverOptions, clientOptions);
   context.subscriptions.push(client);
   await client.start();
   output?.info("Language server started.");
-  const version = await client.sendRequest<{ version: number }>("ell/protocolVersion");
+  const version = await client.sendRequest<{ version: number }>("email-markup/protocolVersion");
   if (version.version !== protocolVersion) {
     await client.stop();
     client = undefined;
-    throw new Error(`ELL client protocol ${protocolVersion} does not match server protocol ${version.version}.`);
+    throw new Error(`Email Markup client protocol ${protocolVersion} does not match server protocol ${version.version}.`);
   }
   output?.info(`Protocol version ${version.version} confirmed.`);
 }
 
-function activeEllEditor(): vscode.TextEditor | undefined {
+function activeEmailMarkupEditor(): vscode.TextEditor | undefined {
   const editor = vscode.window.activeTextEditor;
-  return editor?.document.languageId === "ell" ? editor : undefined;
+  return editor?.document.languageId === "email-markup" ? editor : undefined;
 }
 
 function clearPreviewSession(): void {
@@ -89,11 +89,11 @@ async function refreshPreview(document: vscode.TextDocument, reveal: boolean): P
   if (previewData !== undefined) params.data = previewData;
   let result: { version: number; html: unknown };
   try {
-    result = await client.sendRequest<{ version: number; html: unknown }>("ell/preview", params);
+    result = await client.sendRequest<{ version: number; html: unknown }>("email-markup/preview", params);
   } catch (error) {
     if (request === previewRequest && previewUri === uri) {
       output?.error(`Preview refresh failed for ${document.uri.fsPath}.`, error);
-      if (reveal) void vscode.window.showErrorMessage("ELL preview failed. See Output → ELL.");
+      if (reveal) void vscode.window.showErrorMessage("Email Markup preview failed. See Output → Email Markup.");
     }
     return;
   }
@@ -109,25 +109,25 @@ async function refreshPreview(document: vscode.TextDocument, reveal: boolean): P
   if (typeof result.html !== "string") {
     const actual = Array.isArray(result.html) ? "array" : typeof result.html;
     output?.error(`Language server returned invalid preview HTML (${actual} instead of string).`);
-    void vscode.window.showErrorMessage("ELL language server returned an invalid preview response. See Output → ELL.");
+    void vscode.window.showErrorMessage("Email Markup language server returned an invalid preview response. See Output → Email Markup.");
     return;
   }
   previewHtml = result.html;
   remoteImagesEnabled = false;
   if (!previewPanel) {
     previewPanel = vscode.window.createWebviewPanel(
-      "ellPreview",
-      "ELL Secure Preview",
+      "emailMarkupPreview",
+      "Email Markup Secure Preview",
       vscode.ViewColumn.Beside,
       { enableScripts: false, localResourceRoots: [] },
     );
     previewPanel.onDidDispose(() => {
       previewPanel = undefined;
       clearPreviewSession();
-      output?.info("Preview detached from its ELL document.");
+      output?.info("Preview detached from its Email Markup document.");
     });
   }
-  previewPanel.title = `ELL Preview: ${path.basename(document.uri.fsPath)}`;
+  previewPanel.title = `Email Markup Preview: ${path.basename(document.uri.fsPath)}`;
   previewPanel.webview.html = previewDocument(previewHtml, false);
   if (reveal) previewPanel.reveal(vscode.ViewColumn.Beside, true);
   output?.debug(`Preview refreshed for ${document.uri.fsPath} at version ${document.version}.`);
@@ -137,24 +137,24 @@ async function openPreview(withData: boolean): Promise<void> {
   output?.info(`Preview requested${withData ? " with inline JSON data" : ""}.`);
   if (!vscode.workspace.isTrusted) {
     output?.warn("Preview blocked because the workspace is not trusted.");
-    void vscode.window.showWarningMessage("Trust this workspace before compiling an ELL preview.");
+    void vscode.window.showWarningMessage("Trust this workspace before compiling an Email Markup preview.");
     return;
   }
   if (!client) {
     output?.error("Preview unavailable because the language server is not running.");
-    void vscode.window.showErrorMessage("ELL language server is not running.");
+    void vscode.window.showErrorMessage("Email Markup language server is not running.");
     return;
   }
-  const editor = activeEllEditor();
+  const editor = activeEmailMarkupEditor();
   if (!editor) {
-    output?.warn("Preview ignored because the active editor is not an ELL document.");
+    output?.warn("Preview ignored because the active editor is not an Email Markup document.");
     return;
   }
   let data: unknown;
   if (withData) {
     const raw = await vscode.window.showInputBox({
       title: "Unsaved preview JSON",
-      prompt: "Enter one JSON object. It is sent to ell-lsp for this preview only.",
+      prompt: "Enter one JSON object. It is sent to email-markup-lsp for this preview only.",
       value: "{}",
       ignoreFocusOut: true,
     });
@@ -177,15 +177,15 @@ async function openPreview(withData: boolean): Promise<void> {
 }
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  output = vscode.window.createOutputChannel("ELL", { log: true });
+  output = vscode.window.createOutputChannel("Email Markup", { log: true });
   context.subscriptions.push(output);
-  output.info(`Activating ELL Language Support ${context.extension.packageJSON.version ?? "unknown"}.`);
+  output.info(`Activating Email Markup Language Support ${context.extension.packageJSON.version ?? "unknown"}.`);
   registerWebFeatures(context);
-  output.info("Registered ELL commands and embedded HTML/CSS editor features.");
+  output.info("Registered Email Markup commands and embedded HTML/CSS editor features.");
   context.subscriptions.push(
-    vscode.commands.registerCommand("ell.preview", () => openPreview(false)),
-    vscode.commands.registerCommand("ell.previewWithData", () => openPreview(true)),
-    vscode.commands.registerCommand("ell.loadRemoteImages", () => {
+    vscode.commands.registerCommand("email-markup.preview", () => openPreview(false)),
+    vscode.commands.registerCommand("email-markup.previewWithData", () => openPreview(true)),
+    vscode.commands.registerCommand("email-markup.loadRemoteImages", () => {
       if (!previewPanel || !previewHtml || remoteImagesEnabled) return;
       remoteImagesEnabled = true;
       previewPanel.webview.html = previewDocument(previewHtml, true);
@@ -208,7 +208,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     try { await startServer(context); }
     catch (error) {
       output.error("Language server failed to start.", error);
-      void vscode.window.showErrorMessage(`ELL language server failed to start: ${String(error)}`);
+      void vscode.window.showErrorMessage(`Email Markup language server failed to start: ${String(error)}`);
     }
   } else {
     output.warn("Workspace is untrusted; only syntax highlighting is enabled.");

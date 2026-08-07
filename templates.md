@@ -2,13 +2,13 @@
 
 ## Status
 
-This document records a possible later extension to ELL. It is **not part of the
+This document records a possible later extension to Email Markup. It is **not part of the
 first standalone compiler release**, its syntax is not accepted by the initial
-`ellc`, and none of it is required by the implementation plan in `PLAN.md`.
+`emc`, and none of it is required by the implementation plan in `PLAN.md`.
 
-The initial compiler accepts `.ell` plus JSON data and produces final HTML. This
-extension exists for a future need: compiling a `.ell` document into a template
-for another engine so recipient data can be filled after ELL compilation.
+The initial compiler accepts `.em` plus JSON data and produces final HTML. This
+extension exists for a future need: compiling a `.em` document into a template
+for another engine so recipient data can be filled after Email Markup compilation.
 
 Keeping this design here prevents the first release from carrying two execution
 models while preserving the decisions already made about future macro syntax.
@@ -21,8 +21,8 @@ Compiler expressions and deferred engine text use visibly different forms:
 
 | Form | Owner | Meaning |
 | --- | --- | --- |
-| `@{ expr }` | ELL compiler | Evaluate immediately from props, loop variables, tokens and compile data |
-| `@Name( … )` | ELL compiler | Component or compiler construct |
+| `@{ expr }` | Email Markup compiler | Evaluate immediately from props, loop variables, tokens and compile data |
+| `@Name( … )` | Email Markup compiler | Component or compiler construct |
 | `@[ payload ]` | selected engine definition | Bare deferred macro |
 | `@Name[ … ]` | selected engine definition | Named deferred macro |
 
@@ -31,10 +31,10 @@ extension exists, a document containing square-bracket forms produces an HTML
 template for the selected engine instead.
 
 Square brackets defer the surrounding payload, but they do not hide explicit
-ELL interpolation. Inside `[…]`, `@{expr}` is still evaluated by the compiler
+Email Markup interpolation. Inside `[…]`, `@{expr}` is still evaluated by the compiler
 and `@@` emits a literal `@`.
 
-```ell
+```email-markup
 @For[var: rev, seq: @{something}]
   @Quote @[rev.text] @/Quote
 @/For
@@ -52,14 +52,14 @@ so a data string containing `@{other}` cannot trigger another evaluation.
 
 ## Engine definition files
 
-A future `.ellt` file declares the macros supported by one engine. It contains
+A future `.emt` file declares the macros supported by one engine. It contains
 only comments, `@DefineTemplate`, and `@DefineBareTemplate` at top level. It
 cannot include other files or select an engine.
 
-The entry `.ell` document may select one engine:
+The entry `.em` document may select one engine:
 
-```ell
-@Engine("${ELL_LIB}/engines/django.ellt");
+```email-markup
+@Engine("${EMAIL_MARKUP_LIB}/engines/django.emt");
 ```
 
 Proposed precedence is:
@@ -69,7 +69,7 @@ Proposed precedence is:
 3. The project configuration default.
 
 Conflicting selections are errors. Engine portability is capability-based:
-compilation fails when a document calls a macro the selected `.ellt` does not
+compilation fails when a document calls a macro the selected `.emt` does not
 declare. An engine never claims a construct it cannot faithfully represent.
 
 ---
@@ -82,7 +82,7 @@ the resulting text is inserted into the macro template unchanged. It is not
 HTML-escaped, string-unescaped, or parsed as an engine expression.
 
 Macro parameters may appear only as whole `@{name}` placeholders in a macro
-`@Template`. They are not member-access roots or general ELL expression
+`@Template`. They are not member-access roots or general Email Markup expression
 operands.
 
 The optional validator surface is deliberately small:
@@ -98,7 +98,7 @@ The optional validator surface is deliberately small:
 
 `int`, `decimal`, and `number` may carry range/comparison constraints such as
 `size: int(1..100) = 20`. A validator checks the final interpolated spelling but
-does not turn the entire raw parameter into a runtime ELL value. `?` makes a
+does not turn the entire raw parameter into a runtime Email Markup value. `?` makes a
 parameter optional and `= value` provides a default; neither implies a type.
 
 Binding is determined only by declared parameter count:
@@ -121,11 +121,11 @@ detecting injection in an engine language it does not parse.
 
 ## Framing and interpolation
 
-The payload scanner understands ELL framing, `@{…}`, and `@@`; it does not try to
+The payload scanner understands Email Markup framing, `@{…}`, and `@@`; it does not try to
 understand an engine's quotes, regular expressions, delimiters, or comments.
 
 1. Outside `@{…}`, the first unescaped `]` closes the payload.
-2. Inside `@{…}`, the ELL expression parser owns balanced delimiters and strings;
+2. Inside `@{…}`, the Email Markup expression parser owns balanced delimiters and strings;
    `]` and commas there cannot close or split the macro call.
 3. `\]` is a literal `]`, `\,` is a literal comma in a multi-parameter value,
    and `\\` is a literal backslash.
@@ -148,7 +148,7 @@ Syntax highlighting must visibly distinguish raw payload text, compiler-owned
 
 ## Declarations, slots, and structural markers
 
-```ellt
+```emt
 @DefineBareTemplate
   @Params
     value
@@ -212,14 +212,14 @@ is an error.
 This extension should be added only after the final-HTML compiler is stable. It
 would require, as one coherent later project:
 
-- `.ellt` parsing and validation;
+- `.emt` parsing and validation;
 - `@Engine`, `@[...]`, and `@Name[...]` grammar;
 - raw payload framing and single-pass interpolation;
 - engine capability schemas and conformance fixtures;
 - provenance through macro call sites and definitions;
 - CLI engine selection and project configuration;
 - LSP completion, hover, definition, semantic tokens, and formatting for both
-  `.ell` and `.ellt`;
+  `.em` and `.emt`;
 - editor syntax scopes for raw payloads, `@{…}`, and `@@`;
 - secured preview behavior for output that still contains deferred engine code;
 - packaging of engine definitions;

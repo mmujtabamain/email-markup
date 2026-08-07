@@ -43,7 +43,7 @@ test("CSS projection covers style tags, inline declarations, styles, and media",
   assert.equal(projection.ranges.length, 4);
 });
 
-test("projections preserve UTF-16 offsets and hide ELL from HTML", () => {
+test("projections preserve UTF-16 offsets and hide Email Markup from HTML", () => {
   const source = "😀 @Heading Hello @/Heading <p title=\"@{account.name}\">Zażółć</p>";
   const projection = htmlProjection(source);
   assert.equal(projection.length, source.length);

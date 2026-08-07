@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 4.0)
 
 project(
-    ell
+    EmailMarkup
     VERSION 1.0.0
-    DESCRIPTION "The ELL email layout language"
+    DESCRIPTION "A typed, component-based language for HTML email"
     LANGUAGES CXX
 )
 
@@ -13,10 +13,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
-set(ELL_SANITIZERS "" CACHE STRING "Comma-separated sanitizers for development builds")
-if(ELL_SANITIZERS AND CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-    add_compile_options("-fsanitize=${ELL_SANITIZERS}" -fno-omit-frame-pointer)
-    add_link_options("-fsanitize=${ELL_SANITIZERS}" -fno-omit-frame-pointer)
+set(EMAIL_MARKUP_SANITIZERS "" CACHE STRING "Comma-separated sanitizers for development builds")
+if(EMAIL_MARKUP_SANITIZERS AND CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    add_compile_options("-fsanitize=${EMAIL_MARKUP_SANITIZERS}" -fno-omit-frame-pointer)
+    add_link_options("-fsanitize=${EMAIL_MARKUP_SANITIZERS}" -fno-omit-frame-pointer)
 endif()
 
 include(GNUInstallDirs)
@@ -26,13 +26,13 @@ find_package(Catch2 CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
-add_subdirectory(packages/ell-core)
-add_subdirectory(packages/ell-cli)
-add_subdirectory(packages/ell-lsp)
-add_subdirectory(packages/ell-tests)
+add_subdirectory(packages/email-markup-core)
+add_subdirectory(packages/email-markup-cli)
+add_subdirectory(packages/email-markup-lsp)
+add_subdirectory(packages/email-markup-tests)
 
 add_custom_target(
-    ell-dev-assets ALL
+    email-markup-dev-assets ALL
     COMMAND "${CMAKE_COMMAND}" -E copy_directory
             "${CMAKE_SOURCE_DIR}/lib"
             "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/lib"
@@ -42,19 +42,19 @@ add_custom_target(
     COMMAND "${CMAKE_COMMAND}" -E copy_directory
             "${CMAKE_SOURCE_DIR}/schema"
             "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/schema"
-    COMMENT "Copying ELL libraries and brand assets"
+    COMMENT "Copying Email Markup libraries and brand assets"
 )
 
-add_dependencies(ellc ell-dev-assets)
-add_dependencies(ell-lsp ell-dev-assets)
+add_dependencies(emc email-markup-dev-assets)
+add_dependencies(email-markup-lsp email-markup-dev-assets)
 
-install(DIRECTORY lib/ DESTINATION "${CMAKE_INSTALL_DATADIR}/ell/lib")
-install(DIRECTORY brand/ DESTINATION "${CMAKE_INSTALL_DATADIR}/ell/brand")
-install(DIRECTORY schema/ DESTINATION "${CMAKE_INSTALL_DATADIR}/ell/schema")
-install(DIRECTORY grammar/ DESTINATION "${CMAKE_INSTALL_DATADIR}/ell/grammar")
-install(DIRECTORY syntax/ DESTINATION "${CMAKE_INSTALL_DATADIR}/ell/syntax")
-install(DIRECTORY docs/ DESTINATION "${CMAKE_INSTALL_DATADIR}/ell/docs")
-install(FILES README.md ELL.md templates.md LICENSE
-        DESTINATION "${CMAKE_INSTALL_DATADIR}/ell")
-install(EXPORT ell-targets NAMESPACE ell::
-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/ell")
+install(DIRECTORY lib/ DESTINATION "${CMAKE_INSTALL_DATADIR}/email-markup/lib")
+install(DIRECTORY brand/ DESTINATION "${CMAKE_INSTALL_DATADIR}/email-markup/brand")
+install(DIRECTORY schema/ DESTINATION "${CMAKE_INSTALL_DATADIR}/email-markup/schema")
+install(DIRECTORY grammar/ DESTINATION "${CMAKE_INSTALL_DATADIR}/email-markup/grammar")
+install(DIRECTORY syntax/ DESTINATION "${CMAKE_INSTALL_DATADIR}/email-markup/syntax")
+install(DIRECTORY docs/ DESTINATION "${CMAKE_INSTALL_DATADIR}/email-markup/docs")
+install(FILES README.md EMAIL-MARKUP.md templates.md LICENSE
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/email-markup")
+install(EXPORT email-markup-targets NAMESPACE email_markup::
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/email-markup")

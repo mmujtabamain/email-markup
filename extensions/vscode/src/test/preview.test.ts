@@ -5,7 +5,7 @@ import { previewDocument, protectRemoteImages, restoreRemoteImages } from "../pr
 
 test("remote images are inert by default", () => {
   const protectedHtml = protectRemoteImages('<img src="https://tracker.test/pixel.png" alt="">');
-  assert.match(protectedHtml, /data-ell-remote-src/);
+  assert.match(protectedHtml, /data-email-markup-remote-src/);
   assert.doesNotMatch(protectedHtml, /(?:^|\s)src="https:/);
   assert.match(previewDocument(protectedHtml, false), /default-src 'none'/);
   assert.match(previewDocument(protectedHtml, false), /img-src data:/);

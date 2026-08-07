@@ -1,9 +1,9 @@
 {
-  "name": "ell-language",
-  "displayName": "ELL Language Support",
-  "description": "Language support and secure final-HTML preview for ELL email documents.",
+  "name": "email-markup-language",
+  "displayName": "Email Markup Language Support",
+  "description": "Language support and secure final-HTML preview for Email Markup documents.",
   "version": "1.0.0",
-  "publisher": "ell-lang",
+  "publisher": "email-markup-lang",
   "license": "MIT",
   "engines": {
     "vscode": "^1.95.0"
@@ -18,8 +18,8 @@
     }
   },
   "activationEvents": [
-    "onLanguage:ell",
-    "onCommand:ell.preview"
+    "onLanguage:email-markup",
+    "onCommand:email-markup.preview"
   ],
   "main": "./dist/extension.js",
   "files": [
@@ -41,34 +41,34 @@
   "contributes": {
     "languages": [
       {
-        "id": "ell",
+        "id": "email-markup",
         "aliases": [
-          "ELL",
-          "ell"
+          "Email Markup",
+          "email-markup"
         ],
         "extensions": [
-          ".ell"
+          ".em"
         ],
         "icon": {
-          "light": "./icons/ell-light.svg",
-          "dark": "./icons/ell-dark.svg"
+          "light": "./icons/email-markup-light.svg",
+          "dark": "./icons/email-markup-dark.svg"
         },
         "configuration": "./language-configuration.json"
       }
     ],
     "grammars": [
       {
-        "language": "ell",
-        "scopeName": "source.ell",
-        "path": "./syntaxes/ell.tmLanguage.json",
+        "language": "email-markup",
+        "scopeName": "source.email-markup",
+        "path": "./syntaxes/email-markup.tmLanguage.json",
         "embeddedLanguages": {
           "text.html.basic": "html",
           "source.css": "css"
         }
       },
       {
-        "scopeName": "ell.injection",
-        "path": "./syntaxes/ell.injection.tmLanguage.json",
+        "scopeName": "email-markup.injection",
+        "path": "./syntaxes/email-markup.injection.tmLanguage.json",
         "injectTo": [
           "text.html.basic",
           "source.css"
@@ -76,41 +76,41 @@
       }
     ],
     "configurationDefaults": {
-      "[ell]": {
+      "[email-markup]": {
         "editor.wordBasedSuggestions": "off"
       }
     },
     "commands": [
       {
-        "command": "ell.preview",
-        "title": "ELL: Open Secure Preview",
+        "command": "email-markup.preview",
+        "title": "Email Markup: Open Secure Preview",
         "icon": "$(eye)"
       },
       {
-        "command": "ell.previewWithData",
-        "title": "ELL: Preview with JSON Data"
+        "command": "email-markup.previewWithData",
+        "title": "Email Markup: Preview with JSON Data"
       },
       {
-        "command": "ell.loadRemoteImages",
-        "title": "ELL: Load Remote Preview Images"
+        "command": "email-markup.loadRemoteImages",
+        "title": "Email Markup: Load Remote Preview Images"
       }
     ],
     "menus": {
       "editor/title": [
         {
-          "command": "ell.preview",
-          "when": "editorLangId == ell",
+          "command": "email-markup.preview",
+          "when": "editorLangId == email-markup",
           "group": "navigation@1"
         }
       ]
     },
     "configuration": {
-      "title": "ELL",
+      "title": "Email Markup",
       "properties": {
-        "ell.server.path": {
+        "email-markup.server.path": {
           "type": "string",
           "default": "",
-          "description": "Trusted-workspace override for the ell-lsp executable."
+          "description": "Trusted-workspace override for the email-markup-lsp executable."
         }
       }
     }

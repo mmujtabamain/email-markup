@@ -5,7 +5,7 @@ out/
 node_modules/
 dist/
 *.vsix
-extensions/vscode/server/*/ell-lsp
-extensions/vscode/server/*/ell-lsp.exe
+extensions/vscode/server/*/email-markup-lsp
+extensions/vscode/server/*/email-markup-lsp.exe
 extensions/vscode/server/*/lib/
 extensions/vscode/server/*/brand/

@@ -1,0 +1,12 @@
+{
+  "$schema": "./schema/em.schema.json",
+  "include": ["${EMAIL_MARKUP_LIB}", "${EMAIL_MARKUP_BRAND}", "components"],
+  "imports": [
+    "${EMAIL_MARKUP_LIB}/builtins.em",
+    "${EMAIL_MARKUP_BRAND}/brand.em",
+    "${EMAIL_MARKUP_BRAND}/styles.em"
+  ],
+  "data": "examples/01-interpolation/data.json",
+  "shell": "${EMAIL_MARKUP_BRAND}/shell.em",
+  "out": "build"
+}

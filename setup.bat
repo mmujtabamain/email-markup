@@ -29,7 +29,7 @@ echo ==^> Step 4/4 - Configure the Debug build
 cmake --preset debug || goto :error
 
 echo.
-echo Setup complete. Run run.bat build to compile ELL.
+echo Setup complete. Run run.bat build to compile Email Markup.
 exit /b 0
 
 :missing_git

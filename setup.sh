@@ -58,4 +58,4 @@ fi
 step "Step 4/$TOTAL_STEPS — Configure the Debug build"
 run cmake --preset debug
 
-success "Setup complete. Run ./run.sh build to compile ELL."
+success "Setup complete. Run ./run.sh build to compile Email Markup."

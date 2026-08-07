@@ -19,7 +19,7 @@
     },
     {
       "name": "debug",
-      "displayName": "ELL Debug",
+      "displayName": "Email Markup Debug",
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
@@ -27,7 +27,7 @@
     },
     {
       "name": "release",
-      "displayName": "ELL Release",
+      "displayName": "Email Markup Release",
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
@@ -35,11 +35,11 @@
     },
     {
       "name": "sanitizers",
-      "displayName": "ELL Debug with ASan and UBSan",
+      "displayName": "Email Markup Debug with ASan and UBSan",
       "inherits": "debug",
       "binaryDir": "${sourceDir}/build/sanitizers",
       "cacheVariables": {
-        "ELL_SANITIZERS": "address,undefined"
+        "EMAIL_MARKUP_SANITIZERS": "address,undefined"
       }
     }
   ],

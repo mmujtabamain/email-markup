@@ -2,13 +2,13 @@ export function protectRemoteImages(html: string): string {
   return html.replace(
     /(<img\b[^>]*?)\ssrc=(['"])(https?:\/\/.*?)\2/gi,
     (_match, before: string, quote: string, source: string) =>
-      `${before} data-ell-remote-src=${quote}${source}${quote} src=${quote}data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=${quote}`,
+      `${before} data-email-markup-remote-src=${quote}${source}${quote} src=${quote}data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=${quote}`,
   );
 }
 
 export function restoreRemoteImages(html: string): string {
   return html.replace(
-    /(<img\b[^>]*?)\sdata-ell-remote-src=(['"])(https?:\/\/.*?)\2\s+src=(['"]).*?\4/gi,
+    /(<img\b[^>]*?)\sdata-email-markup-remote-src=(['"])(https?:\/\/.*?)\2\s+src=(['"]).*?\4/gi,
     (_match, before: string, quote: string, source: string) =>
       `${before} src=${quote}${source}${quote}`,
   );

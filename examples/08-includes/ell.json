@@ -1,8 +1,0 @@
-{
-  "$schema": "../../schema/ell.schema.json",
-  "include": ["${ELL_LIB}", "../_shared", "."],
-  "imports": ["${ELL_LIB}/builtins.ell", "../_shared/theme.ell"],
-  "data": "data.json",
-  "shell": "../_shared/shell.ell",
-  "out": "."
-}

@@ -29,7 +29,7 @@ def read_message(stream: BinaryIO) -> dict[str, object]:
     while True:
         line = stream.readline()
         if not line:
-            raise RuntimeError("ell-lsp closed its output unexpectedly")
+            raise RuntimeError("email-markup-lsp closed its output unexpectedly")
         if line in (b"\r\n", b"\n"):
             break
         key, value = line.decode().split(":", 1)
@@ -49,7 +49,7 @@ def wait_for(stream: BinaryIO, method: str | None = None, identifier: int | None
 
 def command_latency(binary: Path, source: Path, iterations: int) -> list[float]:
     samples: list[float] = []
-    with tempfile.TemporaryDirectory(prefix="ell-benchmark-") as directory:
+    with tempfile.TemporaryDirectory(prefix="email-markup-benchmark-") as directory:
         output = Path(directory) / "result.html"
         for _ in range(iterations):
             started = time.perf_counter()
@@ -66,22 +66,22 @@ def command_latency(binary: Path, source: Path, iterations: int) -> list[float]:
 
 def build_latency(binary: Path, root: Path, iterations: int) -> list[float]:
     samples: list[float] = []
-    with tempfile.TemporaryDirectory(prefix="ell-build-benchmark-") as directory:
+    with tempfile.TemporaryDirectory(prefix="email-markup-build-benchmark-") as directory:
         project = Path(directory)
-        (project / "message.ell").write_text(
-            (root / "examples/09-css-inlining/message.ell").read_text(encoding="utf-8"), encoding="utf-8"
+        (project / "message.em").write_text(
+            (root / "examples/09-css-inlining/message.em").read_text(encoding="utf-8"), encoding="utf-8"
         )
         (project / "data.json").write_text(
             (root / "examples/09-css-inlining/data.json").read_text(encoding="utf-8"), encoding="utf-8"
         )
-        (project / "ell.json").write_text(json.dumps({
+        (project / "em.json").write_text(json.dumps({
             "include": [str(root / "lib"), str(root / "examples/_shared")],
             "imports": [
-                str(root / "lib/builtins.ell"),
-                str(root / "examples/_shared/theme.ell"),
+                str(root / "lib/builtins.em"),
+                str(root / "examples/_shared/theme.em"),
             ],
             "data": "data.json",
-            "shell": str(root / "examples/_shared/shell.ell"),
+            "shell": str(root / "examples/_shared/shell.em"),
             "out": "out",
         }), encoding="utf-8")
         for _ in range(iterations):
@@ -101,7 +101,7 @@ def diagnostic_latency(server: Path, root: Path, source: Path, iterations: int) 
         [str(server)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL
     )
     if process.stdin is None or process.stdout is None:
-        raise RuntimeError("ell-lsp pipes are unavailable")
+        raise RuntimeError("email-markup-lsp pipes are unavailable")
     send_message(process.stdin, {
         "jsonrpc": "2.0", "id": 1, "method": "initialize",
         "params": {"rootUri": root.as_uri(), "capabilities": {}},
@@ -112,7 +112,7 @@ def diagnostic_latency(server: Path, root: Path, source: Path, iterations: int) 
     original = source.read_text(encoding="utf-8")
     send_message(process.stdin, {
         "jsonrpc": "2.0", "method": "textDocument/didOpen",
-        "params": {"textDocument": {"uri": uri, "languageId": "ell", "version": 1, "text": original}},
+        "params": {"textDocument": {"uri": uri, "languageId": "email-markup", "version": 1, "text": original}},
     })
     wait_for(process.stdout, method="textDocument/publishDiagnostics")
     samples: list[float] = []
@@ -150,7 +150,7 @@ def summary(samples: Sequence[float]) -> dict[str, float]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Measure ELL CLI and persistent-LSP latency.")
+    parser = argparse.ArgumentParser(description="Measure Email Markup CLI and persistent-LSP latency.")
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument("--build", type=Path)
     parser.add_argument("--iterations", type=int, default=30)
@@ -159,21 +159,21 @@ def main() -> int:
     build = (arguments.build or root / "build/release/bin").resolve()
     if arguments.iterations < 5:
         parser.error("--iterations must be at least 5")
-    source = root / "examples/09-css-inlining/message.ell"
-    cli = command_latency(build / "ellc", source, arguments.iterations)
-    project_build = build_latency(build / "ellc", root, arguments.iterations)
+    source = root / "examples/09-css-inlining/message.em"
+    cli = command_latency(build / "emc", source, arguments.iterations)
+    project_build = build_latency(build / "emc", root, arguments.iterations)
     benchmark_root = root / "build"
     benchmark_root.mkdir(exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="ell-maximum-", dir=benchmark_root) as directory:
-        maximum_source = Path(directory) / "maximum.ell"
+    with tempfile.TemporaryDirectory(prefix="email-markup-maximum-", dir=benchmark_root) as directory:
+        maximum_source = Path(directory) / "maximum.em"
         maximum_source.write_text("x" * 900_000, encoding="utf-8")
-        maximum_cli = command_latency(build / "ellc", maximum_source, max(5, arguments.iterations // 3))
-    diagnostics = diagnostic_latency(build / "ell-lsp", root, source, arguments.iterations)
+        maximum_cli = command_latency(build / "emc", maximum_source, max(5, arguments.iterations // 3))
+    diagnostics = diagnostic_latency(build / "email-markup-lsp", root, source, arguments.iterations)
     print(json.dumps({
         "iterations": arguments.iterations,
-        "ellc_compile": summary(cli),
-        "ellc_build": summary(project_build),
-        "ellc_compile_900kb": summary(maximum_cli),
+        "emc_compile": summary(cli),
+        "emc_build": summary(project_build),
+        "emc_compile_900kb": summary(maximum_cli),
         "edit_to_diagnostics": summary(diagnostics),
         "peak_child_rss_mib": round(peak_mebibytes(), 2),
         "source_bytes": source.stat().st_size,

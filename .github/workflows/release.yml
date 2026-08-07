@@ -58,7 +58,7 @@ jobs:
       - run: cmake --build --preset release
       - run: ctest --preset release --output-on-failure
       - name: Install release tree
-        run: cmake --install build/release --prefix stage/ell
+        run: cmake --install build/release --prefix stage/email-markup
       - name: Build platform VSIX
         working-directory: extensions/vscode
         run: |
@@ -77,19 +77,19 @@ jobs:
         shell: bash
         run: |
           cd stage
-          cmake -E tar cf "../ell-${{ matrix.platform }}.zip" --format=zip ell
+          cmake -E tar cf "../email-markup-${{ matrix.platform }}.zip" --format=zip email-markup
           cd ..
-          cmake -E sha256sum "ell-${{ matrix.platform }}.zip" > "ell-${{ matrix.platform }}.zip.sha256"
-          cp extensions/vscode/ell-language-*.vsix "ell-language-${{ matrix.platform }}.vsix"
-          cmake -E sha256sum "ell-language-${{ matrix.platform }}.vsix" > "ell-language-${{ matrix.platform }}.vsix.sha256"
+          cmake -E sha256sum "email-markup-${{ matrix.platform }}.zip" > "email-markup-${{ matrix.platform }}.zip.sha256"
+          cp extensions/vscode/email-markup-language-*.vsix "email-markup-language-${{ matrix.platform }}.vsix"
+          cmake -E sha256sum "email-markup-language-${{ matrix.platform }}.vsix" > "email-markup-language-${{ matrix.platform }}.vsix.sha256"
       - uses: actions/upload-artifact@v4
         with:
-          name: ell-${{ matrix.platform }}
+          name: email-markup-${{ matrix.platform }}
           path: |
-            ell-${{ matrix.platform }}.zip
-            ell-${{ matrix.platform }}.zip.sha256
-            ell-language-${{ matrix.platform }}.vsix
-            ell-language-${{ matrix.platform }}.vsix.sha256
+            email-markup-${{ matrix.platform }}.zip
+            email-markup-${{ matrix.platform }}.zip.sha256
+            email-markup-language-${{ matrix.platform }}.vsix
+            email-markup-language-${{ matrix.platform }}.vsix.sha256
 
   publish:
     if: github.event_name == 'push'
@@ -98,7 +98,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          pattern: ell-*
+          pattern: email-markup-*
           merge-multiple: true
           path: release
       - name: Verify checksums

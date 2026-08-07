@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
-  "name": "ell",
+  "name": "email-markup",
   "version-semver": "1.0.0",
-  "description": "The ELL compiler, CLI, language server, and conformance tests",
+  "description": "The Email Markup compiler, CLI, language server, and conformance tests",
   "dependencies": [
     "catch2",
     "fmt",

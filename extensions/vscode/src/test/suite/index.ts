@@ -25,20 +25,20 @@ async function eventually(check: () => Promise<boolean>, message: string): Promi
 }
 
 export async function run(): Promise<void> {
-  const extension = vscode.extensions.getExtension("ell-lang.ell-language");
-  assert.ok(extension, "ELL extension is installed in the development host");
+  const extension = vscode.extensions.getExtension("email-markup-lang.email-markup-language");
+  assert.ok(extension, "Email Markup extension is installed in the development host");
   await extension.activate();
   assert.equal(extension.isActive, true);
 
   const workspace = vscode.workspace.workspaceFolders?.[0];
   assert.ok(workspace, "CSS-inlining example workspace opened");
-  const uri = vscode.Uri.joinPath(workspace.uri, "message.ell");
+  const uri = vscode.Uri.joinPath(workspace.uri, "message.em");
   const document = await vscode.workspace.openTextDocument(uri);
   const editor = await vscode.window.showTextDocument(document);
   const source = document.getText();
 
   const htmlForwarder = vscode.languages.registerCompletionItemProvider(
-    { language: "html", scheme: "ell-embedded" },
+    { language: "html", scheme: "email-markup-embedded" },
     {
       provideCompletionItems(_document, position) {
         const item = new vscode.CompletionItem("forwarded-html-provider");
@@ -51,14 +51,14 @@ export async function run(): Promise<void> {
     },
   );
   const cssForwarder = vscode.languages.registerCompletionItemProvider(
-    { language: "css", scheme: "ell-embedded" },
+    { language: "css", scheme: "email-markup-embedded" },
     { provideCompletionItems: () => [new vscode.CompletionItem("forwarded-css-provider")] },
   );
 
   await eventually(async () => {
     const list = await completions(document, source.indexOf("@") + 1);
     return list.items.some((item) => label(item) === "@Paragraph");
-  }, "bundled ell-lsp did not provide component completion");
+  }, "bundled email-markup-lsp did not provide component completion");
 
   const htmlOffset = source.indexOf("<section") + 1;
   const htmlItems = await completions(document, htmlOffset);
@@ -71,13 +71,13 @@ export async function run(): Promise<void> {
   assert.deepEqual(
     (forwardedHtml.textEdit as vscode.TextEdit).range,
     new vscode.Range(document.positionAt(htmlOffset - 1), document.positionAt(htmlOffset)),
-    "forwarded HTML edit ranges retain ELL source coordinates",
+    "forwarded HTML edit ranges retain Email Markup source coordinates",
   );
 
   const styleMarker = "style: \"release-card";
   const styleOffset = source.indexOf(styleMarker) + "style: \"".length;
   const styleItems = await completions(document, styleOffset);
-  assert.ok(styleItems.items.some((item) => label(item) === "release-card"), "ELL style bundles complete in style arguments");
+  assert.ok(styleItems.items.some((item) => label(item) === "release-card"), "Email Markup style bundles complete in style arguments");
 
   const cssOffset = source.indexOf("background: #") + "background: ".length;
   const cssItems = await completions(document, cssOffset);
@@ -95,12 +95,12 @@ export async function run(): Promise<void> {
   await eventually(async () => {
     const list = await completions(document, source.indexOf("@") + 1);
     return list.items.some((item) => label(item) === "@Heading");
-  }, "ell-lsp stopped responding after a Unicode edit");
+  }, "email-markup-lsp stopped responding after a Unicode edit");
   await vscode.commands.executeCommand("undo");
 
-  await vscode.commands.executeCommand("ell.preview");
+  await vscode.commands.executeCommand("email-markup.preview");
   const commands = await vscode.commands.getCommands();
-  assert.ok(commands.includes("ell.loadRemoteImages"));
+  assert.ok(commands.includes("email-markup.loadRemoteImages"));
 
   const manifest = extension.packageJSON as {
     capabilities?: { untrustedWorkspaces?: { supported?: string } };

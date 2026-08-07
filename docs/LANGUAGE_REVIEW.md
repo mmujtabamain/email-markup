@@ -1,4 +1,4 @@
-# ELL 1 pre-release language review
+# Email Markup 1 pre-release language review
 
 The implemented grammar and tooling were reviewed at the 1.0 boundary. This
 record captures decisions that would otherwise be easy to mistake for unfinished
@@ -38,9 +38,9 @@ rules remain in the shell. Rich browser-only selector behavior is not silently
 promised by the email compiler, even though editor CSS services can explain and
 highlight general CSS while authoring.
 
-## Rejected from ELL 1
+## Rejected from Email Markup 1
 
-`.ellt`, `@Engine`, square-bracket calls, host-native component renderers,
+`.emt`, `@Engine`, square-bracket calls, host-native component renderers,
 definition/database pinning, and deferred template-engine output are outside the
 version. Negative conformance tests enforce the syntax boundary. `templates.md`
 is a future proposal and must receive a separate versioned review before any part

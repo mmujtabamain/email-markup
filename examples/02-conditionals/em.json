@@ -1,0 +1,8 @@
+{
+  "$schema": "../../schema/em.schema.json",
+  "include": ["${EMAIL_MARKUP_LIB}", "../_shared"],
+  "imports": ["${EMAIL_MARKUP_LIB}/builtins.em", "../_shared/theme.em"],
+  "data": "data.json",
+  "shell": "../_shared/shell.em",
+  "out": "."
+}

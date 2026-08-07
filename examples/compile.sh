@@ -40,13 +40,13 @@ case "$BUILD_MODE" in
     ;;
 esac
 
-if [ -n "${ELLC:-}" ]; then
-  step "Step 1/2 - Use the configured ELL compiler"
-  run "$ELLC" --version
+if [ -n "${EMC:-}" ]; then
+  step "Step 1/2 - Use the configured Email Markup compiler"
+  run "$EMC" --version
 else
-  step "Step 1/2 - Build the ELL compiler ($BUILD_MODE)"
+  step "Step 1/2 - Build the Email Markup compiler ($BUILD_MODE)"
   run "$REPO_DIR/run.sh" build "$BUILD_MODE"
-  ELLC="$REPO_DIR/build/$BUILD_MODE/bin/ellc"
+  EMC="$REPO_DIR/build/$BUILD_MODE/bin/emc"
 fi
 
 step "Step 2/2 - Compile all ten examples"
@@ -62,7 +62,7 @@ for example in \
   09-css-inlining \
   10-responsive-media
 do
-  run "$ELLC" compile "$SCRIPT_DIR/$example/message.ell" \
+  run "$EMC" compile "$SCRIPT_DIR/$example/message.em" \
     -o "$SCRIPT_DIR/$example/message.html"
 done
 

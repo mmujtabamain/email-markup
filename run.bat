@@ -19,8 +19,8 @@ cd /d "%REPO_DIR%"
 
 if /i "%COMMAND%"=="build" goto :build
 if /i "%COMMAND%"=="test" goto :test
-if /i "%COMMAND%"=="ellc" goto :ellc
-if /i "%COMMAND%"=="ell-lsp" goto :ell_lsp
+if /i "%COMMAND%"=="emc" goto :emc
+if /i "%COMMAND%"=="email-markup-lsp" goto :email_markup_lsp
 if /i "%COMMAND%"=="help" goto :help
 if /i "%COMMAND%"=="-h" goto :help
 if /i "%COMMAND%"=="--help" goto :help
@@ -37,27 +37,27 @@ cmake --build --preset %BUILD_MODE% || exit /b 1
 exit /b 0
 
 :build
-echo ==^> Build ELL (%BUILD_MODE%)
+echo ==^> Build Email Markup (%BUILD_MODE%)
 call :compile || exit /b 1
-echo Built ellc, ell-lsp, and ell-tests.
+echo Built emc, email-markup-lsp, and email-markup-tests.
 exit /b 0
 
 :test
-echo ==^> Build ELL (%BUILD_MODE%)
+echo ==^> Build Email Markup (%BUILD_MODE%)
 call :compile || exit /b 1
 echo ==^> Run tests
 ctest --preset %BUILD_MODE% || exit /b 1
-echo All ELL tests passed.
+echo All Email Markup tests passed.
 exit /b 0
 
-:ellc
+:emc
 call :compile || exit /b 1
-"%REPO_DIR%build\%BUILD_MODE%\bin\ellc.exe"
+"%REPO_DIR%build\%BUILD_MODE%\bin\emc.exe"
 exit /b %errorlevel%
 
-:ell_lsp
+:email_markup_lsp
 call :compile || exit /b 1
-"%REPO_DIR%build\%BUILD_MODE%\bin\ell-lsp.exe"
+"%REPO_DIR%build\%BUILD_MODE%\bin\email-markup-lsp.exe"
 exit /b %errorlevel%
 
 :help
@@ -66,7 +66,7 @@ echo.
 echo Commands:
 echo   build      Configure and build all targets
 echo   test       Build and run the test suite
-echo   ellc       Build and run the compiler
-echo   ell-lsp    Build and run the language server
+echo   emc       Build and run the compiler
+echo   email-markup-lsp    Build and run the language server
 echo   help       Show this help
 exit /b 0
