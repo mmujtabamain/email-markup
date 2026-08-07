@@ -75,6 +75,11 @@
         ]
       }
     ],
+    "configurationDefaults": {
+      "[ell]": {
+        "editor.wordBasedSuggestions": "off"
+      }
+    },
     "commands": [
       {
         "command": "ell.preview",
@@ -111,10 +116,7 @@
     }
   },
   "dependencies": {
-    "vscode-css-languageservice": "^6.3.10",
-    "vscode-html-languageservice": "^5.6.2",
-    "vscode-languageclient": "^9.0.1",
-    "vscode-languageserver-textdocument": "^1.0.12"
+    "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

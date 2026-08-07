@@ -7,6 +7,7 @@
 #include <iostream>
 #include <iterator>
 #include <optional>
+#include <regex>
 #include <set>
 #include <stack>
 #include <string>
@@ -128,6 +129,194 @@ std::string word_at(const std::string_view text, const std::size_t offset) {
     return std::string{text.substr(start, end - start)};
 }
 
+struct InvocationContext {
+    std::string name;
+    std::string current_argument;
+    std::set<std::string> used_arguments;
+    bool expects_name{};
+};
+
+enum class PropsCompletionContext {
+    none,
+    type,
+    default_value,
+};
+
+PropsCompletionContext props_context_at(const std::string_view text,
+                                        const std::size_t offset) {
+    const auto cursor = std::min(offset, text.size());
+    const auto open = text.rfind("@Props", cursor);
+    if (open == std::string_view::npos) return PropsCompletionContext::none;
+    const auto close = text.rfind("@/Props", cursor);
+    if (close != std::string_view::npos && close > open)
+        return PropsCompletionContext::none;
+
+    const auto newline = text.rfind('\n', cursor == 0 ? 0 : cursor - 1);
+    const auto line_start = newline == std::string_view::npos ? 0 : newline + 1;
+    const auto line = text.substr(line_start, cursor - line_start);
+    const auto colon = line.find(':');
+    if (colon == std::string_view::npos) return PropsCompletionContext::none;
+    return line.find('=', colon + 1) == std::string_view::npos
+        ? PropsCompletionContext::type
+        : PropsCompletionContext::default_value;
+}
+
+bool slot_requirement_context_at(const std::string_view text,
+                                 const std::size_t offset) {
+    const auto cursor = std::min(offset, text.size());
+    const auto open = text.rfind("@Slots", cursor);
+    if (open == std::string_view::npos) return false;
+    const auto close = text.rfind("@/Slots", cursor);
+    if (close != std::string_view::npos && close > open) return false;
+
+    const auto newline = text.rfind('\n', cursor == 0 ? 0 : cursor - 1);
+    const auto line_start = newline == std::string_view::npos ? 0 : newline + 1;
+    return text.substr(line_start, cursor - line_start).find(':') !=
+           std::string_view::npos;
+}
+
+std::optional<std::string> containing_component_at(
+    const std::string_view text, const std::size_t offset,
+    const std::unordered_map<std::string, ell::ComponentDefinition>& definitions) {
+    std::optional<std::size_t> definition_start;
+    for (const auto& token : ell::lex(0, text).tokens) {
+        if (token.range.start > offset) break;
+        if (token.kind == ell::TokenKind::open && token.name == "DefineComponent")
+            definition_start = token.range.start;
+        else if (token.kind == ell::TokenKind::close &&
+                 token.name == "DefineComponent")
+            definition_start.reset();
+    }
+    if (!definition_start) return std::nullopt;
+    for (const auto& [name, definition] : definitions)
+        if (definition.range.start == *definition_start) return name;
+    return std::nullopt;
+}
+
+ell::SourceRange identifier_range(const std::string_view text,
+                                  const ell::SourceRange declaration,
+                                  const std::string_view name) {
+    const auto start = text.find(name, declaration.start);
+    if (start == std::string_view::npos || start >= declaration.end) return declaration;
+    return {declaration.source, start, start + name.size()};
+}
+
+std::pair<std::size_t, std::size_t> component_span(
+    const std::string_view text, const std::size_t definition_start) {
+    bool inside = false;
+    for (const auto& token : ell::lex(0, text).tokens) {
+        if (!inside && token.kind == ell::TokenKind::open &&
+            token.name == "DefineComponent" && token.range.start == definition_start) {
+            inside = true;
+        } else if (inside && token.kind == ell::TokenKind::close &&
+                   token.name == "DefineComponent") {
+            return {definition_start, token.range.end};
+        }
+    }
+    return {definition_start, text.size()};
+}
+
+std::optional<InvocationContext> invocation_at(const std::string_view text,
+                                               const std::size_t offset) {
+    std::optional<InvocationContext> result;
+    for (std::size_t at = 0; at < offset; ++at) {
+        if (text[at] != '@' || at + 1 >= offset ||
+            !std::isupper(static_cast<unsigned char>(text[at + 1]))) continue;
+        std::size_t cursor = at + 2;
+        while (cursor < offset && (std::isalnum(static_cast<unsigned char>(text[cursor])) ||
+                                   text[cursor] == '_')) ++cursor;
+        const auto name = std::string{text.substr(at + 1, cursor - at - 1)};
+        while (cursor < offset && std::isspace(static_cast<unsigned char>(text[cursor]))) ++cursor;
+        if (cursor >= offset || text[cursor] != '(') continue;
+
+        const auto open = cursor++;
+        std::size_t segment = cursor;
+        int depth = 1;
+        char quote = 0;
+        for (; cursor < offset; ++cursor) {
+            const auto character = text[cursor];
+            if (quote) {
+                if (character == '\\' && cursor + 1 < offset) ++cursor;
+                else if (character == quote) quote = 0;
+                continue;
+            }
+            if (character == '"' || character == '\'') quote = character;
+            else if (character == '(') ++depth;
+            else if (character == ')' && --depth == 0) break;
+            else if (character == ',' && depth == 1) segment = cursor + 1;
+        }
+        if (depth == 0) continue;
+
+        InvocationContext context;
+        context.name = name;
+        std::size_t invocation_end = offset;
+        auto forward_depth = depth;
+        auto forward_quote = quote;
+        for (; invocation_end < text.size(); ++invocation_end) {
+            const auto character = text[invocation_end];
+            if (forward_quote) {
+                if (character == '\\' && invocation_end + 1 < text.size()) ++invocation_end;
+                else if (character == forward_quote) forward_quote = 0;
+            } else if (character == '"' || character == '\'') forward_quote = character;
+            else if (character == '(') ++forward_depth;
+            else if (character == ')' && --forward_depth == 0) break;
+        }
+        const auto arguments = std::string{text.substr(
+            open + 1, invocation_end - open - 1)};
+        static const std::regex named{R"(\b([A-Za-z_][A-Za-z0-9_]*)\s*:)"};
+        for (std::sregex_iterator it{arguments.begin(), arguments.end(), named}, end;
+             it != end; ++it) context.used_arguments.insert((*it)[1].str());
+
+        const auto current = std::string{text.substr(segment, offset - segment)};
+        std::size_t colon = std::string::npos;
+        depth = 0;
+        quote = 0;
+        for (std::size_t index = 0; index < current.size(); ++index) {
+            const auto character = current[index];
+            if (quote) {
+                if (character == '\\' && index + 1 < current.size()) ++index;
+                else if (character == quote) quote = 0;
+            } else if (character == '"' || character == '\'') quote = character;
+            else if (character == '(' || character == '{' || character == '[') ++depth;
+            else if (character == ')' || character == '}' || character == ']') --depth;
+            else if (character == ':' && depth == 0) { colon = index; break; }
+        }
+        context.expects_name = colon == std::string::npos;
+        if (context.expects_name) {
+            const auto remaining = std::string{text.substr(segment, invocation_end - segment)};
+            std::smatch current_name;
+            if (std::regex_search(remaining, current_name, named))
+                context.used_arguments.erase(current_name[1].str());
+        }
+        if (colon != std::string::npos) {
+            const auto raw = current.substr(0, colon);
+            const auto begin = raw.find_first_not_of(" \t\r\n");
+            const auto end = raw.find_last_not_of(" \t\r\n");
+            if (begin != std::string::npos) context.current_argument = raw.substr(begin, end - begin + 1);
+        }
+        result = std::move(context);
+    }
+    return result;
+}
+
+bool interpolation_at(const std::string_view text, const std::size_t offset) {
+    const auto open = text.rfind("@{", offset);
+    if (open == std::string_view::npos) return false;
+    const auto close = text.rfind('}', offset);
+    return close == std::string_view::npos || close < open;
+}
+
+bool sigil_at(const std::string_view text, const std::size_t offset, bool& closing) {
+    const auto line = text.rfind('\n', offset == 0 ? 0 : offset - 1);
+    const auto start = line == std::string_view::npos ? 0 : line + 1;
+    const auto prefix = std::string{text.substr(start, offset - start)};
+    static const std::regex pattern{R"((?:^|\s)@(/?)[A-Za-z0-9_]*$)"};
+    std::smatch match;
+    if (!std::regex_search(prefix, match, pattern)) return false;
+    closing = match[1].str() == "/";
+    return true;
+}
+
 class Server {
 public:
     explicit Server(std::filesystem::path executable)
@@ -219,6 +408,7 @@ private:
         if (method == "textDocument/completion") { completion(id, params); return; }
         if (method == "textDocument/hover") { hover(id, params); return; }
         if (method == "textDocument/definition") { definition(id, params); return; }
+        if (method == "textDocument/references") { references(id, params); return; }
         if (method == "textDocument/documentSymbol") { symbols(id, params); return; }
         if (method == "textDocument/foldingRange") { folding(id, params); return; }
         if (method == "textDocument/signatureHelp") { signature(id, params); return; }
@@ -237,8 +427,10 @@ private:
             {"capabilities", {
                 {"positionEncoding", "utf-16"},
                 {"textDocumentSync", {{"openClose", true}, {"change", 2}}},
-                {"completionProvider", {{"triggerCharacters", Json::array({"@", "(", ":"})}}},
+                {"completionProvider", {{"triggerCharacters", Json::array(
+                    {"@", "/", "(", ",", ":", "=", "{", "\""})}}},
                 {"hoverProvider", true}, {"definitionProvider", true},
+                {"referencesProvider", true},
                 {"documentSymbolProvider", true}, {"foldingRangeProvider", true},
                 {"signatureHelpProvider", {{"triggerCharacters", Json::array({"(", ","})}}},
                 {"documentFormattingProvider", true}
@@ -416,78 +608,189 @@ private:
     void completion(const Json& id, const Json& params) {
         const auto* open = document(params);
         if (!open) { respond(id, Json::array()); return; }
+        const auto& position = params.at("position");
+        const auto offset = offset_at(open->text, position.value("line", 0),
+                                      position.value("character", 0));
         Json items = Json::array();
-        for (const auto& keyword : {"If", "For", "Include", "DefineComponent",
-                                    "DefineStyle", "DefineToken", "Media", "Slot"}) {
-            items.push_back({{"label", "@" + std::string{keyword}}, {"kind", 14},
-                             {"insertText", "@" + std::string{keyword}}});
-        }
         const auto definitions = metadata(*open);
-        for (const auto& [name, definition] : definitions) {
-            std::string snippet = "@" + name;
-            if (!definition.props.empty()) {
-                snippet += "(";
-                bool first = true;
-                int tab = 1;
-                for (const auto& prop : definition.props) {
-                    if (prop.optional) continue;
-                    if (!first) snippet += ", ";
-                    snippet += prop.name + ": ${" + std::to_string(tab++) + ":" +
-                               prop.type + "}";
-                    first = false;
-                }
-                snippet += ")";
-            }
-            const bool body = !definition.slots.empty();
-            snippet += body ? "\n  ${0}\n@/" + name : ";";
-            items.push_back({{"label", "@" + name}, {"kind", 7},
-                             {"insertTextFormat", 2}, {"insertText", snippet}});
-            for (const auto& prop : definition.props)
-                items.push_back({{"label", prop.name}, {"kind", 5},
-                                 {"detail", "ELL prop: " + prop.type}});
-            for (const auto& slot : definition.slots)
-                items.push_back({{"label", "@Slot(" + slot.name + ")"}, {"kind", 5},
-                                 {"insertText", "@Slot(" + slot.name + ")"}});
-        }
         auto parsed = ell::parse(0, open->text);
         auto style_names = styles_;
         auto token_names = tokens_;
         for (const auto& [name, definition] : parsed.document.styles) style_names.insert(name);
         for (const auto& [name, definition] : parsed.document.tokens) token_names.insert(name);
-        for (const auto& name : style_names)
-            items.push_back({{"label", name}, {"kind", 12}, {"detail", "ELL style bundle"}});
-        for (const auto& name : token_names)
-            items.push_back({{"label", "token." + name}, {"kind", 21},
-                             {"detail", "ELL design token"}});
 
-        const auto request = compilation_request(*open);
-        std::function<void(const Json&, const std::string&)> add_data;
-        add_data = [&](const Json& value, const std::string& prefix) {
-            if (!value.is_object()) return;
-            for (const auto& [key, child] : value.items()) {
-                const auto path = prefix.empty() ? key : prefix + "." + key;
-                items.push_back({{"label", path}, {"kind", child.is_object() ? 9 : 6},
-                                 {"detail", "Compile data"}});
-                add_data(child, path);
+        const auto add_expressions = [&]() {
+            for (const auto& name : token_names)
+                items.push_back({{"label", "token." + name}, {"kind", 21},
+                                 {"detail", "ELL design token"}});
+            const auto request = compilation_request(*open);
+            std::function<void(const Json&, const std::string&)> add_data;
+            add_data = [&](const Json& value, const std::string& prefix) {
+                if (!value.is_object()) return;
+                for (const auto& [key, child] : value.items()) {
+                    const auto path = prefix.empty() ? key : prefix + "." + key;
+                    items.push_back({{"label", path}, {"kind", child.is_object() ? 9 : 6},
+                                     {"detail", "Compile data"}});
+                    add_data(child, path);
+                }
+            };
+            add_data(request.data, "");
+            const auto prefix = open->text.substr(0, offset);
+            static const std::regex local{R"(@For\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s+in\b)"};
+            for (std::sregex_iterator it{prefix.begin(), prefix.end(), local}, end;
+                 it != end; ++it) {
+                items.push_back({{"label", (*it)[1].str()}, {"kind", 6},
+                                 {"detail", "ELL loop variable"}});
             }
         };
-        add_data(request.data, "");
 
-        std::set<std::string> include_items;
-        auto include_directories = request.include_directories;
-        include_directories.insert(include_directories.begin(), open->path.parent_path());
-        for (const auto& directory : include_directories) {
-            std::error_code error;
-            for (std::filesystem::directory_iterator it{directory, error}, end;
-                 !error && it != end; it.increment(error)) {
-                if (!it->is_regular_file(error) || it->path().extension() != ".ell") continue;
-                include_items.insert(it->path().filename().generic_string());
+        const auto add_includes = [&]() {
+            const auto request = compilation_request(*open);
+            std::set<std::string> include_items;
+            auto include_directories = request.include_directories;
+            include_directories.insert(include_directories.begin(), open->path.parent_path());
+            for (const auto& directory : include_directories) {
+                std::error_code error;
+                for (std::filesystem::directory_iterator it{directory, error}, end;
+                     !error && it != end; it.increment(error)) {
+                    if (!it->is_regular_file(error) || it->path().extension() != ".ell") continue;
+                    include_items.insert(it->path().filename().generic_string());
+                }
+            }
+            for (const auto& path : include_items)
+                items.push_back({{"label", path}, {"kind", 17}, {"insertText", path},
+                                 {"detail", "ELL include"}});
+        };
+
+        if (const auto context = props_context_at(open->text, offset);
+            context != PropsCompletionContext::none) {
+            if (context == PropsCompletionContext::type) {
+                for (const auto* type : {"string", "int", "number", "bool", "url",
+                                         "email", "color"})
+                    items.push_back({{"label", type}, {"kind", 25},
+                                     {"detail", "ELL prop type"}});
+            } else {
+                add_expressions();
+                for (const auto* literal : {"true", "false", "null"})
+                    items.push_back({{"label", literal}, {"kind", 12},
+                                     {"detail", "ELL literal"}});
+            }
+            respond(id, {{"isIncomplete", false}, {"items", std::move(items)}});
+            return;
+        }
+
+        if (slot_requirement_context_at(open->text, offset)) {
+            for (const auto* requirement : {"required", "optional"})
+                items.push_back({{"label", requirement}, {"kind", 14},
+                                 {"detail", "ELL slot requirement"}});
+            respond(id, {{"isIncomplete", false}, {"items", std::move(items)}});
+            return;
+        }
+
+        if (const auto invocation = invocation_at(open->text, offset)) {
+            if (invocation->name == "Include") add_includes();
+            else if (invocation->name == "Slot") {
+                std::set<std::string> slots;
+                for (const auto& [name, definition] : definitions)
+                    for (const auto& slot : definition.slots) slots.insert(slot.name);
+                for (const auto& name : slots)
+                    items.push_back({{"label", name}, {"kind", 5}, {"detail", "ELL slot"}});
+            } else if (invocation->name == "If" || invocation->name == "For" ||
+                       invocation->name == "Media") {
+                add_expressions();
+            } else if (const auto found = definitions.find(invocation->name);
+                       found != definitions.end()) {
+                if (invocation->expects_name) {
+                    for (const auto& prop : found->second.props) {
+                        if (invocation->used_arguments.contains(prop.name)) continue;
+                        items.push_back({{"label", prop.name}, {"kind", 5},
+                                         {"insertText", prop.name + ": "},
+                                         {"detail", "ELL prop: " + prop.type}});
+                    }
+                    if (!invocation->used_arguments.contains("style"))
+                        items.push_back({{"label", "style"}, {"kind", 5},
+                                         {"insertText", "style: \""},
+                                         {"detail", "ELL style bundle"}});
+                } else if (invocation->current_argument == "style") {
+                    for (const auto& name : style_names)
+                        items.push_back({{"label", name}, {"kind", 12},
+                                         {"detail", "ELL style bundle"}});
+                } else add_expressions();
+            } else {
+                static const std::unordered_map<std::string, std::vector<std::string>> arguments{
+                    {"DefineComponent", {"name"}}, {"DefineStyle", {"name"}},
+                    {"DefineToken", {"name", "value"}}
+                };
+                if (invocation->expects_name) {
+                    if (const auto found = arguments.find(invocation->name); found != arguments.end())
+                        for (const auto& name : found->second)
+                            if (!invocation->used_arguments.contains(name))
+                                items.push_back({{"label", name}, {"kind", 5},
+                                                 {"insertText", name + ": "},
+                                                 {"detail", "ELL argument"}});
+                } else add_expressions();
+            }
+            respond(id, {{"isIncomplete", false}, {"items", std::move(items)}});
+            return;
+        }
+
+        if (interpolation_at(open->text, offset)) {
+            add_expressions();
+            respond(id, {{"isIncomplete", false}, {"items", std::move(items)}});
+            return;
+        }
+
+        bool closing = false;
+        if (sigil_at(open->text, offset, closing)) {
+            const auto sigil = open->text.rfind('@', offset == 0 ? 0 : offset - 1);
+            const auto edit = [&](const std::string& text) {
+                return Json{{"range", {{"start", position_at(open->text, sigil)},
+                                        {"end", position_at(open->text, offset)}}},
+                            {"newText", text}};
+            };
+            if (closing) {
+                const auto lexed = ell::lex(0, open->text.substr(0, sigil));
+                std::vector<std::string> stack;
+                for (const auto& token : lexed.tokens) {
+                    if (token.kind == ell::TokenKind::open) stack.push_back(token.name);
+                    else if (token.kind == ell::TokenKind::close) {
+                        const auto found = std::find(stack.rbegin(), stack.rend(), token.name);
+                        if (found != stack.rend()) stack.erase(std::next(found).base(), stack.end());
+                    }
+                }
+                std::set<std::string> seen;
+                for (auto it = stack.rbegin(); it != stack.rend(); ++it)
+                    if (seen.insert(*it).second)
+                        items.push_back({{"label", "@/" + *it}, {"kind", 14},
+                                         {"textEdit", edit("@/" + *it)}});
+            } else {
+                for (const auto& keyword : {"If", "For", "Include", "DefineComponent",
+                                            "DefineStyle", "DefineToken", "Media", "Slot"}) {
+                    items.push_back({{"label", "@" + std::string{keyword}}, {"kind", 14},
+                                     {"textEdit", edit("@" + std::string{keyword})}});
+                }
+                for (const auto& [name, definition] : definitions) {
+                    std::string snippet = "@" + name;
+                    if (!definition.props.empty()) {
+                        snippet += "(";
+                        bool first = true;
+                        int tab = 1;
+                        for (const auto& prop : definition.props) {
+                            if (prop.optional) continue;
+                            if (!first) snippet += ", ";
+                            snippet += prop.name + ": ${" + std::to_string(tab++) + ":" +
+                                       prop.type + "}";
+                            first = false;
+                        }
+                        snippet += ")";
+                    }
+                    const bool body = !definition.slots.empty();
+                    snippet += body ? "\n  ${0}\n@/" + name : ";";
+                    items.push_back({{"label", "@" + name}, {"kind", 7},
+                                     {"insertTextFormat", 2}, {"textEdit", edit(snippet)}});
+                }
             }
         }
-        for (const auto& path : include_items)
-            items.push_back({{"label", path}, {"kind", 17},
-                             {"insertText", "@Include(\"" + path + "\");"},
-                             {"detail", "ELL include"}});
         respond(id, {{"isIncomplete", false}, {"items", std::move(items)}});
     }
 
@@ -516,11 +819,125 @@ private:
                                       position.value("character", 0));
         const auto word = word_at(open->text, offset);
         const auto parsed = ell::parse(0, open->text);
+        const auto location = [&](const ell::SourceRange range) {
+            respond(id, {{"uri", params.at("textDocument").at("uri")},
+                         {"range", {{"start", position_at(open->text, range.start)},
+                                    {"end", position_at(open->text, range.end)}}}});
+        };
+
+        if (const auto component = containing_component_at(
+                open->text, offset, parsed.document.components)) {
+            const auto& definition = parsed.document.components.at(*component);
+            if (const auto prop = std::find_if(
+                    definition.props.begin(), definition.props.end(),
+                    [&](const auto& candidate) { return candidate.name == word; });
+                prop != definition.props.end()) {
+                location(identifier_range(open->text, prop->range, prop->name));
+                return;
+            }
+            if (const auto slot = std::find_if(
+                    definition.slots.begin(), definition.slots.end(),
+                    [&](const auto& candidate) { return candidate.name == word; });
+                slot != definition.slots.end()) {
+                location(identifier_range(open->text, slot->range, slot->name));
+                return;
+            }
+        }
+
+        if (const auto invocation = invocation_at(open->text, offset)) {
+            if (const auto component = parsed.document.components.find(invocation->name);
+                component != parsed.document.components.end()) {
+                if (const auto prop = std::find_if(
+                        component->second.props.begin(), component->second.props.end(),
+                        [&](const auto& candidate) { return candidate.name == word; });
+                    prop != component->second.props.end()) {
+                    location(identifier_range(open->text, prop->range, prop->name));
+                    return;
+                }
+            }
+        }
+
         const auto found = parsed.document.components.find(word);
         if (found == parsed.document.components.end()) { respond(id, nullptr); return; }
-        respond(id, {{"uri", params.at("textDocument").at("uri")},
-                     {"range", {{"start", position_at(open->text, found->second.range.start)},
-                                {"end", position_at(open->text, found->second.range.end)}}}});
+        location(found->second.range);
+    }
+
+    void references(const Json& id, const Json& params) {
+        const auto* open = document(params);
+        if (!open) { respond(id, Json::array()); return; }
+        const auto& position = params.at("position");
+        const auto offset = offset_at(open->text, position.value("line", 0),
+                                      position.value("character", 0));
+        const auto word = word_at(open->text, offset);
+        const auto parsed = ell::parse(0, open->text);
+
+        const ell::ComponentDefinition* component = nullptr;
+        const ell::PropDeclaration* prop = nullptr;
+        const ell::SlotDeclaration* slot = nullptr;
+        if (const auto name = containing_component_at(
+                open->text, offset, parsed.document.components)) {
+            component = &parsed.document.components.at(*name);
+            const auto found_prop = std::find_if(
+                component->props.begin(), component->props.end(),
+                [&](const auto& candidate) { return candidate.name == word; });
+            if (found_prop != component->props.end()) prop = &*found_prop;
+            const auto found_slot = std::find_if(
+                component->slots.begin(), component->slots.end(),
+                [&](const auto& candidate) { return candidate.name == word; });
+            if (found_slot != component->slots.end()) slot = &*found_slot;
+        } else if (const auto invocation = invocation_at(open->text, offset)) {
+            if (const auto found = parsed.document.components.find(invocation->name);
+                found != parsed.document.components.end()) {
+                component = &found->second;
+                const auto found_prop = std::find_if(
+                    component->props.begin(), component->props.end(),
+                    [&](const auto& candidate) { return candidate.name == word; });
+                if (found_prop != component->props.end()) prop = &*found_prop;
+            }
+        }
+        if (!component || (!prop && !slot)) { respond(id, Json::array()); return; }
+
+        const auto uri = params.at("textDocument").at("uri");
+        Json result = Json::array();
+        const auto add = [&](const std::size_t start, const std::size_t end) {
+            result.push_back({{"uri", uri},
+                {"range", {{"start", position_at(open->text, start)},
+                           {"end", position_at(open->text, end)}}}});
+        };
+        if (params.value("context", Json::object()).value("includeDeclaration", false)) {
+            const auto declaration = prop
+                ? identifier_range(open->text, prop->range, prop->name)
+                : identifier_range(open->text, slot->range, slot->name);
+            add(declaration.start, declaration.end);
+        }
+
+        const auto add_matches = [&](const std::regex& pattern,
+                                     const std::size_t begin,
+                                     const std::size_t end) {
+            const auto text = std::string{open->text.substr(begin, end - begin)};
+            for (std::sregex_iterator it{text.begin(), text.end(), pattern}, last;
+                 it != last; ++it) {
+                const auto start = begin + static_cast<std::size_t>(it->position(1));
+                add(start, start + static_cast<std::size_t>(it->length(1)));
+            }
+        };
+        const auto [component_start, component_end] =
+            component_span(open->text, component->range.start);
+        if (prop) {
+            const auto name = prop->name;
+            add_matches(std::regex{"@\\{[^}\\n]*\\b(" + name + ")\\b[^}\\n]*\\}"},
+                        component_start, component_end);
+            add_matches(std::regex{"@[A-Z][A-Za-z0-9_]*\\([^\\n)]*\\b(" + name +
+                                   ")\\b[^\\n)]*\\)"},
+                        component_start, component_end);
+            add_matches(std::regex{"@" + component->name +
+                                   "\\s*\\([^\\n)]*\\b(" + name + ")\\s*:"},
+                        0, open->text.size());
+        } else {
+            add_matches(std::regex{"@Slot\\s*\\(\\s*(" + slot->name + ")\\b"},
+                        component_start, component_end);
+        }
+        respond(id, std::move(result));
     }
 
     void symbols(const Json& id, const Json& params) {

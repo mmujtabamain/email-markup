@@ -14,6 +14,7 @@ test("manifest contributes only the current ELL language", () => {
   assert.equal(manifest.main, "./dist/extension.js");
   assert.equal(manifest.contributes.commands[0].icon, "$(eye)");
   assert.equal(manifest.contributes.menus["editor/title"][0].group, "navigation@1");
+  assert.equal(manifest.contributes.configurationDefaults["[ell]"]["editor.wordBasedSuggestions"], "off");
 });
 
 test("extension source enforces trust and a script-free preview", () => {
@@ -62,4 +63,16 @@ test("generated grammar records the shared lexical source", () => {
   );
   assert.match(injection.injectionSelector, /text\.html\.basic/);
   assert.match(injection.injectionSelector, /source\.css/);
+  assert.match(grammar.repository.invocation.patterns[2].captures[1].name, /support\.type\.property-name\.ell/);
+  assert.match(grammar.repository.props.patterns[2].captures[1].name, /support\.type\.property-name\.ell/);
+  assert.ok(grammar.repository.defineStyle.patterns.some(
+    (pattern: { include?: string }) => pattern.include === "source.css#rule-list-innards",
+  ));
+  assert.ok(grammar.repository.defineStyle.patterns.some(
+    (pattern: { include?: string }) => pattern.include === "#namedDefinitionArguments",
+  ));
+  assert.match(
+    grammar.repository.namedDefinitionArguments.patterns[0].captures[1].name,
+    /support\.type\.property-name\.ell/,
+  );
 });

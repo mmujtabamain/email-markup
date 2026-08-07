@@ -11,7 +11,22 @@
       "include": "source.ell#interpolation"
     },
     {
+      "include": "source.ell#props"
+    },
+    {
+      "include": "source.ell#slots"
+    },
+    {
+      "include": "source.ell#defineStyle"
+    },
+    {
+      "include": "source.ell#media"
+    },
+    {
       "include": "source.ell#close"
+    },
+    {
+      "include": "source.ell#invocation"
     },
     {
       "include": "source.ell#construct"
