@@ -12,6 +12,8 @@ test("manifest contributes only the current ELL language", () => {
   assert.match(manifest.contributes.languages[0].icon.dark, /ell-dark\.svg$/);
   assert.equal(manifest.capabilities.untrustedWorkspaces.supported, "limited");
   assert.equal(manifest.main, "./dist/extension.js");
+  assert.equal(manifest.contributes.commands[0].icon, "$(eye)");
+  assert.equal(manifest.contributes.menus["editor/title"][0].group, "navigation@1");
 });
 
 test("extension source enforces trust and a script-free preview", () => {
@@ -20,6 +22,8 @@ test("extension source enforces trust and a script-free preview", () => {
   assert.match(source, /enableScripts: false/);
   assert.match(source, /localResourceRoots: \[\]/);
   assert.match(source, /typeof result\.html !== "string"/);
+  assert.match(source, /onDidChangeTextDocument/);
+  assert.match(source, /previewRefreshDelayMs/);
 });
 
 test("production bundle has no unresolved language-service module imports", () => {

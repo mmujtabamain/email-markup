@@ -78,7 +78,8 @@
     "commands": [
       {
         "command": "ell.preview",
-        "title": "ELL: Open Secure Preview"
+        "title": "ELL: Open Secure Preview",
+        "icon": "$(eye)"
       },
       {
         "command": "ell.previewWithData",
@@ -94,7 +95,7 @@
         {
           "command": "ell.preview",
           "when": "editorLangId == ell",
-          "group": "navigation"
+          "group": "navigation@1"
         }
       ]
     },

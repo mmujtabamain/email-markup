@@ -11,11 +11,16 @@ import { previewDocument } from "./preview";
 import { registerWebFeatures } from "./webFeatures";
 
 const protocolVersion = 1;
+const previewRefreshDelayMs = 200;
 
 let client: LanguageClient | undefined;
 let output: vscode.LogOutputChannel | undefined;
 let previewPanel: vscode.WebviewPanel | undefined;
 let previewHtml = "";
+let previewUri: string | undefined;
+let previewData: unknown;
+let previewRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+let previewRequest = 0;
 let remoteImagesEnabled = false;
 
 function platformDirectory(): string {
@@ -67,6 +72,67 @@ function activeEllEditor(): vscode.TextEditor | undefined {
   return editor?.document.languageId === "ell" ? editor : undefined;
 }
 
+function clearPreviewSession(): void {
+  if (previewRefreshTimer) clearTimeout(previewRefreshTimer);
+  previewRefreshTimer = undefined;
+  previewUri = undefined;
+  previewData = undefined;
+  previewHtml = "";
+  ++previewRequest;
+}
+
+async function refreshPreview(document: vscode.TextDocument, reveal: boolean): Promise<void> {
+  if (!client || previewUri !== document.uri.toString()) return;
+  const uri = previewUri;
+  const request = ++previewRequest;
+  const params: { uri: string; data?: unknown } = { uri };
+  if (previewData !== undefined) params.data = previewData;
+  let result: { version: number; html: unknown };
+  try {
+    result = await client.sendRequest<{ version: number; html: unknown }>("ell/preview", params);
+  } catch (error) {
+    if (request === previewRequest && previewUri === uri) {
+      output?.error(`Preview refresh failed for ${document.uri.fsPath}.`, error);
+      if (reveal) void vscode.window.showErrorMessage("ELL preview failed. See Output → ELL.");
+    }
+    return;
+  }
+  if (request !== previewRequest || previewUri !== uri) return;
+  if (result.version !== document.version) {
+    output?.warn("Preview response was stale and was ignored.");
+    return;
+  }
+  if (result.html === null) {
+    output?.warn("Preview was not generated because the document has compilation errors.");
+    return;
+  }
+  if (typeof result.html !== "string") {
+    const actual = Array.isArray(result.html) ? "array" : typeof result.html;
+    output?.error(`Language server returned invalid preview HTML (${actual} instead of string).`);
+    void vscode.window.showErrorMessage("ELL language server returned an invalid preview response. See Output → ELL.");
+    return;
+  }
+  previewHtml = result.html;
+  remoteImagesEnabled = false;
+  if (!previewPanel) {
+    previewPanel = vscode.window.createWebviewPanel(
+      "ellPreview",
+      "ELL Secure Preview",
+      vscode.ViewColumn.Beside,
+      { enableScripts: false, localResourceRoots: [] },
+    );
+    previewPanel.onDidDispose(() => {
+      previewPanel = undefined;
+      clearPreviewSession();
+      output?.info("Preview detached from its ELL document.");
+    });
+  }
+  previewPanel.title = `ELL Preview: ${path.basename(document.uri.fsPath)}`;
+  previewPanel.webview.html = previewDocument(previewHtml, false);
+  if (reveal) previewPanel.reveal(vscode.ViewColumn.Beside, true);
+  output?.debug(`Preview refreshed for ${document.uri.fsPath} at version ${document.version}.`);
+}
+
 async function openPreview(withData: boolean): Promise<void> {
   output?.info(`Preview requested${withData ? " with inline JSON data" : ""}.`);
   if (!vscode.workspace.isTrusted) {
@@ -104,37 +170,10 @@ async function openPreview(withData: boolean): Promise<void> {
       return;
     }
   }
-  const params: { uri: string; data?: unknown } = { uri: editor.document.uri.toString() };
-  if (withData) params.data = data;
-  const result = await client.sendRequest<{ version: number; html: unknown }>("ell/preview", params);
-  if (result.version !== editor.document.version) {
-    output?.warn("Preview response was stale and was ignored.");
-    return;
-  }
-  if (result.html === null) {
-    output?.warn("Preview was not generated because the document has compilation errors.");
-    return;
-  }
-  if (typeof result.html !== "string") {
-    const actual = Array.isArray(result.html) ? "array" : typeof result.html;
-    output?.error(`Language server returned invalid preview HTML (${actual} instead of string).`);
-    void vscode.window.showErrorMessage("ELL language server returned an invalid preview response. See Output → ELL.");
-    return;
-  }
-  previewHtml = result.html;
-  remoteImagesEnabled = false;
-  if (!previewPanel) {
-    previewPanel = vscode.window.createWebviewPanel(
-      "ellPreview",
-      "ELL Secure Preview",
-      vscode.ViewColumn.Beside,
-      { enableScripts: false, localResourceRoots: [] },
-    );
-    previewPanel.onDidDispose(() => { previewPanel = undefined; previewHtml = ""; });
-  }
-  previewPanel.webview.html = previewDocument(previewHtml, false);
-  previewPanel.reveal(vscode.ViewColumn.Beside, true);
-  output?.info(`Preview opened for ${editor.document.uri.fsPath}.`);
+  previewUri = editor.document.uri.toString();
+  previewData = data;
+  output?.info(`Preview attached to ${editor.document.uri.fsPath}.`);
+  await refreshPreview(editor.document, true);
 }
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -150,6 +189,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (!previewPanel || !previewHtml || remoteImagesEnabled) return;
       remoteImagesEnabled = true;
       previewPanel.webview.html = previewDocument(previewHtml, true);
+    }),
+    vscode.workspace.onDidChangeTextDocument((event) => {
+      if (!previewPanel || event.document.uri.toString() !== previewUri) return;
+      if (previewRefreshTimer) clearTimeout(previewRefreshTimer);
+      previewRefreshTimer = setTimeout(() => {
+        previewRefreshTimer = undefined;
+        void refreshPreview(event.document, false);
+      }, previewRefreshDelayMs);
+    }),
+    vscode.workspace.onDidCloseTextDocument((document) => {
+      if (document.uri.toString() !== previewUri) return;
+      if (previewPanel) previewPanel.dispose();
+      else clearPreviewSession();
     }),
   );
   if (vscode.workspace.isTrusted) {
