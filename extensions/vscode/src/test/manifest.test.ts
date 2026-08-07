@@ -72,4 +72,22 @@ test("generated grammar records the shared lexical source", () => {
     grammar.repository.namedDefinitionArguments.patterns[0].captures[1].name,
     /support\.type\.property-name\.email-markup/,
   );
+  const invocationString = grammar.repository.invocation.patterns.find(
+    (pattern: { name?: string }) => pattern.name === "string.quoted.double.email-markup",
+  );
+  assert.ok(invocationString.patterns.some(
+    (pattern: { include?: string }) => pattern.include === "#interpolation",
+  ));
+
+  const configuration = JSON.parse(
+    readFileSync(path.join(root, "language-configuration.json"), "utf8"),
+  );
+  assert.match(configuration.wordPattern, /A-Za-z0-9_\.-/);
+  const wordPattern = new RegExp(configuration.wordPattern, "g");
+  assert.deepEqual("@{business.".match(wordPattern), ["business."]);
+  assert.deepEqual("style: \"quote-".match(wordPattern), ["style", "quote-"]);
+  assert.deepEqual(configuration.brackets, [["(", ")"], ["{", "}"]]);
+  assert.match(configuration.folding.markers.start, /Else/);
+  assert.equal(new RegExp(configuration.folding.markers.start).test("@Else"), false);
+  assert.ok(configuration.onEnterRules.length > 0);
 });

@@ -26,3 +26,16 @@ TEST_CASE("generated HTML preserves source segments") {
     REQUIRE(generated.segments.size() == 1);
     CHECK(generated.segments.front().output_end == 11);
 }
+
+TEST_CASE("generated HTML insertion preserves and shifts source segments") {
+    email_markup::GeneratedHtml generated;
+    generated.append("beforeafter", {1, 4, 10});
+    generated.insert(6, " middle ", {2, 20, 24});
+
+    CHECK(generated.html == "before middle after");
+    REQUIRE(generated.segments.size() == 3);
+    CHECK(generated.segments[0].origin.source == 1);
+    CHECK(generated.segments[1].origin.source == 2);
+    CHECK(generated.segments[2].origin.source == 1);
+    CHECK(generated.segments[2].output_start == 14);
+}

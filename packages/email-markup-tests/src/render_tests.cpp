@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <memory>
@@ -97,6 +98,45 @@ TEST_CASE("compiler applies shell media and final lint") {
     CHECK(result.generated.html.starts_with("<!doctype html>"));
     CHECK(result.generated.html.find("@media (max-width: 600px)") != std::string::npos);
     CHECK(result.generated.html.find("<p>Hello Northstar</p>") != std::string::npos);
+}
+
+TEST_CASE("compiled HTML lint findings map back to the component call") {
+    MemoryResolver resolver;
+    resolver.files["/project/image.em"] = R"EM(
+@DefineComponent(name: "HeroImage")
+  @Props
+    src: url
+  @/Props
+  @Template
+    <img src="@{src}">
+  @/Template
+@/DefineComponent
+)EM";
+    resolver.files["/project/shell.em"] =
+        "<html><body>@Slot(default);<a href=\"/unsubscribe\">Unsubscribe</a></body></html>";
+    email_markup::CompilationRequest request;
+    request.entry_path = "/project/message.em";
+    request.source = R"EM(@Include("image.em");
+
+@HeroImage(src: "http://example.test/image.png");
+)EM";
+    request.shell = "shell.em";
+
+    const auto result = email_markup::compile(request, resolver);
+    const auto call = request.source.find("@HeroImage");
+    const auto missing_alt = std::find_if(
+        result.diagnostics.begin(), result.diagnostics.end(),
+        [](const auto& diagnostic) { return diagnostic.code == "EM0810"; });
+    const auto insecure = std::find_if(
+        result.diagnostics.begin(), result.diagnostics.end(),
+        [](const auto& diagnostic) { return diagnostic.code == "EM0811"; });
+
+    REQUIRE(missing_alt != result.diagnostics.end());
+    REQUIRE(insecure != result.diagnostics.end());
+    CHECK(missing_alt->range.source == result.snapshot->entry);
+    CHECK(insecure->range.source == result.snapshot->entry);
+    CHECK(missing_alt->range.start == call);
+    CHECK(insecure->range.start == call);
 }
 
 TEST_CASE("compiler rejects missing data and invalid component contracts") {

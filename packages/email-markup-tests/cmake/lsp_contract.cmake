@@ -8,7 +8,7 @@ endfunction()
 
 append_message("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"workspaceFolders\":[{\"uri\":\"file://${SOURCE_DIR}\",\"name\":\"email-markup\"}],\"capabilities\":{}}}")
 append_message("{\"jsonrpc\":\"2.0\",\"method\":\"initialized\",\"params\":{}}")
-append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"${URI}\",\"languageId\":\"email-markup\",\"version\":1,\"text\":\"@DefineComponent(name: \\\"Card\\\")\\n  @Props\\n    title: string\\n  @/Props\\n  @Slots\\n    default: required\\n  @/Slots\\n  @Template\\n    <section>@{title}: @Slot(default);</section>\\n  @/Template\\n@/DefineComponent\\n\\n@Card(title: \\\"Greeting\\\") \\ud83d\\udc4b Hi @/Card\\n@Include(\\\"08-includes/components/notice.em\\\");\\nordinary prose\"}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"${URI}\",\"languageId\":\"email-markup\",\"version\":1,\"text\":\"@DefineComponent(name: \\\"Card\\\")\\n  @Props\\n    title: string\\n  @/Props\\n  @Slots\\n    default: required\\n  @/Slots\\n  @Template\\n    <section>@{title}: @Slot(default);</section>\\n  @/Template\\n@/DefineComponent\\n\\n@Card(title: \\\"Greeting\\\") \\ud83d\\udc4b Hi @/Card\\n@Include(\\\"08-includes/components/notice.em\\\");\\nordinary Card prose\"}}}")
 append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didChange\",\"params\":{\"textDocument\":{\"uri\":\"${URI}\",\"version\":2},\"contentChanges\":[{\"range\":{\"start\":{\"line\":12,\"character\":28},\"end\":{\"line\":12,\"character\":30}},\"text\":\"Hello\"}]}}")
 append_message("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"textDocument/completion\",\"params\":{\"textDocument\":{\"uri\":\"${URI}\"},\"position\":{\"line\":12,\"character\":2}}}")
 append_message("{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"textDocument/hover\",\"params\":{\"textDocument\":{\"uri\":\"${URI}\"},\"position\":{\"line\":12,\"character\":3}}}")
@@ -29,6 +29,7 @@ append_message("{\"jsonrpc\":\"2.0\",\"id\":19,\"method\":\"textDocument/definit
 append_message("{\"jsonrpc\":\"2.0\",\"id\":20,\"method\":\"textDocument/definition\",\"params\":{\"textDocument\":{\"uri\":\"${URI}\"},\"position\":{\"line\":12,\"character\":8}}}")
 append_message("{\"jsonrpc\":\"2.0\",\"id\":21,\"method\":\"textDocument/references\",\"params\":{\"textDocument\":{\"uri\":\"${URI}\"},\"position\":{\"line\":2,\"character\":6},\"context\":{\"includeDeclaration\":false}}}")
 append_message("{\"jsonrpc\":\"2.0\",\"id\":22,\"method\":\"textDocument/references\",\"params\":{\"textDocument\":{\"uri\":\"${URI}\"},\"position\":{\"line\":5,\"character\":7},\"context\":{\"includeDeclaration\":false}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"id\":23,\"method\":\"textDocument/hover\",\"params\":{\"textDocument\":{\"uri\":\"${URI}\"},\"position\":{\"line\":14,\"character\":10}}}")
 append_message("{\"jsonrpc\":\"2.0\",\"method\":\"$/cancelRequest\",\"params\":{\"id\":11}}")
 append_message("{\"jsonrpc\":\"2.0\",\"id\":11,\"method\":\"textDocument/completion\",\"params\":{\"textDocument\":{\"uri\":\"${URI}\"},\"position\":{\"line\":12,\"character\":2}}}")
 append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didClose\",\"params\":{\"textDocument\":{\"uri\":\"${URI}\"}}}")
@@ -76,6 +77,7 @@ foreach(REQUIRED
     "\\\"referencesProvider\\\":true"
     "\\\"id\\\":21"
     "\\\"id\\\":22"
+    "\\\"id\\\":23"
     "\\\"html\\\":\\\""
     "\\\"version\\\":2"
     "-32800"
@@ -86,6 +88,9 @@ foreach(REQUIRED
 endforeach()
 if(NOT OUTPUT MATCHES "\\\"id\\\":12,\\\"jsonrpc\\\":\\\"2.0\\\",\\\"result\\\":\\{\\\"isIncomplete\\\":false,\\\"items\\\":\\[\\]\\}")
   message(FATAL_ERROR "email-markup-lsp returned completions for ordinary prose: ${OUTPUT}")
+endif()
+if(NOT OUTPUT MATCHES "\\\"id\\\":23,\\\"jsonrpc\\\":\\\"2.0\\\",\\\"result\\\":null")
+  message(FATAL_ERROR "email-markup-lsp returned component hover for ordinary prose: ${OUTPUT}")
 endif()
 foreach(REFERENCE_ID 21 22)
   if(OUTPUT MATCHES "\\\"id\\\":${REFERENCE_ID},\\\"jsonrpc\\\":\\\"2.0\\\",\\\"result\\\":\\[\\]")

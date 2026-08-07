@@ -13,11 +13,56 @@ function copy(characters: string[], source: string, start: number, end: number):
   for (let index = start; index < end; ++index) characters[index] = source[index];
 }
 
+function commentMask(source: string): boolean[] {
+  const active = source.split("").map(() => true);
+  for (let index = 0; index < source.length;) {
+    if (source.startsWith("@*", index)) {
+      const close = source.indexOf("*@", index + 2);
+      const end = close === -1 ? source.length : close + 2;
+      active.fill(false, index, end);
+      index = end;
+    } else if (source.startsWith("@//", index)) {
+      const close = source.indexOf("\n", index + 3);
+      const end = close === -1 ? source.length : close;
+      active.fill(false, index, end);
+      index = end;
+    } else {
+      ++index;
+    }
+  }
+  return active;
+}
+
+function directiveHeadEnd(source: string, start: number, name: string): number {
+  let index = start + name.length + 1;
+  while (index < source.length && /\s/.test(source[index])) ++index;
+  if (source[index] !== "(") return index;
+  let depth = 0;
+  let quote = "";
+  for (; index < source.length; ++index) {
+    const character = source[index];
+    if (quote) {
+      if (character === "\\") ++index;
+      else if (character === quote) quote = "";
+    } else if (character === "\"" || character === "'") {
+      quote = character;
+    } else if (character === "(") {
+      ++depth;
+    } else if (character === ")" && --depth === 0) {
+      return index + 1;
+    }
+  }
+  return source.length;
+}
+
 function blockRanges(source: string, name: string): OffsetRange[] {
   const ranges: OffsetRange[] = [];
-  const pattern = new RegExp(`@${name}(?:\\((?:[^()\"']|\"[^\"]*\"|'[^']*')*\\))?`, "g");
+  const active = commentMask(source);
+  const pattern = new RegExp(`@${name}\\b`, "g");
   for (const match of source.matchAll(pattern)) {
-    const start = (match.index ?? 0) + match[0].length;
+    const open = match.index ?? 0;
+    if (!active[open]) continue;
+    const start = directiveHeadEnd(source, open, name);
     const close = new RegExp(`@/${name}\\b`, "g");
     close.lastIndex = start;
     const ending = close.exec(source);
@@ -28,8 +73,9 @@ function blockRanges(source: string, name: string): OffsetRange[] {
 
 function stylesheetRanges(source: string): OffsetRange[] {
   const ranges: OffsetRange[] = [];
+  const projected = htmlProjection(source);
   const stylePattern = /<style(?:\s[^>]*)?>([\s\S]*?)<\/style\s*>/gi;
-  for (const match of source.matchAll(stylePattern)) {
+  for (const match of projected.matchAll(stylePattern)) {
     const body = match[1];
     const start = (match.index ?? 0) + match[0].indexOf(body);
     ranges.push([start, start + body.length]);
@@ -40,8 +86,9 @@ function stylesheetRanges(source: string): OffsetRange[] {
 
 function declarationRanges(source: string): OffsetRange[] {
   const ranges = blockRanges(source, "DefineStyle");
+  const projected = htmlProjection(source);
   const inlinePattern = /\bstyle\s*=\s*(["'])([\s\S]*?)\1/gi;
-  for (const match of source.matchAll(inlinePattern)) {
+  for (const match of projected.matchAll(inlinePattern)) {
     const body = match[2];
     const start = (match.index ?? 0) + match[0].indexOf(body);
     ranges.push([start, start + body.length]);
@@ -60,6 +107,22 @@ export function cssProjection(source: string): CSSProjection {
   const stylesheets = stylesheetRanges(source);
   const declarations = declarationRanges(source);
   for (const [start, end] of [...stylesheets, ...declarations]) copy(characters, source, start, end);
+
+  for (const [start, end] of [...stylesheets, ...declarations]) {
+    for (let index = start; index < end;) {
+      if (!source.startsWith("@{", index)) {
+        ++index;
+        continue;
+      }
+      const close = source.indexOf("}", index + 2);
+      if (close === -1 || close >= end) break;
+      characters[index] = "0";
+      for (let cursor = index + 1; cursor <= close; ++cursor) {
+        if (characters[cursor] !== "\n") characters[cursor] = " ";
+      }
+      index = close + 1;
+    }
+  }
 
   for (const [start, end] of declarations) {
     const open = wrapperPosition(source, start);

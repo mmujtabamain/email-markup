@@ -6,6 +6,7 @@
       "*@"
     ]
   },
+  "wordPattern": "@/?[A-Z][A-Za-z0-9_]*|[A-Za-z_][A-Za-z0-9_.-]*",
   "brackets": [
     [
       "(",
@@ -14,10 +15,6 @@
     [
       "{",
       "}"
-    ],
-    [
-      "<",
-      ">"
     ]
   ],
   "autoClosingPairs": [
@@ -28,10 +25,6 @@
     {
       "open": "{",
       "close": "}"
-    },
-    {
-      "open": "<",
-      "close": ">"
     },
     {
       "open": "\"",
@@ -52,22 +45,26 @@
       "}"
     ],
     [
-      "<",
-      ">"
-    ],
-    [
       "\"",
       "\""
     ]
   ],
   "folding": {
     "markers": {
-      "start": "^\\s*@[A-Z][A-Za-z0-9_]*(?:\\([^)]*\\))?\\s*$",
+      "start": "^\\s*@(?!Else\\b)[A-Z][A-Za-z0-9_]*(?:\\([^)]*\\))?\\s*$",
       "end": "^\\s*@/[A-Z][A-Za-z0-9_]*\\s*$"
     }
   },
   "indentationRules": {
-    "increaseIndentPattern": "^.*@[A-Z][A-Za-z0-9_]*(?:\\([^)]*\\))?\\s*$",
+    "increaseIndentPattern": "^.*@(?!Else\\b)[A-Z][A-Za-z0-9_]*(?:\\([^)]*\\))?\\s*$",
     "decreaseIndentPattern": "^\\s*@/[A-Z][A-Za-z0-9_]*"
-  }
+  },
+  "onEnterRules": [
+    {
+      "beforeText": "^\\s*@[A-Z][A-Za-z0-9_]*\\([^)]*$",
+      "action": {
+        "indent": "indent"
+      }
+    }
+  ]
 }

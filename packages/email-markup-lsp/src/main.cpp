@@ -129,6 +129,16 @@ std::string word_at(const std::string_view text, const std::size_t offset) {
     return std::string{text.substr(start, end - start)};
 }
 
+bool directive_name_at(const std::string_view text, const std::size_t offset,
+                       const std::string_view word) {
+    if (word.empty() || !std::isupper(static_cast<unsigned char>(word.front()))) return false;
+    auto start = std::min(offset, text.size());
+    while (start > 0 && (std::isalnum(static_cast<unsigned char>(text[start - 1])) ||
+                         text[start - 1] == '_')) --start;
+    return (start > 0 && text[start - 1] == '@') ||
+           (start > 1 && text[start - 2] == '@' && text[start - 1] == '/');
+}
+
 struct InvocationContext {
     std::string name;
     std::string current_argument;
@@ -757,8 +767,9 @@ private:
                         items.push_back({{"label", "@/" + *it}, {"kind", 14},
                                          {"textEdit", edit("@/" + *it)}});
             } else {
-                for (const auto& keyword : {"If", "For", "Include", "DefineComponent",
-                                            "DefineStyle", "DefineToken", "Media", "Slot"}) {
+                for (const auto& keyword : {"If", "Else", "For", "Include", "DefineComponent",
+                                            "DefineStyle", "DefineToken", "Media", "Props",
+                                            "Slots", "Template", "Slot"}) {
                     items.push_back({{"label", "@" + std::string{keyword}}, {"kind", 14},
                                      {"textEdit", edit("@" + std::string{keyword})}});
                 }
@@ -794,6 +805,10 @@ private:
         const auto offset = offset_at(open->text, position.value("line", 0),
                                       position.value("character", 0));
         const auto word = word_at(open->text, offset);
+        if (!directive_name_at(open->text, offset, word)) {
+            respond(id, nullptr);
+            return;
+        }
         const auto definitions = metadata(*open);
         const auto found = definitions.find(word);
         if (found == definitions.end()) { respond(id, nullptr); return; }

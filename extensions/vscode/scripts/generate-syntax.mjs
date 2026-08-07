@@ -189,7 +189,12 @@ const grammar = {
         { name: "keyword.operator.email-markup", match: "(?:==|!=|<=|>=|[+\\-*/%<>])" },
         { name: "constant.language.email-markup", match: "\\b(?:true|false|null)\\b" },
         { name: "constant.numeric.email-markup", match: "-?\\b\\d+(?:\\.\\d+)?\\b" },
-        { name: "string.quoted.double.email-markup", begin: "\"", end: "\"" },
+        {
+          name: "string.quoted.double.email-markup",
+          begin: "\"",
+          end: "\"",
+          patterns: [{ include: "#interpolation" }, { include: "#escaped" }],
+        },
         { name: "variable.other.readwrite.email-markup", match: "[A-Za-z_][A-Za-z0-9_.]*" },
       ],
     },
@@ -207,19 +212,23 @@ const grammar = {
 
 const languageConfiguration = {
   comments: { lineComment: lexical.lineComment, blockComment: lexical.blockComment },
-  brackets: [["(", ")"], ["{", "}"], ["<", ">"]],
+  wordPattern: "@/?[A-Z][A-Za-z0-9_]*|[A-Za-z_][A-Za-z0-9_.-]*",
+  brackets: [["(", ")"], ["{", "}"]],
   autoClosingPairs: [
     { open: "(", close: ")" },
     { open: "{", close: "}" },
-    { open: "<", close: ">" },
     { open: "\"", close: "\"", notIn: ["string", "comment"] }
   ],
-  surroundingPairs: [["(", ")"], ["{", "}"], ["<", ">"], ["\"", "\""]],
-  folding: { markers: { start: "^\\s*@[A-Z][A-Za-z0-9_]*(?:\\([^)]*\\))?\\s*$", end: "^\\s*@/[A-Z][A-Za-z0-9_]*\\s*$" } },
+  surroundingPairs: [["(", ")"], ["{", "}"], ["\"", "\""]],
+  folding: { markers: { start: "^\\s*@(?!Else\\b)[A-Z][A-Za-z0-9_]*(?:\\([^)]*\\))?\\s*$", end: "^\\s*@/[A-Z][A-Za-z0-9_]*\\s*$" } },
   indentationRules: {
-    increaseIndentPattern: "^.*@[A-Z][A-Za-z0-9_]*(?:\\([^)]*\\))?\\s*$",
+    increaseIndentPattern: "^.*@(?!Else\\b)[A-Z][A-Za-z0-9_]*(?:\\([^)]*\\))?\\s*$",
     decreaseIndentPattern: "^\\s*@/[A-Z][A-Za-z0-9_]*"
-  }
+  },
+  onEnterRules: [{
+    beforeText: "^\\s*@[A-Z][A-Za-z0-9_]*\\([^)]*$",
+    action: { indent: "indent" },
+  }],
 };
 
 const injectionGrammar = {

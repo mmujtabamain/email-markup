@@ -36,3 +36,19 @@ TEST_CASE("deliverability lint distinguishes content and shell") {
                                       email_markup::LintRole::shell, {});
     CHECK_FALSE(shell.empty());
 }
+
+TEST_CASE("CSS inlining and deliverability lint preserve source provenance") {
+    email_markup::GeneratedHtml generated;
+    generated.append("<style>.card { display: flex; }</style>", {1, 10, 30});
+    generated.append("<img class=\"card\" src=\"http://example.test/a.png\">", {1, 80, 120});
+
+    generated = email_markup::inline_css(std::move(generated));
+    const auto findings = email_markup::lint_html(
+        generated, email_markup::LintRole::content, {1, 0, 0});
+
+    REQUIRE_FALSE(findings.empty());
+    for (const auto& finding : findings) {
+        CHECK(finding.range.source == 1);
+        CHECK(finding.range.start != 0);
+    }
+}

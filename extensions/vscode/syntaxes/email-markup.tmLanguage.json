@@ -385,7 +385,15 @@
         {
           "name": "string.quoted.double.email-markup",
           "begin": "\"",
-          "end": "\""
+          "end": "\"",
+          "patterns": [
+            {
+              "include": "#interpolation"
+            },
+            {
+              "include": "#escaped"
+            }
+          ]
         },
         {
           "name": "variable.other.readwrite.email-markup",

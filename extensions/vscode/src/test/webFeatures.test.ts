@@ -43,6 +43,23 @@ test("CSS projection covers style tags, inline declarations, styles, and media",
   assert.equal(projection.ranges.length, 4);
 });
 
+test("CSS projection ignores commented blocks and masks Email Markup expressions", () => {
+  const source = [
+    "@*",
+    "@Media(\"(max-width: 600px)\") .ignored { display: block; } @/Media",
+    "<span style=\"color: red\">ignored too</span>",
+    "*@",
+    "@DefineStyle(",
+    "  name: \"card\") color: @{token.accent}; @/DefineStyle",
+  ].join("\n");
+  const projection = cssProjection(source);
+  assert.equal(projection.text.length, source.length);
+  assert.doesNotMatch(projection.text, /ignored/);
+  assert.doesNotMatch(projection.text, /token\.accent|@\{/);
+  assert.match(projection.text, /color:\s+0\s+;/);
+  assert.equal(projection.ranges.length, 1);
+});
+
 test("projections preserve UTF-16 offsets and hide Email Markup from HTML", () => {
   const source = "😀 @Heading Hello @/Heading <p title=\"@{account.name}\">Zażółć</p>";
   const projection = htmlProjection(source);

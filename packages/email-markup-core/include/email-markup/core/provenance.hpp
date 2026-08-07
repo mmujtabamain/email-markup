@@ -28,6 +28,8 @@ struct GeneratedHtml {
 
     void append(std::string_view text, SourceRange origin,
                 const std::vector<ExpansionFrame>& stack = {});
+    void insert(std::size_t offset, std::string_view text, SourceRange origin,
+                const std::vector<ExpansionFrame>& stack = {});
 };
 
 }  // namespace email_markup

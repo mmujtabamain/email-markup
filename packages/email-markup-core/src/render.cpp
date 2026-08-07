@@ -78,9 +78,8 @@ public:
         RenderScope scope;
         scope.evaluation.data = &data;
         scope.evaluation.tokens = tokens;
-        auto synthetic = std::make_shared<Node>(Node{{}, TextNode{content.html}});
-        scope.slots["default"] = {{synthetic}, scope.evaluation};
         shell_raw_ = true;
+        shell_content_ = &content;
         render_nodes(nodes, scope, 0);
         return std::move(output_);
     }
@@ -224,6 +223,20 @@ private:
                        node.range);
             return;
         }
+        if (shell_content_ && slot.name == "default") {
+            for (const auto& segment : shell_content_->segments) {
+                const auto text = std::string_view{shell_content_->html}.substr(
+                    segment.output_start, segment.output_end - segment.output_start);
+                if (output_.html.size() + text.size() > limits_.maximum_html_bytes) {
+                    diagnostic("EM0901", "Generated HTML exceeds the configured byte limit.",
+                               segment.origin);
+                    output_limited_ = true;
+                    return;
+                }
+                output_.append(text, segment.origin, segment.expansion_stack);
+            }
+            return;
+        }
         const auto found = scope.slots.find(slot.name);
         if (found == scope.slots.end()) return;
         auto call_scope = scope;
@@ -353,6 +366,7 @@ private:
     std::size_t loop_iterations_{};
     bool output_limited_{};
     bool shell_raw_{};
+    const GeneratedHtml* shell_content_{};
 };
 
 struct Loader {
@@ -603,24 +617,27 @@ CompilationResult compile(const CompilationRequest& request, FileResolver& files
                                         loader.diagnostics};
                 generated = shell_renderer.render_shell(shell->second.nodes, request.data,
                                                         tokens, generated);
-                std::string media_css;
                 for (const auto& media : loader.registry.media) {
                     auto media_diagnostics = validate_media(media);
                     loader.diagnostics.insert(loader.diagnostics.end(),
                                               media_diagnostics.begin(),
                                               media_diagnostics.end());
-                    media_css += "@media " + media.query + "{" + media.css + "}";
                 }
-                if (!media_css.empty()) {
+                if (!loader.registry.media.empty()) {
                     const auto head = generated.html.find("</head>");
-                    const auto block = "<style>" + media_css + "</style>";
-                    if (head == std::string::npos) generated.html.insert(0, block);
-                    else generated.html.insert(head, block);
+                    const auto position = head == std::string::npos ? 0 : head;
+                    generated.insert(position, "</style>", loader.registry.media.back().range);
+                    for (auto media = loader.registry.media.rbegin();
+                         media != loader.registry.media.rend(); ++media) {
+                        generated.insert(position,
+                            "@media " + media->query + "{" + media->css + "}", media->range);
+                    }
+                    generated.insert(position, "<style>", loader.registry.media.front().range);
                 }
             }
         }
-        generated.html = inline_css(std::move(generated.html));
-        auto findings = lint_html(generated.html,
+        generated = inline_css(std::move(generated));
+        auto findings = lint_html(generated,
                                   shell_path ? LintRole::shell : LintRole::content,
                                   {entry->second.source, 0, 0});
         loader.diagnostics.insert(loader.diagnostics.end(), findings.begin(), findings.end());
