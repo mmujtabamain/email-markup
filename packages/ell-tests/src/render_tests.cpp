@@ -137,58 +137,56 @@ TEST_CASE("compiler detects include cycles") {
     CHECK_FALSE(ell::compile(request, resolver).ok());
 }
 
-TEST_CASE("standard library and Example shell compile the shipped example") {
+TEST_CASE("standard library and neutral shell compile a shipped example") {
     const auto root = std::filesystem::path{ELL_SOURCE_DIR};
+    const auto example = root / "examples/01-interpolation";
     const auto read = [](const std::filesystem::path& path) {
         std::ifstream stream(path, std::ios::binary);
         return std::string{std::istreambuf_iterator<char>{stream}, {}};
     };
     ell::DiskFileResolver resolver;
     ell::CompilationRequest request;
-    request.entry_path = root / "examples/solution_first.ell";
+    request.entry_path = example / "message.ell";
     request.source = read(request.entry_path);
-    request.data = ell::Json::parse(read(root / "examples/solution_first.json"));
-    request.include_directories = {root / "lib", root / "brand/example"};
+    request.data = ell::Json::parse(read(example / "data.json"));
+    request.include_directories = {root / "lib", root / "examples/_shared"};
     request.allowed_roots = {root};
-    request.imports = {root / "lib/builtins.ell", root / "brand/example/brand.ell",
-                       root / "brand/example/styles.ell"};
-    request.shell = root / "brand/example/shell.ell";
+    request.imports = {root / "lib/builtins.ell", root / "examples/_shared/theme.ell"};
+    request.shell = root / "examples/_shared/shell.ell";
 
     const auto result = ell::compile(request, resolver);
 
     INFO((result.diagnostics.empty() ? "" : result.diagnostics.front().message));
     REQUIRE(result.ok());
-    CHECK(result.generated.html.find("Northstar Dental") != std::string::npos);
-    CHECK(result.generated.html.find("Reduce the mobile") != std::string::npos);
+    CHECK(result.generated.html.find("Hello, Avery") != std::string::npos);
+    CHECK(result.generated.html.find("Research &amp; Design &lt;Studio&gt;") != std::string::npos);
     CHECK(result.generated.html.find("Unsubscribe") != std::string::npos);
     CHECK(result.generated.html.find("@{") == std::string::npos);
-    CHECK(result.generated.html == read(root / "examples/solution_first.html"));
+    CHECK(result.generated.html == read(example / "message.html"));
 }
 
-TEST_CASE("all standard components compile to the component gallery golden") {
+TEST_CASE("CSS inlining example compiles to its golden") {
     const auto root = std::filesystem::path{ELL_SOURCE_DIR};
-    const auto gallery = root / "examples/component_gallery";
+    const auto example = root / "examples/09-css-inlining";
     const auto read = [](const std::filesystem::path& path) {
         std::ifstream stream(path, std::ios::binary);
         return std::string{std::istreambuf_iterator<char>{stream}, {}};
     };
     ell::DiskFileResolver resolver;
     ell::CompilationRequest request;
-    request.entry_path = gallery / "gallery.ell";
+    request.entry_path = example / "message.ell";
     request.source = read(request.entry_path);
-    request.data = ell::Json::parse(read(gallery / "gallery.json"));
-    request.include_directories = {root / "lib", root / "brand/example"};
+    request.data = ell::Json::parse(read(example / "data.json"));
+    request.include_directories = {root / "lib", root / "examples/_shared"};
     request.allowed_roots = {root};
-    request.imports = {root / "lib/builtins.ell", root / "brand/example/brand.ell",
-                       root / "brand/example/styles.ell"};
+    request.imports = {root / "lib/builtins.ell", root / "examples/_shared/theme.ell"};
+    request.shell = root / "examples/_shared/shell.ell";
 
     const auto result = ell::compile(request, resolver);
 
     INFO((result.diagnostics.empty() ? "" : result.diagnostics.front().message));
     REQUIRE(result.ok());
-    auto golden = read(gallery / "gallery.html");
-    if (golden.ends_with('\n')) golden.pop_back();
-    CHECK(result.generated.html == golden);
+    CHECK(result.generated.html == read(example / "message.html"));
     CHECK(result.generated.html.find("<style>") == std::string::npos);
-    CHECK(result.generated.html.find("class=\"gallery-card\" style=") != std::string::npos);
+    CHECK(result.generated.html.find("<section style=\"background: #eff6ff;") != std::string::npos);
 }

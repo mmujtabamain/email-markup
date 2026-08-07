@@ -1,0 +1,4 @@
+{
+  "release": { "version": "3.1", "summary": "Faster exports and clearer audit logs" },
+  "unsubscribe_url": "https://example.test/unsubscribe/css-inlining"
+}

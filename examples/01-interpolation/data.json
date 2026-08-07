@@ -1,0 +1,6 @@
+{
+  "recipient": { "first_name": "Avery" },
+  "business": { "name": "Example Company" },
+  "project": { "name": "Research & Design <Studio>" },
+  "unsubscribe_url": "https://example.test/unsubscribe/interpolation"
+}

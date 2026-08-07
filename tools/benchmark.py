@@ -69,20 +69,19 @@ def build_latency(binary: Path, root: Path, iterations: int) -> list[float]:
     with tempfile.TemporaryDirectory(prefix="ell-build-benchmark-") as directory:
         project = Path(directory)
         (project / "message.ell").write_text(
-            (root / "examples/solution_first.ell").read_text(encoding="utf-8"), encoding="utf-8"
+            (root / "examples/09-css-inlining/message.ell").read_text(encoding="utf-8"), encoding="utf-8"
         )
         (project / "data.json").write_text(
-            (root / "examples/solution_first.json").read_text(encoding="utf-8"), encoding="utf-8"
+            (root / "examples/09-css-inlining/data.json").read_text(encoding="utf-8"), encoding="utf-8"
         )
         (project / "ell.json").write_text(json.dumps({
-            "include": [str(root / "lib"), str(root / "brand/example")],
+            "include": [str(root / "lib"), str(root / "examples/_shared")],
             "imports": [
                 str(root / "lib/builtins.ell"),
-                str(root / "brand/example/brand.ell"),
-                str(root / "brand/example/styles.ell"),
+                str(root / "examples/_shared/theme.ell"),
             ],
             "data": "data.json",
-            "shell": str(root / "brand/example/shell.ell"),
+            "shell": str(root / "examples/_shared/shell.ell"),
             "out": "out",
         }), encoding="utf-8")
         for _ in range(iterations):
@@ -160,7 +159,7 @@ def main() -> int:
     build = (arguments.build or root / "build/release/bin").resolve()
     if arguments.iterations < 5:
         parser.error("--iterations must be at least 5")
-    source = root / "examples/component_gallery/gallery.ell"
+    source = root / "examples/09-css-inlining/message.ell"
     cli = command_latency(build / "ellc", source, arguments.iterations)
     project_build = build_latency(build / "ellc", root, arguments.iterations)
     benchmark_root = root / "build"

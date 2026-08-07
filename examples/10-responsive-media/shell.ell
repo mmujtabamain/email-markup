@@ -1,0 +1,7 @@
+@Include("../_shared/theme.ell");
+
+@Media("(max-width: 600px)")
+  .summary-column { display: block !important; width: 100% !important; }
+@/Media
+
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0;padding:0;"><div style="background:@{token.background};padding:32px 14px;font-family:Arial,sans-serif;"><div style="max-width:600px;margin:0 auto;background:@{token.surface};border:1px solid @{token.border};"><main style="padding:32px;color:@{token.ink};font-size:15px;line-height:1.65;">@Slot(default);</main><footer style="padding:20px 32px;border-top:1px solid @{token.hairline};color:@{token.muted};font-size:12px;">This is an ELL example email. <a href="@{unsubscribe_url}" style="color:@{token.accent};">Unsubscribe</a></footer></div></div></body></html>

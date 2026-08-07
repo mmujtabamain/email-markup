@@ -82,9 +82,9 @@ HTML elements during compilation. Existing inline declarations take precedence.
 Validated `@Media` rules remain in the final shell; non-media style blocks are
 removed before deliverability lint.
 
-See `examples/solution_first.ell` for a branded message and
-`examples/component_gallery/gallery.ell` for every standard component plus CSS
-class inlining. Both have JSON fixtures and checked-in final-HTML goldens.
+The `examples/` directory contains ten unbranded, single-feature examples with
+JSON fixtures and checked-in final-HTML output. Run `./examples/compile.sh` (or
+`examples\compile.bat` on Windows) to regenerate all ten.
 
 ## VS Code
 

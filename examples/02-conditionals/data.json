@@ -1,0 +1,5 @@
+{
+  "account": { "trial_days": 5 },
+  "billing_url": "https://example.test/billing",
+  "unsubscribe_url": "https://example.test/unsubscribe/conditionals"
+}

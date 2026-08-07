@@ -15,12 +15,13 @@ endif()
 
 set(WORK_DIR "${BUILD_DIR}/installed-contract")
 file(MAKE_DIRECTORY "${WORK_DIR}")
-file(COPY "${SOURCE_DIR}/examples/solution_first.ell" DESTINATION "${WORK_DIR}")
-file(COPY "${SOURCE_DIR}/examples/solution_first.json" DESTINATION "${WORK_DIR}")
+file(MAKE_DIRECTORY "${WORK_DIR}/examples")
+file(COPY "${SOURCE_DIR}/examples/01-interpolation" DESTINATION "${WORK_DIR}/examples")
+file(COPY "${SOURCE_DIR}/examples/_shared" DESTINATION "${WORK_DIR}/examples")
 execute_process(
-  COMMAND "${INSTALLED_ELLC}" compile "${WORK_DIR}/solution_first.ell"
-          --data-file "${WORK_DIR}/solution_first.json"
-          -o "${WORK_DIR}/solution_first.html"
+  COMMAND "${INSTALLED_ELLC}" compile "${WORK_DIR}/examples/01-interpolation/message.ell"
+          --data-file "${WORK_DIR}/examples/01-interpolation/data.json"
+          -o "${WORK_DIR}/message.html"
   RESULT_VARIABLE COMPILE_RESULT
   ERROR_VARIABLE COMPILE_ERROR
 )
@@ -29,8 +30,8 @@ if(NOT COMPILE_RESULT EQUAL 0)
 endif()
 execute_process(
   COMMAND "${CMAKE_COMMAND}" -E compare_files
-          "${WORK_DIR}/solution_first.html"
-          "${SOURCE_DIR}/examples/solution_first.html"
+          "${WORK_DIR}/message.html"
+          "${SOURCE_DIR}/examples/01-interpolation/message.html"
   RESULT_VARIABLE COMPARE_RESULT
 )
 if(NOT COMPARE_RESULT EQUAL 0)

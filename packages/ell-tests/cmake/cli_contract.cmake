@@ -1,10 +1,11 @@
 set(WORK_DIR "${BINARY_DIR}/cli-contract")
 file(MAKE_DIRECTORY "${WORK_DIR}")
-file(READ "${SOURCE_DIR}/examples/solution_first.json" DATA_JSON)
+set(EXAMPLE_DIR "${SOURCE_DIR}/examples/01-interpolation")
+file(READ "${EXAMPLE_DIR}/data.json" DATA_JSON)
 
 execute_process(
-  COMMAND "${ELLC}" compile "${SOURCE_DIR}/examples/solution_first.ell"
-          --data-file "${SOURCE_DIR}/examples/solution_first.json"
+  COMMAND "${ELLC}" compile "${EXAMPLE_DIR}/message.ell"
+          --data-file "${EXAMPLE_DIR}/data.json"
           -o "${WORK_DIR}/file.html"
   RESULT_VARIABLE FILE_RESULT
   ERROR_VARIABLE FILE_ERROR
@@ -14,7 +15,7 @@ if(NOT FILE_RESULT EQUAL 0)
 endif()
 
 execute_process(
-  COMMAND "${ELLC}" compile "${SOURCE_DIR}/examples/solution_first.ell"
+  COMMAND "${ELLC}" compile "${EXAMPLE_DIR}/message.ell"
           --data-json "${DATA_JSON}"
           -o "${WORK_DIR}/direct.html"
   RESULT_VARIABLE DIRECT_RESULT
@@ -25,9 +26,9 @@ if(NOT DIRECT_RESULT EQUAL 0)
 endif()
 
 execute_process(
-  COMMAND "${ELLC}" compile "${SOURCE_DIR}/examples/solution_first.ell"
+  COMMAND "${ELLC}" compile "${EXAMPLE_DIR}/message.ell"
           --data-stdin -o "${WORK_DIR}/stdin.html"
-  INPUT_FILE "${SOURCE_DIR}/examples/solution_first.json"
+  INPUT_FILE "${EXAMPLE_DIR}/data.json"
   RESULT_VARIABLE STDIN_RESULT
   ERROR_VARIABLE STDIN_ERROR
 )
@@ -50,8 +51,8 @@ if(NOT DIRECT_COMPARE EQUAL 0 OR NOT STDIN_COMPARE EQUAL 0)
 endif()
 
 execute_process(
-  COMMAND "${ELLC}" compile "${SOURCE_DIR}/examples/solution_first.ell"
-          --data-json "{}" --data-file "${SOURCE_DIR}/examples/solution_first.json"
+  COMMAND "${ELLC}" compile "${EXAMPLE_DIR}/message.ell"
+          --data-json "{}" --data-file "${EXAMPLE_DIR}/data.json"
           -o "${WORK_DIR}/conflict.html"
   RESULT_VARIABLE CONFLICT_RESULT
   OUTPUT_QUIET ERROR_QUIET

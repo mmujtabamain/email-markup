@@ -1,0 +1,5 @@
+{
+  "invoice": { "subtotal": 96.5, "tax": 12.25, "amount_paid": 40 },
+  "payment_url": "https://example.test/invoices/A-1048",
+  "unsubscribe_url": "https://example.test/unsubscribe/expressions"
+}

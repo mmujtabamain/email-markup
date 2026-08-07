@@ -1,0 +1,4 @@
+{
+  "notice": { "title": "Scheduled maintenance", "window": "02:00-02:30 UTC" },
+  "unsubscribe_url": "https://example.test/unsubscribe/includes"
+}

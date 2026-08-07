@@ -19,7 +19,7 @@ python3 tools/benchmark.py --iterations 30
 | 900 KB near-limit `ellc compile`, p95 | 1,500 ms |
 | Peak child RSS across the benchmark | 64 MiB |
 
-The representative input is `examples/component_gallery/gallery.ell` with the
+The representative input is `examples/09-css-inlining/message.ell` with the
 standard library and JSON fixture. The maximum workload generates a 900,000-byte
 source beneath the project root, below the 1 MiB source limit. CLI timing includes
 process launch and atomic output. LSP timing keeps one server alive and measures

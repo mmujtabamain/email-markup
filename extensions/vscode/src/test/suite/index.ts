@@ -31,8 +31,8 @@ export async function run(): Promise<void> {
   assert.equal(extension.isActive, true);
 
   const workspace = vscode.workspace.workspaceFolders?.[0];
-  assert.ok(workspace, "component-gallery workspace opened");
-  const uri = vscode.Uri.joinPath(workspace.uri, "gallery.ell");
+  assert.ok(workspace, "CSS-inlining example workspace opened");
+  const uri = vscode.Uri.joinPath(workspace.uri, "message.ell");
   const document = await vscode.workspace.openTextDocument(uri);
   const editor = await vscode.window.showTextDocument(document);
   const source = document.getText();
@@ -42,14 +42,14 @@ export async function run(): Promise<void> {
     return list.items.some((item) => label(item) === "@Paragraph");
   }, "bundled ell-lsp did not provide component completion");
 
-  const htmlOffset = source.indexOf("<main") + 1;
+  const htmlOffset = source.indexOf("<section") + 1;
   const htmlItems = await completions(document, htmlOffset);
   assert.ok(htmlItems.items.some((item) => label(item) === "div"), "HTML completion is passed through");
 
-  const classMarker = "<main class=\"gallery-card";
-  const classOffset = source.indexOf(classMarker) + classMarker.length;
-  const classItems = await completions(document, classOffset);
-  assert.ok(classItems.items.some((item) => label(item) === "gallery-card"), "local CSS classes complete in class attributes");
+  const styleMarker = "style: \"release-card";
+  const styleOffset = source.indexOf(styleMarker) + "style: \"".length;
+  const styleItems = await completions(document, styleOffset);
+  assert.ok(styleItems.items.some((item) => label(item) === "release-card"), "ELL style bundles complete in style arguments");
 
   const cssOffset = source.indexOf("background: #") + "background: ".length;
   const cssItems = await completions(document, cssOffset);

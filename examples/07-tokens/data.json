@@ -1,0 +1,4 @@
+{
+  "deployment": { "environment": "Production", "version": "2.4.0" },
+  "unsubscribe_url": "https://example.test/unsubscribe/tokens"
+}

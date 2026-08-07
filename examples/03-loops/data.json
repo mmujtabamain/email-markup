@@ -1,0 +1,11 @@
+{
+  "order": {
+    "number": "A-1048",
+    "items": [
+      { "name": "Desk calendar", "quantity": 1 },
+      { "name": "Fine-tip pens", "quantity": 3 },
+      { "name": "Document wallet", "quantity": 2 }
+    ]
+  },
+  "unsubscribe_url": "https://example.test/unsubscribe/loops"
+}
