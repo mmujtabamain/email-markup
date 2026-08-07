@@ -6,6 +6,7 @@ await build({
   bundle: true,
   external: ["vscode"],
   format: "cjs",
+  mainFields: ["module", "main"],
   platform: "node",
   target: "node20",
   sourcemap: true,

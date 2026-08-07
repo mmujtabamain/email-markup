@@ -33,7 +33,11 @@ add_custom_command(
     TARGET ell-lsp POST_BUILD
     COMMAND "${CMAKE_COMMAND}" -E make_directory "${ELL_VSCODE_SERVER_DIR}"
     COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:ell-lsp>" "${ELL_VSCODE_SERVER_DIR}/"
-    COMMENT "Staging ell-lsp for the local VS Code extension package"
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory
+            "${CMAKE_SOURCE_DIR}/lib" "${ELL_VSCODE_SERVER_DIR}/lib"
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory
+            "${CMAKE_SOURCE_DIR}/brand" "${ELL_VSCODE_SERVER_DIR}/brand"
+    COMMENT "Staging ell-lsp and its runtime assets for the VS Code extension package"
 )
 
 install(TARGETS ell-lsp RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")

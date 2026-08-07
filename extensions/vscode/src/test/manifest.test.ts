@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
@@ -19,6 +19,27 @@ test("extension source enforces trust and a script-free preview", () => {
   assert.match(source, /workspace\.isTrusted/);
   assert.match(source, /enableScripts: false/);
   assert.match(source, /localResourceRoots: \[\]/);
+  assert.match(source, /typeof result\.html !== "string"/);
+});
+
+test("production bundle has no unresolved language-service module imports", () => {
+  const bundle = readFileSync(path.join(root, "dist/extension.js"), "utf8");
+  assert.doesNotMatch(bundle, /require\(["']\.\/parser\/cssParser["']\)/);
+  assert.doesNotMatch(bundle, /require\(["']vscode-languageclient\/node["']\)/);
+});
+
+test("every staged language server includes its runtime assets", () => {
+  const serverRoot = path.join(root, "server");
+  const platforms = readdirSync(serverRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+  for (const platform of platforms) {
+    const staged = path.join(serverRoot, platform);
+    assert.doesNotThrow(() => readFileSync(path.join(staged, "lib/builtins.ell")));
+    assert.doesNotThrow(() => readFileSync(path.join(staged, "brand/example/brand.ell")));
+    assert.doesNotThrow(() => readFileSync(path.join(staged, "brand/example/styles.ell")));
+    assert.doesNotThrow(() => readFileSync(path.join(staged, "brand/example/shell.ell")));
+  }
 });
 
 test("generated grammar records the shared lexical source", () => {

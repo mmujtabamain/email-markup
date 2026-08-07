@@ -7,3 +7,5 @@ dist/
 *.vsix
 extensions/vscode/server/*/ell-lsp
 extensions/vscode/server/*/ell-lsp.exe
+extensions/vscode/server/*/lib/
+extensions/vscode/server/*/brand/

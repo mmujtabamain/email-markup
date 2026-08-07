@@ -623,7 +623,7 @@ private:
             return;
         }
         respond(id, {{"version", version},
-                     {"html", result.ok() ? Json{result.generated.html} : Json{}},
+                     {"html", result.ok() ? Json(result.generated.html) : Json{}},
                      {"diagnostics", lsp_diagnostics(result, found->second)}});
     }
 
