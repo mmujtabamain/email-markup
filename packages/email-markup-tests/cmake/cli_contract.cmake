@@ -50,6 +50,36 @@ if(NOT DIRECT_COMPARE EQUAL 0 OR NOT STDIN_COMPARE EQUAL 0)
   message(FATAL_ERROR "JSON transports produced different HTML")
 endif()
 
+set(PROTOCOL_REQUEST
+    "{\"protocol\":\"email-markup.compile\",\"version\":1,\"entry_path\":\"/message.em\",\"source\":\"@Include(\\\"card.em\\\"); @Card @/Card\",\"files\":[{\"path\":\"/library/card.em\",\"source\":\"@DefineComponent(name: \\\"Card\\\") @Template <p>Hello @{business.name}</p> @/Template @/DefineComponent\"}],\"include_directories\":[\"/library\"],\"imports\":[],\"shell\":{\"path\":\"/shell.em\",\"source\":\"<!doctype html><html><body>@Slot(default); <a href=\\\"@{unsubscribe_url}\\\">Unsubscribe</a></body></html>\"},\"recipient\":{\"business\":{\"name\":\"Acme & Co\"},\"unsubscribe_url\":\"https://example.test/unsubscribe\"}}")
+file(WRITE "${WORK_DIR}/request.json" "${PROTOCOL_REQUEST}")
+execute_process(
+  COMMAND "${EMC}" compile --request-stdin
+  INPUT_FILE "${WORK_DIR}/request.json"
+  RESULT_VARIABLE PROTOCOL_RESULT
+  OUTPUT_VARIABLE PROTOCOL_OUTPUT
+  ERROR_VARIABLE PROTOCOL_ERROR
+)
+if(NOT PROTOCOL_RESULT EQUAL 0 OR
+   NOT PROTOCOL_OUTPUT MATCHES "\\\"success\\\":true" OR
+   NOT PROTOCOL_OUTPUT MATCHES "Acme &amp; Co" OR
+   NOT PROTOCOL_OUTPUT MATCHES "\\\"/library/card.em\\\"")
+  message(FATAL_ERROR "request protocol compile failed: ${PROTOCOL_ERROR}\n${PROTOCOL_OUTPUT}")
+endif()
+
+file(WRITE "${WORK_DIR}/bad-request.json"
+     "{\"protocol\":\"email-markup.compile\",\"version\":99}")
+execute_process(
+  COMMAND "${EMC}" compile --request-stdin
+  INPUT_FILE "${WORK_DIR}/bad-request.json"
+  RESULT_VARIABLE BAD_PROTOCOL_RESULT
+  OUTPUT_VARIABLE BAD_PROTOCOL_OUTPUT
+)
+if(NOT BAD_PROTOCOL_RESULT EQUAL 2 OR
+   NOT BAD_PROTOCOL_OUTPUT MATCHES "\\\"code\\\":\\\"EMPROTO\\\"")
+  message(FATAL_ERROR "invalid protocol input did not return JSON and exit 2")
+endif()
+
 execute_process(
   COMMAND "${EMC}" compile "${EXAMPLE_DIR}/message.em"
           --data-json "{}" --data-file "${EXAMPLE_DIR}/data.json"

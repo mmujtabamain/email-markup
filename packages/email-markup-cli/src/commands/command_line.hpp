@@ -31,6 +31,7 @@ namespace email_markup::cli
         std::optional<std::string> data_json;
         std::optional<std::filesystem::path> data_file;
         bool data_stdin{};
+        bool request_stdin{};
         bool json{};
         bool write{};
         email_markup::LintRole lint_role{email_markup::LintRole::content};

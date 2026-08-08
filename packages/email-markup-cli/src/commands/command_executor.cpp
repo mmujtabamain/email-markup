@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <set>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 #include <fmt/core.h>
@@ -25,6 +26,59 @@ namespace email_markup::cli
 
         constexpr int success = 0;
         constexpr int compilation_failed = 1;
+        constexpr int protocol_failed = 2;
+        constexpr std::string_view protocol = "email-markup.compile";
+        constexpr int protocol_version = 1;
+
+        Json protocol_error(const std::string &message)
+        {
+            return {{"protocol", protocol},
+                    {"version", protocol_version},
+                    {"compiler_version", email_markup::version()},
+                    {"success", false},
+                    {"html", ""},
+                    {"dependencies", Json::array()},
+                    {"diagnostics", Json::array({{{"code", "EMPROTO"},
+                                                   {"severity", "error"},
+                                                   {"message", message}}})}};
+        }
+
+        std::filesystem::path required_virtual_path(const Json &value,
+                                                    const std::string_view field)
+        {
+            if (!value.is_string())
+                throw std::invalid_argument(std::string{field} + " must be a string");
+            const auto path = email_markup::normalize_virtual_path(value.get<std::string>());
+            if (!path || path->extension() != ".em")
+                throw std::invalid_argument(std::string{field} +
+                                            " must be an absolute virtual .em path");
+            return *path;
+        }
+
+        std::vector<std::filesystem::path> virtual_paths(const Json &request,
+                                                         const std::string_view field,
+                                                         const bool require_em)
+        {
+            const auto found = request.find(field);
+            if (found == request.end())
+                return {};
+            if (!found->is_array())
+                throw std::invalid_argument(std::string{field} + " must be an array");
+            std::vector<std::filesystem::path> paths;
+            for (const auto &value : *found)
+            {
+                if (!value.is_string())
+                    throw std::invalid_argument(std::string{field} +
+                                                " entries must be strings");
+                const auto path = email_markup::normalize_virtual_path(
+                    value.get<std::string>());
+                if (!path || (require_em && path->extension() != ".em"))
+                    throw std::invalid_argument(std::string{field} +
+                                                " contains an invalid virtual path");
+                paths.push_back(*path);
+            }
+            return paths;
+        }
     }
 
     CommandExecutor::CommandExecutor(const platform::System &system,
@@ -58,6 +112,8 @@ namespace email_markup::cli
 
     int CommandExecutor::compile(const Options &options) const
     {
+        if (options.request_stdin)
+            return compile_request();
         const CompilationSession session{options, assets_, system_};
         const auto result = session.compile(options.input);
         DiagnosticReporter{options.json}.print(result);
@@ -65,6 +121,75 @@ namespace email_markup::cli
             return compilation_failed;
         system_.write_text_file_atomically(*options.output, result.generated.html);
         return success;
+    }
+
+    int CommandExecutor::compile_request() const
+    {
+        try
+        {
+            const auto input = system_.read_standard_input();
+            if (input.size() > 1024 * 1024)
+                throw std::invalid_argument("request exceeds the 1 MiB protocol limit");
+            const auto envelope = Json::parse(input);
+            if (!envelope.is_object())
+                throw std::invalid_argument("request must be a JSON object");
+            if (envelope.value("protocol", std::string{}) != protocol)
+                throw std::invalid_argument("unsupported request protocol");
+            if (envelope.value("version", 0) != protocol_version)
+                throw std::invalid_argument("unsupported request protocol version");
+
+            email_markup::CompilationRequest request;
+            request.entry_path = required_virtual_path(envelope.at("entry_path"),
+                                                       "entry_path");
+            request.source = envelope.at("source").get<std::string>();
+            request.include_directories = virtual_paths(envelope, "include_directories", false);
+            request.allowed_roots = request.include_directories;
+            request.allowed_roots.emplace_back("/");
+            request.imports = virtual_paths(envelope, "imports", true);
+            request.data = envelope.value("recipient", Json::object());
+            if (!request.data.is_object())
+                throw std::invalid_argument("recipient must be a JSON object");
+
+            std::vector<email_markup::ResolvedFile> files;
+            const auto file_values = envelope.value("files", Json::array());
+            if (!file_values.is_array())
+                throw std::invalid_argument("files must be an array");
+            for (const auto &file : file_values)
+            {
+                if (!file.is_object())
+                    throw std::invalid_argument("files entries must be objects");
+                files.push_back({required_virtual_path(file.at("path"), "files.path"),
+                                 file.at("source").get<std::string>()});
+            }
+            if (const auto shell = envelope.find("shell"); shell != envelope.end())
+            {
+                if (!shell->is_object())
+                    throw std::invalid_argument("shell must be an object");
+                request.shell = required_virtual_path(shell->at("path"), "shell.path");
+                files.push_back({*request.shell, shell->at("source").get<std::string>()});
+            }
+
+            email_markup::MemoryFileResolver resolver{std::move(files),
+                                                       request.limits.maximum_source_bytes};
+            const auto result = email_markup::compile(request, resolver);
+            Json dependencies = Json::array();
+            for (const auto &dependency : result.dependencies)
+                dependencies.push_back(dependency.generic_string());
+            fmt::print("{}\n",
+                       Json{{"protocol", protocol},
+                            {"version", protocol_version},
+                            {"compiler_version", email_markup::version()},
+                            {"success", result.ok()},
+                            {"html", result.ok() ? result.generated.html : ""},
+                            {"dependencies", dependencies},
+                            {"diagnostics", DiagnosticReporter::serialize(result)}}.dump());
+            return result.ok() ? success : compilation_failed;
+        }
+        catch (const std::exception &error)
+        {
+            fmt::print("{}\n", protocol_error(error.what()).dump());
+            return protocol_failed;
+        }
     }
 
     int CommandExecutor::check_or_lint(const Options &options) const

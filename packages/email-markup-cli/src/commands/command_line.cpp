@@ -50,8 +50,6 @@ namespace email_markup::cli
         int index = 2;
         if (index < argc && argv[index][0] != '-')
             options.input = argv[index++];
-        if (requires_input(options.command) && options.input.empty())
-            throw std::invalid_argument("command requires an input file");
         if (options.command == Command::build && options.input.empty())
             options.input = ".";
 
@@ -79,6 +77,8 @@ namespace email_markup::cli
                 options.data_file = value();
             else if (argument == "--data-stdin")
                 options.data_stdin = true;
+            else if (argument == "--request-stdin")
+                options.request_stdin = true;
             else if (argument == "--json")
                 options.json = true;
             else if (argument == "--write")
@@ -103,7 +103,15 @@ namespace email_markup::cli
         if (data_sources > 1)
             throw std::invalid_argument(
                 "--data-json, --data-file, and --data-stdin are mutually exclusive");
-        if (options.command == Command::compile && !options.output)
+        if (options.request_stdin &&
+            (options.command != Command::compile || !options.input.empty() || options.output ||
+             !options.includes.empty() || !options.imports.empty() || options.shell ||
+             options.data_json || options.data_file || options.data_stdin || options.json))
+            throw std::invalid_argument(
+                "--request-stdin is exclusive to `emc compile --request-stdin`");
+        if (requires_input(options.command) && options.input.empty() && !options.request_stdin)
+            throw std::invalid_argument("command requires an input file");
+        if (options.command == Command::compile && !options.output && !options.request_stdin)
             throw std::invalid_argument("compile requires -o <file>");
         return options;
     }
@@ -115,6 +123,7 @@ namespace email_markup::cli
                    "Usage:\n"
                    "  emc build [dir] [options]\n"
                    "  emc compile <file> -o <file> [options]\n"
+                   "  emc compile --request-stdin\n"
                    "  emc check <file> [options]\n"
                    "  emc lint <file> [--role content|shell] [options]\n"
                    "  emc fmt <file> [--write]\n"
@@ -126,6 +135,7 @@ namespace email_markup::cli
                    "  --data-json <json>  Compile with a JSON object\n"
                    "  --data-stdin        Read the JSON object from standard input\n"
                    "  --data-file <file>  Read the JSON object from a file\n"
+                   "  --request-stdin      Compile a versioned virtual-source JSON request\n"
                    "  --shell <file>      Select the final HTML shell\n"
                    "  --json              Emit machine-readable diagnostics\n",
                    email_markup::version());

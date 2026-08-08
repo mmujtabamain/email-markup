@@ -23,6 +23,7 @@ namespace email_markup::cli
 
     private:
         [[nodiscard]] int compile(const Options &options) const;
+        [[nodiscard]] int compile_request() const;
         [[nodiscard]] int check_or_lint(const Options &options) const;
         [[nodiscard]] int format(const Options &options) const;
         [[nodiscard]] int build(const Options &options) const;
