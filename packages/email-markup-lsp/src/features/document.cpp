@@ -65,7 +65,8 @@ namespace email_markup::lsp
             {
                 const auto found = std::find_if(
                     stack.rbegin(), stack.rend(),
-                    [&](const auto &candidate) { return candidate.name == token.name; });
+                    [&](const auto &candidate)
+                    { return candidate.name == token.name; });
                 if (found == stack.rend())
                     continue;
                 const auto start = text::position_at(open->text, found->range.start);

@@ -39,8 +39,8 @@ namespace email_markup::cli
                     {"html", ""},
                     {"dependencies", Json::array()},
                     {"diagnostics", Json::array({{{"code", "EMPROTO"},
-                                                   {"severity", "error"},
-                                                   {"message", message}}})}};
+                                                  {"severity", "error"},
+                                                  {"message", message}}})}};
         }
 
         std::filesystem::path required_virtual_path(const Json &value,
@@ -179,7 +179,7 @@ namespace email_markup::cli
             }
 
             email_markup::MemoryFileResolver resolver{std::move(files),
-                                                       request.limits.maximum_source_bytes};
+                                                      request.limits.maximum_source_bytes};
             const auto result = email_markup::compile(request, resolver);
             Json dependencies = Json::array();
             for (const auto &dependency : result.dependencies)
@@ -191,7 +191,8 @@ namespace email_markup::cli
                             {"success", result.ok()},
                             {"html", result.ok() ? result.generated.html : ""},
                             {"dependencies", dependencies},
-                            {"diagnostics", DiagnosticReporter::serialize(result)}}.dump());
+                            {"diagnostics", DiagnosticReporter::serialize(result)}}
+                           .dump());
             return result.ok() ? success : compilation_failed;
         }
         catch (const std::exception &error)
@@ -210,8 +211,8 @@ namespace email_markup::cli
         if (lint_shell && result.ok())
         {
             auto findings = email_markup::lint_html(result.generated.html,
-                                                     email_markup::LintRole::shell,
-                                                     {result.snapshot->entry, 0, 0});
+                                                    email_markup::LintRole::shell,
+                                                    {result.snapshot->entry, 0, 0});
             result.diagnostics.insert(result.diagnostics.end(), findings.begin(), findings.end());
         }
         DiagnosticReporter{options.json}.print(result);

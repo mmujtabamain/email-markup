@@ -19,12 +19,12 @@ models while preserving the decisions already made about future macro syntax.
 
 Compiler expressions and deferred engine text use visibly different forms:
 
-| Form | Owner | Meaning |
-| --- | --- | --- |
-| `@{ expr }` | Email Markup compiler | Evaluate immediately from props, loop variables, tokens and compile data |
-| `@Name( … )` | Email Markup compiler | Component or compiler construct |
-| `@[ payload ]` | selected engine definition | Bare deferred macro |
-| `@Name[ … ]` | selected engine definition | Named deferred macro |
+| Form           | Owner                      | Meaning                                                                  |
+| -------------- | -------------------------- | ------------------------------------------------------------------------ |
+| `@{ expr }`    | Email Markup compiler      | Evaluate immediately from props, loop variables, tokens and compile data |
+| `@Name( … )`   | Email Markup compiler      | Component or compiler construct                                          |
+| `@[ payload ]` | selected engine definition | Bare deferred macro                                                      |
+| `@Name[ … ]`   | selected engine definition | Named deferred macro                                                     |
 
 With no square-bracket forms, compilation produces final HTML. Once this
 extension exists, a document containing square-bracket forms produces an HTML
@@ -87,14 +87,14 @@ operands.
 
 The optional validator surface is deliberately small:
 
-| Declaration | Check |
-| --- | --- |
-| `value` or `value: raw` | none |
-| `value: int` | final text is a signed integer |
-| `value: decimal` | final text is a signed decimal containing a decimal point |
-| `value: number` | final text is an integer or decimal |
-| `value: bool` | final text is `true` or `false` |
-| `value: name` | final text matches `[A-Za-z_][A-Za-z0-9_]*` |
+| Declaration             | Check                                                     |
+| ----------------------- | --------------------------------------------------------- |
+| `value` or `value: raw` | none                                                      |
+| `value: int`            | final text is a signed integer                            |
+| `value: decimal`        | final text is a signed decimal containing a decimal point |
+| `value: number`         | final text is an integer or decimal                       |
+| `value: bool`           | final text is `true` or `false`                           |
+| `value: name`           | final text matches `[A-Za-z_][A-Za-z0-9_]*`               |
 
 `int`, `decimal`, and `number` may carry range/comparison constraints such as
 `size: int(1..100) = 20`. A validator checks the final interpolated spelling but
@@ -103,10 +103,10 @@ parameter optional and `= value` provides a default; neither implies a type.
 
 Binding is determined only by declared parameter count:
 
-| Declaration | Binding |
-| --- | --- |
-| zero parameters | bracket payload must be empty |
-| exactly one parameter | entire payload binds positionally |
+| Declaration            | Binding                                           |
+| ---------------------- | ------------------------------------------------- |
+| zero parameters        | bracket payload must be empty                     |
+| exactly one parameter  | entire payload binds positionally                 |
 | two or more parameters | `name: value` entries separated by framing commas |
 
 For a one-parameter macro, `@[a:b]` is the value `a:b`; the colon is never

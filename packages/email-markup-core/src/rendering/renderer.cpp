@@ -180,7 +180,8 @@ namespace email_markup::detail
                     if (output_limited_)
                         return;
                     std::visit(
-                        [&](const auto &value) { render_node(value, *node, scope, depth); },
+                        [&](const auto &value)
+                        { render_node(value, *node, scope, depth); },
                         node->value);
                 }
             }
@@ -350,11 +351,11 @@ namespace email_markup::detail
                     }
                     const auto declaration = std::find_if(
                         definition.props.begin(), definition.props.end(),
-                        [&](const auto &prop) { return prop.name == argument.name; });
+                        [&](const auto &prop)
+                        { return prop.name == argument.name; });
                     if (declaration == definition.props.end())
                     {
-                        diagnostic("EM0722", "@" + call.name + " has no prop “" +
-                                                   argument.name + "”.",
+                        diagnostic("EM0722", "@" + call.name + " has no prop “" + argument.name + "”.",
                                    argument.range);
                         continue;
                     }
@@ -379,8 +380,7 @@ namespace email_markup::detail
                     }
                     else
                     {
-                        diagnostic("EM0723", "@" + call.name + " requires prop “" +
-                                                   declaration.name + "”.",
+                        diagnostic("EM0723", "@" + call.name + " requires prop “" + declaration.name + "”.",
                                    node.range, Severity::error,
                                    {{declaration.range, "Required prop is declared here."}});
                     }
@@ -393,8 +393,7 @@ namespace email_markup::detail
                         fill && !fill->reference)
                     {
                         if (nested.slots.contains(fill->name))
-                            diagnostic("EM0724", "Slot “" + fill->name +
-                                                       "” is filled more than once.",
+                            diagnostic("EM0724", "Slot “" + fill->name + "” is filled more than once.",
                                        child->range);
                         nested.slots[fill->name] = {fill->body, scope.evaluation};
                     }
@@ -409,25 +408,24 @@ namespace email_markup::detail
                 {
                     const auto declaration = std::find_if(
                         definition.slots.begin(), definition.slots.end(),
-                        [&](const auto &slot) { return slot.name == name; });
+                        [&](const auto &slot)
+                        { return slot.name == name; });
                     if (declaration == definition.slots.end())
-                        diagnostic("EM0725", "@" + call.name + " has no slot “" + name +
-                                                   "”.",
+                        diagnostic("EM0725", "@" + call.name + " has no slot “" + name + "”.",
                                    node.range);
                 }
                 for (const auto &declaration : definition.slots)
                     if (declaration.required && !nested.slots.contains(declaration.name))
-                        diagnostic("EM0726", "@" + call.name + " requires slot “" +
-                                                   declaration.name + "”.",
+                        diagnostic("EM0726", "@" + call.name + " requires slot “" + declaration.name + "”.",
                                    node.range);
                 if (definition.slots.empty() && !call.children.empty())
                     diagnostic("EM0727", "@" + call.name + " does not accept a body.",
                                node.range);
                 if (!definition.slots.empty() && call.self_closing &&
                     std::any_of(definition.slots.begin(), definition.slots.end(),
-                                [](const auto &slot) { return slot.required; }))
-                    diagnostic("EM0728", "@" + call.name +
-                                               " cannot be self-closing because it has required slots.",
+                                [](const auto &slot)
+                                { return slot.required; }))
+                    diagnostic("EM0728", "@" + call.name + " cannot be self-closing because it has required slots.",
                                node.range);
 
                 stack_.push_back({call.name, node.range, definition.range});

@@ -6,13 +6,15 @@
 #include "email-markup/core/data.hpp"
 #include "email-markup/core/expr.hpp"
 
-TEST_CASE("JSON input must be an object") {
+TEST_CASE("JSON input must be an object")
+{
     CHECK(email_markup::parse_data(R"({"name":"Northstar"})", 1024).ok);
     CHECK_FALSE(email_markup::parse_data("[]", 1024).ok);
     CHECK_FALSE(email_markup::parse_data("{", 1024).ok);
 }
 
-TEST_CASE("expressions resolve scope and arithmetic") {
+TEST_CASE("expressions resolve scope and arithmetic")
+{
     const email_markup::Json data = {{"business", {{"rating", 4}, {"name", "Northstar"}}}};
     email_markup::EvaluationContext context;
     context.data = &data;
@@ -25,7 +27,8 @@ TEST_CASE("expressions resolve scope and arithmetic") {
     CHECK(result.value == true);
 }
 
-TEST_CASE("and and or short circuit missing paths") {
+TEST_CASE("and and or short circuit missing paths")
+{
     const email_markup::Json data = email_markup::Json::object();
     email_markup::EvaluationContext context;
     context.data = &data;
@@ -34,7 +37,8 @@ TEST_CASE("and and or short circuit missing paths") {
     CHECK(email_markup::evaluate_expression("true or missing.path", context, {}).ok);
 }
 
-TEST_CASE("expression failures are deterministic") {
+TEST_CASE("expression failures are deterministic")
+{
     const email_markup::Json data = email_markup::Json::object();
     email_markup::EvaluationContext context;
     context.data = &data;

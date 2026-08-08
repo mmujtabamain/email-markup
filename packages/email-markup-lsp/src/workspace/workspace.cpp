@@ -141,7 +141,8 @@ namespace email_markup::lsp
                    {"end", text::position_at(source.text, diagnostic.range.end)}}},
                  {"severity", diagnostic.severity == email_markup::Severity::error
                                   ? 1
-                                  : diagnostic.severity == email_markup::Severity::warning ? 2 : 3},
+                              : diagnostic.severity == email_markup::Severity::warning ? 2
+                                                                                       : 3},
                  {"code", diagnostic.code},
                  {"source", "email-markup"},
                  {"message", diagnostic.message}});

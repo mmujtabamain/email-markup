@@ -14,8 +14,15 @@ export function restoreRemoteImages(html: string): string {
   );
 }
 
-export function previewDocument(html: string, allowRemoteImages: boolean): string {
-  const content = allowRemoteImages ? restoreRemoteImages(html) : protectRemoteImages(html);
-  const imagePolicy = allowRemoteImages ? "img-src https: http: data:;" : "img-src data:;";
+export function previewDocument(
+  html: string,
+  allowRemoteImages: boolean,
+): string {
+  const content = allowRemoteImages
+    ? restoreRemoteImages(html)
+    : protectRemoteImages(html);
+  const imagePolicy = allowRemoteImages
+    ? "img-src https: http: data:;"
+    : "img-src data:;";
   return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; ${imagePolicy} style-src 'unsafe-inline';"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>${content}</body></html>`;
 }

@@ -69,7 +69,8 @@ namespace email_markup::lsp
             const auto &definition = parsed.document.components.at(*component);
             if (const auto prop = std::find_if(
                     definition.props.begin(), definition.props.end(),
-                    [&](const auto &candidate) { return candidate.name == word; });
+                    [&](const auto &candidate)
+                    { return candidate.name == word; });
                 prop != definition.props.end())
             {
                 location(analysis::identifier_range(open->text, prop->range, prop->name));
@@ -77,7 +78,8 @@ namespace email_markup::lsp
             }
             if (const auto slot = std::find_if(
                     definition.slots.begin(), definition.slots.end(),
-                    [&](const auto &candidate) { return candidate.name == word; });
+                    [&](const auto &candidate)
+                    { return candidate.name == word; });
                 slot != definition.slots.end())
             {
                 location(analysis::identifier_range(open->text, slot->range, slot->name));
@@ -92,7 +94,8 @@ namespace email_markup::lsp
             {
                 if (const auto prop = std::find_if(
                         component->second.props.begin(), component->second.props.end(),
-                        [&](const auto &candidate) { return candidate.name == word; });
+                        [&](const auto &candidate)
+                        { return candidate.name == word; });
                     prop != component->second.props.end())
                 {
                     location(analysis::identifier_range(open->text, prop->range, prop->name));
@@ -133,12 +136,14 @@ namespace email_markup::lsp
             component = &parsed.document.components.at(*name);
             const auto found_prop = std::find_if(
                 component->props.begin(), component->props.end(),
-                [&](const auto &candidate) { return candidate.name == word; });
+                [&](const auto &candidate)
+                { return candidate.name == word; });
             if (found_prop != component->props.end())
                 prop = &*found_prop;
             const auto found_slot = std::find_if(
                 component->slots.begin(), component->slots.end(),
-                [&](const auto &candidate) { return candidate.name == word; });
+                [&](const auto &candidate)
+                { return candidate.name == word; });
             if (found_slot != component->slots.end())
                 slot = &*found_slot;
         }
@@ -150,7 +155,8 @@ namespace email_markup::lsp
                 component = &found->second;
                 const auto found_prop = std::find_if(
                     component->props.begin(), component->props.end(),
-                    [&](const auto &candidate) { return candidate.name == word; });
+                    [&](const auto &candidate)
+                    { return candidate.name == word; });
                 if (found_prop != component->props.end())
                     prop = &*found_prop;
             }

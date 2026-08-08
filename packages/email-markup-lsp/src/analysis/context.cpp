@@ -24,7 +24,7 @@ namespace email_markup::lsp::analysis
     }
 
     PropsCompletionContext props_context_at(const std::string_view text,
-                                             const std::size_t offset)
+                                            const std::size_t offset)
     {
         const auto cursor = std::min(offset, text.size());
         const auto open = text.rfind("@Props", cursor);
@@ -86,8 +86,8 @@ namespace email_markup::lsp::analysis
     }
 
     email_markup::SourceRange identifier_range(const std::string_view text,
-                                                const email_markup::SourceRange declaration,
-                                                const std::string_view name)
+                                               const email_markup::SourceRange declaration,
+                                               const std::string_view name)
     {
         const auto start = text.find(name, declaration.start);
         if (start == std::string_view::npos || start >= declaration.end)
@@ -116,7 +116,7 @@ namespace email_markup::lsp::analysis
     }
 
     std::optional<InvocationContext> invocation_at(const std::string_view text,
-                                                    const std::size_t offset)
+                                                   const std::size_t offset)
     {
         std::optional<InvocationContext> result;
         for (std::size_t at = 0; at < offset; ++at)

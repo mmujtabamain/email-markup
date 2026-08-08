@@ -16,7 +16,10 @@ async function completions(
   );
 }
 
-async function eventually(check: () => Promise<boolean>, message: string): Promise<void> {
+async function eventually(
+  check: () => Promise<boolean>,
+  message: string,
+): Promise<void> {
   for (let attempt = 0; attempt < 40; ++attempt) {
     if (await check()) return;
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -25,8 +28,13 @@ async function eventually(check: () => Promise<boolean>, message: string): Promi
 }
 
 export async function run(): Promise<void> {
-  const extension = vscode.extensions.getExtension("email-markup-lang.email-markup-language");
-  assert.ok(extension, "Email Markup extension is installed in the development host");
+  const extension = vscode.extensions.getExtension(
+    "email-markup-lang.email-markup-language",
+  );
+  assert.ok(
+    extension,
+    "Email Markup extension is installed in the development host",
+  );
   await extension.activate();
   assert.equal(extension.isActive, true);
 
@@ -52,7 +60,11 @@ export async function run(): Promise<void> {
   );
   const cssForwarder = vscode.languages.registerCompletionItemProvider(
     { language: "css", scheme: "email-markup-embedded" },
-    { provideCompletionItems: () => [new vscode.CompletionItem("forwarded-css-provider")] },
+    {
+      provideCompletionItems: () => [
+        new vscode.CompletionItem("forwarded-css-provider"),
+      ],
+    },
   );
 
   await eventually(async () => {
@@ -62,36 +74,60 @@ export async function run(): Promise<void> {
 
   const htmlOffset = source.indexOf("<section") + 1;
   const htmlItems = await completions(document, htmlOffset);
-  const forwardedHtml = htmlItems.items.find((item) => label(item) === "forwarded-html-provider");
+  const forwardedHtml = htmlItems.items.find(
+    (item) => label(item) === "forwarded-html-provider",
+  );
   assert.ok(
     forwardedHtml,
     `installed HTML completion providers are forwarded (received: ${htmlItems.items.map(label).join(", ")})`,
   );
-  assert.ok(htmlItems.items.some((item) => label(item) === "div"), "built-in HTML completion is passed through");
+  assert.ok(
+    htmlItems.items.some((item) => label(item) === "div"),
+    "built-in HTML completion is passed through",
+  );
   assert.deepEqual(
     (forwardedHtml.textEdit as vscode.TextEdit).range,
-    new vscode.Range(document.positionAt(htmlOffset - 1), document.positionAt(htmlOffset)),
+    new vscode.Range(
+      document.positionAt(htmlOffset - 1),
+      document.positionAt(htmlOffset),
+    ),
     "forwarded HTML edit ranges retain Email Markup source coordinates",
   );
 
-  const styleMarker = "style: \"release-card";
-  const styleOffset = source.indexOf(styleMarker) + "style: \"".length;
+  const styleMarker = 'style: "release-card';
+  const styleOffset = source.indexOf(styleMarker) + 'style: "'.length;
   const styleItems = await completions(document, styleOffset);
-  assert.ok(styleItems.items.some((item) => label(item) === "release-card"), "Email Markup style bundles complete in style arguments");
+  assert.ok(
+    styleItems.items.some((item) => label(item) === "release-card"),
+    "Email Markup style bundles complete in style arguments",
+  );
 
   const cssOffset = source.indexOf("background: #") + "background: ".length;
   const cssItems = await completions(document, cssOffset);
-  assert.ok(cssItems.items.length > 5, "embedded CSS value completion is available");
+  assert.ok(
+    cssItems.items.length > 5,
+    "embedded CSS value completion is available",
+  );
   assert.ok(
     cssItems.items.some((item) => label(item) === "forwarded-css-provider"),
     "installed CSS completion providers are forwarded",
   );
 
-  const proseOffset = source.indexOf("Product update") + "Product update".length;
+  const proseOffset =
+    source.indexOf("Product update") + "Product update".length;
   const proseItems = await completions(document, proseOffset);
-  assert.equal(proseItems.items.length, 0, "ordinary prose does not produce automatic completions");
+  assert.equal(
+    proseItems.items.length,
+    0,
+    "ordinary prose does not produce automatic completions",
+  );
 
-  await editor.edit((edit) => edit.insert(document.positionAt(document.getText().length), "\n@// Zażółć 😀"));
+  await editor.edit((edit) =>
+    edit.insert(
+      document.positionAt(document.getText().length),
+      "\n@// Zażółć 😀",
+    ),
+  );
   await eventually(async () => {
     const list = await completions(document, source.indexOf("@") + 1);
     return list.items.some((item) => label(item) === "@Heading");
@@ -105,7 +141,10 @@ export async function run(): Promise<void> {
   const manifest = extension.packageJSON as {
     capabilities?: { untrustedWorkspaces?: { supported?: string } };
   };
-  assert.equal(manifest.capabilities?.untrustedWorkspaces?.supported, "limited");
+  assert.equal(
+    manifest.capabilities?.untrustedWorkspaces?.supported,
+    "limited",
+  );
   htmlForwarder.dispose();
   cssForwarder.dispose();
 }

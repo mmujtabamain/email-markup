@@ -46,7 +46,8 @@ namespace email_markup::lsp
     void JsonRpcConnection::send(const Json &message)
     {
         const auto body = message.dump();
-        output_ << "Content-Length: " << body.size() << "\r\n\r\n" << body;
+        output_ << "Content-Length: " << body.size() << "\r\n\r\n"
+                << body;
         output_.flush();
     }
 

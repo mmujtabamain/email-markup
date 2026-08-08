@@ -15,15 +15,13 @@ to every source, JSON value, include, expansion, loop, AST, output, and diagnost
   "version": 1,
   "entry_path": "/templates/message.em",
   "source": "@Paragraph Hello @{business.name}. @/Paragraph",
-  "files": [
-    {"path": "/library/builtins.em", "source": "..."}
-  ],
+  "files": [{ "path": "/library/builtins.em", "source": "..." }],
   "include_directories": ["/library"],
   "imports": ["/library/builtins.em"],
-  "shell": {"path": "/shell.em", "source": "..."},
+  "shell": { "path": "/shell.em", "source": "..." },
   "recipient": {
     "lead": {},
-    "business": {"name": "Example"},
+    "business": { "name": "Example" },
     "rep": {},
     "unsubscribe_url": "https://example.test/unsubscribe"
   }
@@ -45,7 +43,11 @@ The response always identifies the protocol and compiler version:
   "compiler_version": "1.1.0",
   "success": true,
   "html": "<!doctype html>...",
-  "dependencies": ["/library/builtins.em", "/shell.em", "/templates/message.em"],
+  "dependencies": [
+    "/library/builtins.em",
+    "/shell.em",
+    "/templates/message.em"
+  ],
   "diagnostics": []
 }
 ```

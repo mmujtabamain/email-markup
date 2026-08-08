@@ -42,9 +42,7 @@ namespace email_markup
         CompilationResult result;
         if (request.entry_path.extension() != ".em")
         {
-            result.diagnostics.push_back({"EM0001", Severity::error,
-                                          "Email Markup 1 accepts only .em source files.",
-                                          {}});
+            result.diagnostics.push_back({"EM0001", Severity::error, "Email Markup 1 accepts only .em source files.", {}});
             return result;
         }
 
@@ -72,7 +70,7 @@ namespace email_markup
         {
             std::string contents;
             shell_path = loader.resolve_path(request.entry_path, request.shell->string(), {},
-                                               &contents);
+                                             &contents);
             if (shell_path)
                 loader.load(*shell_path, std::move(contents), 0);
         }
