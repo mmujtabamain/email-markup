@@ -1,24 +1,45 @@
+add_library(
+    email-markup-lsp-support
+    src/analysis/context.cpp
+    src/documents/document_store.cpp
+    src/features/completion.cpp
+    src/features/document.cpp
+    src/features/navigation.cpp
+    src/protocol/json_rpc.cpp
+    src/server/server.cpp
+    src/text/positions.cpp
+    src/workspace/workspace.cpp
+)
+
+target_include_directories(
+    email-markup-lsp-support
+    PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/src"
+)
+
+target_link_libraries(
+    email-markup-lsp-support
+    PUBLIC
+        email_markup::core
+        email_markup::platform
+        email_markup::runtime
+)
+
+target_compile_features(email-markup-lsp-support PUBLIC cxx_std_23)
+
 add_executable(
     email-markup-lsp
     src/main.cpp
 )
 
-target_link_libraries(
-    email-markup-lsp
-    PRIVATE
-        email_markup::core
-        fmt::fmt
-)
-
+target_link_libraries(email-markup-lsp PRIVATE email-markup-lsp-support)
 target_compile_features(email-markup-lsp PRIVATE cxx_std_23)
 
-if(APPLE)
-    set(EMAIL_MARKUP_VSCODE_PLATFORM "darwin")
-elseif(WIN32)
-    set(EMAIL_MARKUP_VSCODE_PLATFORM "win32")
-else()
-    set(EMAIL_MARKUP_VSCODE_PLATFORM "linux")
-endif()
+get_target_property(
+    EMAIL_MARKUP_VSCODE_PLATFORM
+    email-markup-platform
+    EMAIL_MARKUP_VSCODE_PLATFORM
+)
 
 string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" EMAIL_MARKUP_PROCESSOR)
 if(EMAIL_MARKUP_PROCESSOR MATCHES "^(arm64|aarch64)$")

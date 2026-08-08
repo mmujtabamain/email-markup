@@ -27,6 +27,8 @@ find_package(fmt CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
 add_subdirectory(packages/email-markup-core)
+add_subdirectory(packages/email-markup-platform)
+add_subdirectory(packages/email-markup-runtime)
 add_subdirectory(packages/email-markup-cli)
 add_subdirectory(packages/email-markup-lsp)
 add_subdirectory(packages/email-markup-tests)

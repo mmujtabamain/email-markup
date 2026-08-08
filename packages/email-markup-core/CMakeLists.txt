@@ -1,6 +1,9 @@
 add_library(
     email-markup-core
     src/css.cpp
+    src/compilation/compiler.cpp
+    src/compilation/loader.cpp
+    src/compilation/tokens.cpp
     src/data.cpp
     src/diagnostic.cpp
     src/expr.cpp
@@ -11,7 +14,7 @@ add_library(
     src/parser.cpp
     src/provenance.cpp
     src/registry.cpp
-    src/render.cpp
+    src/rendering/renderer.cpp
     src/source.cpp
     src/styles.cpp
     src/types.cpp
@@ -25,6 +28,8 @@ target_include_directories(
     PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
 
 target_link_libraries(email-markup-core PUBLIC nlohmann_json::nlohmann_json)
