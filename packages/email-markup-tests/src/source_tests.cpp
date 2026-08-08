@@ -146,6 +146,20 @@ TEST_CASE("generated HTML insertion preserves and shifts source segments")
     CHECK(generated.segments[2].output_start == 14);
 }
 
+TEST_CASE("generated HTML replacement preserves and shifts source segments")
+{
+    email_markup::GeneratedHtml generated;
+    generated.append("before URL after", {1, 4, 10});
+    generated.replace(7, 3, "data:image/png;base64,AA==", {2, 20, 24});
+
+    CHECK(generated.html == "before data:image/png;base64,AA== after");
+    REQUIRE(generated.segments.size() == 3);
+    CHECK(generated.segments[0].origin.source == 1);
+    CHECK(generated.segments[1].origin.source == 2);
+    CHECK(generated.segments[2].origin.source == 1);
+    CHECK(generated.segments[2].output_start == 33);
+}
+
 TEST_CASE("memory resolver normalizes paths and rejects duplicates")
 {
     using email_markup::MemoryFileResolver;

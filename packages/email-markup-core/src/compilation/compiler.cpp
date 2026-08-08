@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "email-markup/core/css.hpp"
+#include "email-markup/core/images.hpp"
 #include "email-markup/core/lint.hpp"
 #include "email-markup/core/styles.hpp"
 
@@ -118,6 +119,9 @@ namespace email_markup
                 }
             }
             generated = inline_css(std::move(generated));
+            embed_remote_images(generated, loader.diagnostics, request.image_fetcher,
+                                100 * 1024, 1024 * 1024,
+                                request.limits.maximum_html_bytes);
             auto findings = lint_html(generated,
                                       shell_path ? LintRole::shell : LintRole::content,
                                       {entry->second.source, 0, 0});

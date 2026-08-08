@@ -81,6 +81,12 @@ Calls use named props and either a body or a semicolon:
 @Image(src: image_url, alt: "Preview");
 ```
 
+`@Image` embeds an HTTP(S) source as a Base64 data URI during `emc compile`
+and `emc build`. Set `embed: false` to retain the remote URL instead. Downloads
+are limited to public-network image responses of at most 1 MiB. Images larger
+than 100 KiB produce a warning because Base64 expands their size by roughly one
+third and large data URIs have uneven email-client support.
+
 Definitions are Email Markup source:
 
 ```email-markup
@@ -180,7 +186,10 @@ Compilation performs lexing and recovery, include/import loading, definition and
 type validation, JSON expression evaluation, component/control-flow expansion,
 shell application, style cascade, class CSS inlining, media insertion,
 deliverability lint, and provenance collection. Output and diagnostic writes are
-deterministic. CLI output replacement is atomic.
+deterministic except for explicitly embedded remote image resources. CLI output
+replacement is atomic. `check`, `lint`, and routine language-server diagnostics
+never fetch images; VS Code checks literal remote image sizes in a separate,
+cancellable cached pass.
 
 Default safety limits are 1 MiB per source, 1 MiB JSON, 128 includes, include
 depth 32, expansion depth 64, 10,000 loop iterations, 200,000 AST nodes, 2 MiB

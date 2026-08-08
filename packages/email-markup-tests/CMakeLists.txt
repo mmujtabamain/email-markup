@@ -3,6 +3,7 @@ include(Catch)
 add_executable(
     email-markup-tests
     src/expression_tests.cpp
+    src/image_tests.cpp
     src/conformance_tests.cpp
     src/css_lint_tests.cpp
     src/lexer_parser_tests.cpp

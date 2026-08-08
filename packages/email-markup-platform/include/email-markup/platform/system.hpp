@@ -7,6 +7,12 @@
 
 namespace email_markup::platform
 {
+    struct HttpResource
+    {
+        std::string media_type;
+        std::string bytes;
+    };
+
     class System final
     {
     public:
@@ -24,6 +30,8 @@ namespace email_markup::platform
             std::size_t maximum_bytes = std::numeric_limits<std::size_t>::max()) const;
         void write_text_file_atomically(const std::filesystem::path &path,
                                         std::string_view contents) const;
+        [[nodiscard]] HttpResource fetch_http(std::string_view url,
+                                              std::size_t maximum_bytes) const;
 
     private:
         std::filesystem::path executable_path_;

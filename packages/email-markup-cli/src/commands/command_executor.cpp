@@ -13,6 +13,7 @@
 #include "compilation/compilation_session.hpp"
 #include "diagnostics/diagnostic_reporter.hpp"
 #include "email-markup/core/format.hpp"
+#include "email-markup/core/images.hpp"
 #include "email-markup/core/lint.hpp"
 #include "email-markup/core/version.hpp"
 #include "email-markup/platform/system.hpp"
@@ -180,6 +181,13 @@ namespace email_markup::cli
 
             email_markup::MemoryFileResolver resolver{std::move(files),
                                                       request.limits.maximum_source_bytes};
+            request.image_fetcher =
+                [this](const std::string_view url, const std::size_t maximum_bytes)
+            {
+                auto resource = system_.fetch_http(url, maximum_bytes);
+                return email_markup::ImageResource{std::move(resource.media_type),
+                                                   std::move(resource.bytes)};
+            };
             const auto result = email_markup::compile(request, resolver);
             Json dependencies = Json::array();
             for (const auto &dependency : result.dependencies)

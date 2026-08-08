@@ -8,6 +8,7 @@ import {
 } from "vscode-languageclient/node";
 
 import { previewDocument } from "./preview";
+import { registerRemoteImageAudit } from "./remoteImages";
 import { registerWebFeatures } from "./webFeatures";
 
 const protocolVersion = 1;
@@ -240,6 +241,7 @@ export async function activate(
     `Activating Email Markup Language Support ${context.extension.packageJSON.version ?? "unknown"}.`,
   );
   registerWebFeatures(context);
+  registerRemoteImageAudit(context);
   output.info(
     "Registered Email Markup commands and embedded HTML/CSS editor features.",
   );

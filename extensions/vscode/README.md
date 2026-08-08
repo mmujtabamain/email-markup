@@ -17,3 +17,8 @@ Untrusted workspaces receive grammar-only highlighting. Preview HTML runs with
 scripts disabled and no local resource roots. Remote images are replaced with
 inert placeholders unless **Email Markup: Load Remote Preview Images** is invoked for the
 current panel.
+
+Literal `@Image` URLs are size-checked in a separate cancellable background pass,
+so compiler diagnostics never wait on network requests. The warning threshold is
+configured with `email-markup.images.base64WarningBytes`; use `embed: false` when
+an image should remain remote.

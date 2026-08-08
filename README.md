@@ -84,6 +84,9 @@ protocol. See [docs/COMPILE_PROTOCOL.md](docs/COMPILE_PROTOCOL.md).
 `lib/builtins.em` defines `Paragraph`, `Heading`, `Bullets`, `Numbered`, `Item`,
 `Callout`, `Quote`, `Button`, `Image`, `Divider`, `Spacer`, `Panel`, `Columns`,
 `Unsubscribe`, and `Shell` in Email Markup itself. Raw HTML remains valid source.
+`Image` embeds public HTTP(S) image URLs as Base64 data URIs during compile/build;
+set `embed: false` to retain a remote URL. Large-image size checks run separately
+from normal editor/compiler linting.
 
 Ordinary class selectors declared in `<style>` blocks are inlined into matching
 HTML elements during compilation. Existing inline declarations take precedence.

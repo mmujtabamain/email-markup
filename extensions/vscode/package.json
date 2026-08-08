@@ -111,6 +111,12 @@
           "type": "string",
           "default": "",
           "description": "Trusted-workspace override for the email-markup-lsp executable."
+        },
+        "email-markup.images.base64WarningBytes": {
+          "type": "number",
+          "default": 102400,
+          "minimum": 1,
+          "description": "Separate remote-image audit warning threshold before Base64 expansion. Ordinary language-server diagnostics never wait on network requests."
         }
       }
     }

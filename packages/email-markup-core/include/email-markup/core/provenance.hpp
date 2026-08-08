@@ -34,6 +34,9 @@ namespace email_markup
                     const std::vector<ExpansionFrame> &stack = {});
         void insert(std::size_t offset, std::string_view text, SourceRange origin,
                     const std::vector<ExpansionFrame> &stack = {});
+        void replace(std::size_t offset, std::size_t count, std::string_view text,
+                     SourceRange origin,
+                     const std::vector<ExpansionFrame> &stack = {});
     };
 
 } // namespace email_markup

@@ -8,6 +8,7 @@
 #include <nlohmann/json.hpp>
 
 #include "email-markup/platform/system.hpp"
+#include "email-markup/core/images.hpp"
 
 namespace email_markup::cli
 {
@@ -147,6 +148,16 @@ namespace email_markup::cli
         request.imports.insert(request.imports.end(), options_.imports.begin(),
                                options_.imports.end());
         request.shell = options_.shell ? options_.shell : config_.shell;
+        if (options_.command == Command::compile || options_.command == Command::build)
+        {
+            request.image_fetcher =
+                [this](const std::string_view url, const std::size_t maximum_bytes)
+            {
+                auto resource = system_.fetch_http(url, maximum_bytes);
+                return email_markup::ImageResource{std::move(resource.media_type),
+                                                   std::move(resource.bytes)};
+            };
+        }
         return request;
     }
 

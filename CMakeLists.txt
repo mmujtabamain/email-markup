@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 4.3)
 
+if(CMAKE_HOST_WIN32 AND NOT DEFINED VCPKG_TARGET_TRIPLET)
+    set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING
+        "Use self-contained Windows release binaries")
+endif()
+
 project(
     EmailMarkup
     VERSION 1.1.0
@@ -23,6 +28,7 @@ include(GNUInstallDirs)
 include(CTest)
 
 find_package(Catch2 CONFIG REQUIRED)
+find_package(CURL CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 

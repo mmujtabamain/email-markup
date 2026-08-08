@@ -9,6 +9,7 @@ add_library(
     src/expr.cpp
     src/format.cpp
     src/include.cpp
+    src/images.cpp
     src/lexer.cpp
     src/lint.cpp
     src/parser.cpp

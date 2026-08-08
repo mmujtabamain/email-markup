@@ -5,6 +5,13 @@
   "description": "The Email Markup compiler, CLI, language server, and conformance tests",
   "dependencies": [
     "catch2",
+    {
+      "name": "curl",
+      "default-features": false,
+      "features": [
+        "ssl"
+      ]
+    },
     "fmt",
     "nlohmann-json"
   ]

@@ -110,13 +110,14 @@
     src: url
     alt: string = ""
     href?: url
+    embed: bool = true
   @/Props
   @Template
     <div style="margin:6px 0 22px;">
       @If(href)
         <a href="@{href}" style="text-decoration:none;">
       @/If
-      <img src="@{src}" alt="@{alt}" style="display:block;border:0;width:100%;max-width:528px;height:auto;border-radius:10px;" />
+      <img data-email-markup-embed="@{embed}" src="@{src}" alt="@{alt}" style="display:block;border:0;width:100%;max-width:528px;height:auto;border-radius:10px;" />
       @If(href)
         </a>
       @/If
