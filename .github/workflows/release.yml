@@ -2,14 +2,38 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+  metadata:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      tag: ${{ steps.release.outputs.tag }}
+      short_sha: ${{ steps.release.outputs.short_sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: release
+        name: Resolve immutable release identity
+        shell: bash
+        run: |
+          version="$(awk '/^[[:space:]]*VERSION / { print $2; exit }' CMakeLists.txt)"
+          if [[ -z "$version" ]]; then
+            echo "Could not read the project version from CMakeLists.txt." >&2
+            exit 1
+          fi
+          short_sha="${GITHUB_SHA:0:12}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$short_sha" >> "$GITHUB_OUTPUT"
+          echo "tag=v${version}-${short_sha}" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: metadata
     strategy:
       fail-fast: false
       matrix:
@@ -67,7 +91,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    needs: build
+    needs: [metadata, build]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/download-artifact@v4
@@ -79,5 +103,10 @@ jobs:
         run: sha256sum --check *.sha256
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.metadata.outputs.tag }}
+          name: Email Markup ${{ needs.metadata.outputs.version }} (${{ needs.metadata.outputs.short_sha }})
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: true
+          make_latest: true
           files: dist/*
           fail_on_unmatched_files: true
