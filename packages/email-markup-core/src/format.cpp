@@ -14,22 +14,18 @@ namespace email_markup
 {
     namespace
     {
-        const std::unordered_set<std::string> container_tags{
-            "html", "head", "body", "main", "header", "footer", "section",
-            "article", "aside", "nav", "div", "table", "thead", "tbody",
-            "tfoot", "tr", "ul", "ol", "dl", "figure", "figcaption", "form"};
-
-        const std::unordered_set<std::string> compact_block_tags{
-            "p", "h1", "h2", "h3", "h4", "h5", "h6", "td", "th", "li",
-            "dt", "dd", "blockquote", "address", "title", "pre", "textarea",
-            "style", "script"};
-
-        const std::unordered_set<std::string> line_void_tags{
-            "base", "link", "meta", "hr"};
-
         const std::unordered_set<std::string> void_tags{
             "area", "base", "br", "col", "embed", "hr", "img", "input", "link",
             "meta", "param", "source", "track", "wbr"};
+
+        const std::unordered_set<std::string> raw_tags{
+            "pre", "script", "style", "textarea"};
+
+        const std::unordered_set<std::string> structural_directives{
+            "DefineComponent", "DefineStyle", "DefineToken", "Else", "Each",
+            "If", "Include", "Media", "Props", "Slots", "Template", "With"};
+
+        constexpr std::size_t compact_line_width = 120;
 
         bool whitespace(const char ch)
         {
@@ -43,6 +39,12 @@ namespace email_markup
                            { return static_cast<char>(std::tolower(ch)); });
             return result;
         }
+
+        struct HtmlTag;
+
+        std::size_t matching_tag_end(std::string_view source,
+                                     std::size_t opening_start,
+                                     const HtmlTag &opening);
 
         std::size_t tag_end(const std::string_view source, const std::size_t start)
         {
@@ -238,9 +240,7 @@ namespace email_markup
                 auto tag = inspect_tag(token);
                 bool raw_element = false;
 
-                if (!tag.closing && !tag.self_closing &&
-                    (tag.name == "pre" || tag.name == "textarea" || tag.name == "style" ||
-                     tag.name == "script"))
+                if (!tag.closing && !tag.self_closing && raw_tags.contains(tag.name))
                 {
                     const auto closing = "</" + tag.name;
                     const auto lowered = lower(source.substr(end));
@@ -254,24 +254,46 @@ namespace email_markup
                     }
                 }
 
-                const bool container = container_tags.contains(tag.name);
-                const bool compact = compact_block_tags.contains(tag.name);
-                const bool line_void = line_void_tags.contains(tag.name);
-                const bool standalone = tag.declaration || line_void ||
-                                        (tag.self_closing && (container || compact));
-
-                if (container || (!tag.closing && compact) || standalone)
-                    writer.line();
-                if (tag.closing && container)
-                    writer.line();
-
-                writer.token(token);
-
-                if (container || standalone || raw_element || (tag.closing && compact) ||
-                    (tag.self_closing && compact))
+                const bool standalone = tag.declaration || tag.self_closing ||
+                                        void_tags.contains(tag.name);
+                if (!tag.closing && !standalone && !raw_element)
                 {
-                    writer.line();
+                    const auto element_end = matching_tag_end(source, next, tag);
+                    if (element_end != std::string_view::npos)
+                    {
+                        const auto close_start = source.rfind('<', element_end - 1);
+                        bool has_child = false;
+                        for (auto child = source.find('<', end);
+                             child != std::string_view::npos && child < close_start;
+                             child = source.find('<', child + 1))
+                        {
+                            if (tag_start(source, child))
+                            {
+                                has_child = true;
+                                break;
+                            }
+                        }
+                        if (!has_child)
+                        {
+                            writer.line();
+                            writer.token(source.substr(next, element_end - next));
+                            writer.line();
+                            position = element_end;
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        writer.line();
+                        writer.token(token);
+                        position = end;
+                        continue;
+                    }
                 }
+
+                writer.line();
+                writer.token(token);
+                writer.line();
                 position = end;
             }
             return writer.take();
@@ -351,15 +373,14 @@ namespace email_markup
                 }
                 const auto end = tag_end(line, position);
                 const auto tag = inspect_tag(line.substr(position, end - position));
-                const bool block = container_tags.contains(tag.name) ||
-                                   compact_block_tags.contains(tag.name);
-                if (block && tag.closing)
+                if (tag.closing)
                 {
                     --delta;
                     if (only_leading_whitespace)
                         ++leading_closes;
                 }
-                else if (block && !tag.self_closing && !void_tags.contains(tag.name))
+                else if (!tag.declaration && !tag.self_closing &&
+                         !void_tags.contains(tag.name))
                 {
                     ++delta;
                 }
@@ -465,6 +486,7 @@ namespace email_markup
             std::string output;
             int depth = 0;
             std::string raw_tag;
+            std::string raw_directive;
             while (std::getline(stream, line))
             {
                 if (!raw_tag.empty())
@@ -477,6 +499,36 @@ namespace email_markup
                         int ignored = 0;
                         depth = std::max(0, depth + html_delta(line, ignored));
                         raw_tag.clear();
+                    }
+                    continue;
+                }
+
+                if (!raw_directive.empty())
+                {
+                    const auto first = line.find_first_not_of(" \t\r");
+                    if (first == std::string::npos)
+                        continue;
+                    line.erase(0, first);
+                    const auto last = line.find_last_not_of(" \t\r");
+                    line.erase(last + 1);
+                    if (line == "@/" + raw_directive)
+                    {
+                        int leading_closes = 0;
+                        const auto directives = directive_delta(line, leading_closes);
+                        output.append(static_cast<std::size_t>(
+                                          std::max(0, depth - leading_closes)) *
+                                          2,
+                                      ' ');
+                        output += line;
+                        output.push_back('\n');
+                        depth = std::max(0, depth + directives);
+                        raw_directive.clear();
+                    }
+                    else
+                    {
+                        output.append(static_cast<std::size_t>(depth) * 2, ' ');
+                        output += line;
+                        output.push_back('\n');
                     }
                     continue;
                 }
@@ -501,8 +553,18 @@ namespace email_markup
                 output.push_back('\n');
                 depth = std::max(0, depth + html + directives);
 
+                for (const auto &candidate : {"Props", "Slots", "DefineStyle", "Media"})
+                {
+                    const auto opening = "@" + std::string{candidate};
+                    if (line.starts_with(opening))
+                    {
+                        raw_directive = candidate;
+                        break;
+                    }
+                }
+
                 const auto lowered = lower(line);
-                for (const auto &candidate : {"pre", "textarea", "style", "script"})
+                for (const auto &candidate : raw_tags)
                 {
                     const auto opening = "<" + std::string{candidate};
                     const auto closing = "</" + std::string{candidate};
@@ -513,6 +575,104 @@ namespace email_markup
                         break;
                     }
                 }
+            }
+            return output;
+        }
+
+        std::string_view trimmed(const std::string_view value)
+        {
+            const auto first = value.find_first_not_of(" \t\r\n");
+            if (first == std::string_view::npos)
+                return {};
+            const auto last = value.find_last_not_of(" \t\r\n");
+            return value.substr(first, last - first + 1);
+        }
+
+        std::size_t matching_tag_end(const std::string_view source,
+                                     const std::size_t opening_start,
+                                     const HtmlTag &opening)
+        {
+            int depth = 0;
+            for (auto position = opening_start; position < source.size();)
+            {
+                const auto next = source.find('<', position);
+                if (next == std::string_view::npos)
+                    return std::string_view::npos;
+                if (!tag_start(source, next))
+                {
+                    position = next + 1;
+                    continue;
+                }
+                const auto end = tag_end(source, next);
+                const auto tag = inspect_tag(source.substr(next, end - next));
+                if (tag.name == opening.name)
+                {
+                    if (tag.closing)
+                    {
+                        if (--depth == 0)
+                            return end;
+                    }
+                    else if (!tag.self_closing && !void_tags.contains(tag.name))
+                    {
+                        ++depth;
+                    }
+                }
+                position = end;
+            }
+            return std::string_view::npos;
+        }
+
+        std::string compact_simple_directives(const std::string_view source)
+        {
+            std::istringstream stream{std::string{source}};
+            std::vector<std::string> lines;
+            for (std::string line; std::getline(stream, line);)
+                lines.push_back(std::move(line));
+
+            std::string output;
+            for (std::size_t index = 0; index < lines.size(); ++index)
+            {
+                const auto &opening_line = lines[index];
+                const auto first = opening_line.find_first_not_of(" \t");
+                const auto opening = first == std::string::npos
+                                         ? std::string_view{}
+                                         : std::string_view{opening_line}.substr(first);
+                auto name_end = std::size_t{1};
+                while (name_end < opening.size() &&
+                       (std::isalnum(static_cast<unsigned char>(opening[name_end])) ||
+                        opening[name_end] == '_'))
+                {
+                    ++name_end;
+                }
+                const auto name = opening.substr(1, name_end - 1);
+                const auto body = index + 1 < lines.size()
+                                      ? trimmed(lines[index + 1])
+                                      : std::string_view{};
+                const auto closing = "@/" + std::string{name};
+                const bool simple = opening.starts_with('@') && !name.empty() &&
+                                    std::isupper(static_cast<unsigned char>(name.front())) &&
+                                    !opening.ends_with(';') &&
+                                    !structural_directives.contains(std::string{name}) &&
+                                    index + 2 < lines.size() && !body.empty() &&
+                                    body.find_first_of("<@") == std::string_view::npos &&
+                                    trimmed(lines[index + 2]) == closing &&
+                                    opening.size() + body.size() + closing.size() + 2 <=
+                                        compact_line_width;
+                if (simple)
+                {
+                    output.append(opening_line, 0, first);
+                    output.append(opening);
+                    output.push_back(' ');
+                    output.append(body);
+                    output.push_back(' ');
+                    output += closing;
+                    output.push_back('\n');
+                    index += 2;
+                    continue;
+                }
+
+                output += opening_line;
+                output.push_back('\n');
             }
             return output;
         }
@@ -570,7 +730,8 @@ namespace email_markup
             normalized.push_back(source[i]);
         }
         return separate_top_level_constructs(
-            indent_lines(add_directive_layout(add_html_layout(normalized))));
+            compact_simple_directives(
+                indent_lines(add_directive_layout(add_html_layout(normalized)))));
     }
 
 } // namespace email_markup

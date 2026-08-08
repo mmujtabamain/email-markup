@@ -53,9 +53,7 @@ TEST_CASE("formatter puts component tags on separate lines")
         "  <blockquote>\n"
         "    @Slot(default);\n"
         "    @If(attribution)\n"
-        "      <div>\n"
-        "        &mdash; @{attribution}\n"
-        "      </div>\n"
+        "      <div>&mdash; @{attribution}</div>\n"
         "    @/If\n"
         "  </blockquote>\n"
         "@/Template\n";
@@ -93,9 +91,7 @@ TEST_CASE("formatter separates definitions and protects raw declaration bodies")
         "    default: optional\n"
         "  @/Slots\n"
         "  @Template\n"
-        "    <div>\n"
-        "      @{title}\n"
-        "    </div>\n"
+        "    <div>@{title}</div>\n"
         "  @/Template\n"
         "@/DefineComponent\n\n"
         "@Media(\"(max-width: 600px)\")\n"
@@ -116,6 +112,46 @@ TEST_CASE("formatter keeps multiline component heads on one directive line")
         ");";
     const auto expected =
         "@Image(src: \"https://cdn.test/image.png\", alt: \"Preview\");\n";
+
+    CHECK(email_markup::format_source(source) == expected);
+    CHECK(email_markup::format_source(expected) == expected);
+}
+
+TEST_CASE("formatter compacts simple components and expands long HTML cells")
+{
+    const auto source =
+        "@Heading\n"
+        "  Weekly summary\n"
+        "@/Heading\n"
+        "<table><tr>\n"
+        "<td class=\"summary-column\" style=\"width:50%;padding:16px;background:#ecfdf5;vertical-align:top;\"><strong>@{summary.completed}</strong><br>Completed</td>\n"
+        "</tr></table>\n";
+    const auto expected =
+        "@Heading Weekly summary @/Heading\n"
+        "<table>\n"
+        "  <tr>\n"
+        "    <td class=\"summary-column\" style=\"width:50%;padding:16px;background:#ecfdf5;vertical-align:top;\">\n"
+        "      <strong>@{summary.completed}</strong>\n"
+        "      <br>\n"
+        "      Completed\n"
+        "    </td>\n"
+        "  </tr>\n"
+        "</table>\n";
+
+    CHECK(email_markup::format_source(source) == expected);
+    CHECK(email_markup::format_source(expected) == expected);
+}
+
+TEST_CASE("formatter applies the same structural layout to every HTML tag")
+{
+    const auto source =
+        "<custom-shell><custom-value>Ready</custom-value><br>Now</custom-shell>";
+    const auto expected =
+        "<custom-shell>\n"
+        "  <custom-value>Ready</custom-value>\n"
+        "  <br>\n"
+        "  Now\n"
+        "</custom-shell>\n";
 
     CHECK(email_markup::format_source(source) == expected);
     CHECK(email_markup::format_source(expected) == expected);
