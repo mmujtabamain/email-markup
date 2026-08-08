@@ -26,6 +26,101 @@ TEST_CASE("formatter normalizes CRLF and trailing whitespace")
     CHECK(email_markup::format_source("<p>trailing   \r\n") == "<p>trailing\n");
 }
 
+TEST_CASE("formatter inserts one blank line after includes")
+{
+    const auto source =
+        "<p>Before</p>\n"
+        "@Include(\"theme.em\");\n"
+        "@Include(\"components.em\");\n"
+        "<p>Body</p>\n";
+    const auto expected =
+        "<p>Before</p>\n\n"
+        "@Include(\"theme.em\");\n\n"
+        "@Include(\"components.em\");\n\n"
+        "<p>Body</p>\n";
+
+    CHECK(email_markup::format_source(source) == expected);
+    CHECK(email_markup::format_source(expected) == expected);
+}
+
+TEST_CASE("formatter puts component tags on separate lines")
+{
+    const auto source =
+        "@Template<blockquote>@Slot(default);@If(attribution)<div>"
+        "&mdash; @{attribution}</div>@/If</blockquote>@/Template";
+    const auto expected =
+        "@Template\n"
+        "  <blockquote>\n"
+        "    @Slot(default);\n"
+        "    @If(attribution)\n"
+        "      <div>\n"
+        "        &mdash; @{attribution}\n"
+        "      </div>\n"
+        "    @/If\n"
+        "  </blockquote>\n"
+        "@/Template\n";
+
+    CHECK(email_markup::format_source(source) == expected);
+    CHECK(email_markup::format_source(expected) == expected);
+}
+
+TEST_CASE("formatter separates definitions and protects raw declaration bodies")
+{
+    const auto source =
+        "<p>Before</p>@DefineStyle(name: \"card\")\n"
+        "color: red; content: \"<keep>\";\n"
+        "@/DefineStyle@DefineToken(name: \"accent\", value: \"#fff\");"
+        "@DefineComponent(name: \"Card\")@Props\n"
+        "title: string\n"
+        "@/Props@Slots\n"
+        "default: optional\n"
+        "@/Slots@Template<div>@{title}</div>@/Template@/DefineComponent"
+        "@Media(\"(max-width: 600px)\")\n"
+        ".card::before { content: \"<keep>\"; }\n"
+        "@/Media"
+        "<p>After</p>";
+    const auto expected =
+        "<p>Before</p>\n\n"
+        "@DefineStyle(name: \"card\")\n"
+        "  color: red; content: \"<keep>\";\n"
+        "@/DefineStyle\n\n"
+        "@DefineToken(name: \"accent\", value: \"#fff\");\n\n"
+        "@DefineComponent(name: \"Card\")\n"
+        "  @Props\n"
+        "    title: string\n"
+        "  @/Props\n"
+        "  @Slots\n"
+        "    default: optional\n"
+        "  @/Slots\n"
+        "  @Template\n"
+        "    <div>\n"
+        "      @{title}\n"
+        "    </div>\n"
+        "  @/Template\n"
+        "@/DefineComponent\n\n"
+        "@Media(\"(max-width: 600px)\")\n"
+        "  .card::before { content: \"<keep>\"; }\n"
+        "@/Media\n\n"
+        "<p>After</p>\n";
+
+    CHECK(email_markup::format_source(source) == expected);
+    CHECK(email_markup::format_source(expected) == expected);
+}
+
+TEST_CASE("formatter keeps multiline component heads on one directive line")
+{
+    const auto source =
+        "@Image(\n"
+        "  src: \"https://cdn.test/image.png\",\n"
+        "  alt: \"Preview\"\n"
+        ");";
+    const auto expected =
+        "@Image(src: \"https://cdn.test/image.png\", alt: \"Preview\");\n";
+
+    CHECK(email_markup::format_source(source) == expected);
+    CHECK(email_markup::format_source(expected) == expected);
+}
+
 TEST_CASE("generated HTML preserves source segments")
 {
     email_markup::GeneratedHtml generated;
