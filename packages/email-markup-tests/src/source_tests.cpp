@@ -3,6 +3,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "email-markup/core/format.hpp"
 #include "email-markup/core/provenance.hpp"
 #include "email-markup/core/render.hpp"
 #include "email-markup/core/source.hpp"
@@ -17,6 +18,10 @@ TEST_CASE("source manager owns stable UTF-8 source positions") {
     CHECK(source.position(4).column == 0);
     CHECK(email_markup::is_valid_utf8(source.text));
     CHECK_FALSE(email_markup::is_valid_utf8("\xff"));
+}
+
+TEST_CASE("formatter normalizes CRLF and trailing whitespace") {
+    CHECK(email_markup::format_source("<p>trailing   \r\n") == "<p>trailing\n");
 }
 
 TEST_CASE("generated HTML preserves source segments") {

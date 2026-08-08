@@ -164,7 +164,8 @@ if(NOT CHECK_RESULT EQUAL 0)
   message(FATAL_ERROR "emc check failed: ${CHECK_ERROR}")
 endif()
 
-file(WRITE "${WORK_DIR}/format.em" "<p>trailing   \r\n")
+# file(WRITE) uses text mode, so a native newline becomes CRLF on Windows.
+file(WRITE "${WORK_DIR}/format.em" "<p>trailing   \n")
 execute_process(
   COMMAND "${EMC}" fmt "${WORK_DIR}/format.em" --write
   RESULT_VARIABLE FORMAT_RESULT
