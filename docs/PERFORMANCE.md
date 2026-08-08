@@ -14,6 +14,7 @@ python3 tools/benchmark.py --iterations 30
 | Workload | Budget |
 | --- | ---: |
 | Representative `emc compile`, p95 | 100 ms |
+| Representative `emc compile --request-stdin`, p95 | 100 ms |
 | Representative `emc build`, p95 | 100 ms |
 | Persistent edit-to-diagnostics, p95 | 50 ms |
 | 900 KB near-limit `emc compile`, p95 | 1,500 ms |
@@ -24,6 +25,24 @@ standard library and JSON fixture. The maximum workload generates a 900,000-byte
 source beneath the project root, below the 1 MiB source limit. CLI timing includes
 process launch and atomic output. LSP timing keeps one server alive and measures
 a full-document change through the matching versioned diagnostic notification.
+
+## 2026-08-08 Email Markup 1.1 baseline
+
+Measured on macOS arm64 with Apple Clang 21.0.0, the CMake release preset, and 30
+representative iterations:
+
+| Workload | p50 | p95 |
+| --- | ---: | ---: |
+| Representative file `emc compile` (589-byte source) | 8.538 ms | 10.410 ms |
+| Representative in-memory request compile | 8.857 ms | 9.653 ms |
+| Representative one-file `emc build` | 8.612 ms | 10.041 ms |
+| Persistent edit-to-diagnostics | 3.231 ms | 3.771 ms |
+| 900 KB near-limit compile (10 iterations) | 1,402.572 ms | 1,437.482 ms |
+
+Observed peak child RSS was 13.59 MiB. The in-memory request result is recorded
+alongside the file path rather than treated as evidence that either transport is
+inherently faster; on this run their distributions overlap. All measurements
+passed the Email Markup 1 budgets.
 
 ## 2026-08-06 baseline
 

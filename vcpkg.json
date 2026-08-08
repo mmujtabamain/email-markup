@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
   "name": "email-markup",
-  "version-semver": "1.0.0",
+  "version-semver": "1.1.0",
   "description": "The Email Markup compiler, CLI, language server, and conformance tests",
   "dependencies": [
     "catch2",

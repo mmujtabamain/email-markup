@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15-intel
+            platform: darwin-x64
+          - runner: macos-15
+            platform: darwin-arm64
+          - runner: ubuntu-24.04
+            platform: linux-x64
+          - runner: ubuntu-24.04-arm
+            platform: linux-arm64
+          - runner: windows-2025
+            platform: win32-x64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up dependencies
+        if: runner.os != 'Windows'
+        run: ./setup.sh
+      - name: Set up dependencies on Windows
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: setup.bat
+      - name: Configure release
+        run: cmake --preset release --fresh
+      - name: Build release
+        run: cmake --build --preset release --parallel 2
+      - name: Test release
+        run: ctest --preset release --output-on-failure
+      - name: Install release
+        run: cmake --install build/release --prefix build/release/install
+      - name: Install extension dependencies
+        working-directory: extensions/vscode
+        run: npm ci
+      - name: Test extension
+        working-directory: extensions/vscode
+        run: npm test
+      - name: Package and verify artifacts
+        run: >-
+          python tools/package_release.py
+          --install build/release/install
+          --platform ${{ matrix.platform }}
+          --extension extensions/vscode
+          --output dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: email-markup-${{ matrix.platform }}
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Verify downloaded checksums
+        working-directory: dist
+        run: sha256sum --check *.sha256
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          fail_on_unmatched_files: true

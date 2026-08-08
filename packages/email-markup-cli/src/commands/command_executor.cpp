@@ -48,7 +48,11 @@ namespace email_markup::cli
         {
             if (!value.is_string())
                 throw std::invalid_argument(std::string{field} + " must be a string");
-            const auto path = email_markup::normalize_virtual_path(value.get<std::string>());
+            const auto raw = value.get<std::string>();
+            if (!raw.starts_with('/'))
+                throw std::invalid_argument(std::string{field} +
+                                            " must be an absolute virtual .em path");
+            const auto path = email_markup::normalize_virtual_path(raw);
             if (!path || path->extension() != ".em")
                 throw std::invalid_argument(std::string{field} +
                                             " must be an absolute virtual .em path");
@@ -70,8 +74,11 @@ namespace email_markup::cli
                 if (!value.is_string())
                     throw std::invalid_argument(std::string{field} +
                                                 " entries must be strings");
-                const auto path = email_markup::normalize_virtual_path(
-                    value.get<std::string>());
+                const auto raw = value.get<std::string>();
+                if (!raw.starts_with('/'))
+                    throw std::invalid_argument(std::string{field} +
+                                                " contains a relative virtual path");
+                const auto path = email_markup::normalize_virtual_path(raw);
                 if (!path || (require_em && path->extension() != ".em"))
                     throw std::invalid_argument(std::string{field} +
                                                 " contains an invalid virtual path");
@@ -127,7 +134,7 @@ namespace email_markup::cli
     {
         try
         {
-            const auto input = system_.read_standard_input();
+            const auto input = system_.read_standard_input(1024 * 1024);
             if (input.size() > 1024 * 1024)
                 throw std::invalid_argument("request exceeds the 1 MiB protocol limit");
             const auto envelope = Json::parse(input);
@@ -158,8 +165,10 @@ namespace email_markup::cli
             {
                 if (!file.is_object())
                     throw std::invalid_argument("files entries must be objects");
-                files.push_back({required_virtual_path(file.at("path"), "files.path"),
-                                 file.at("source").get<std::string>()});
+                const auto path = required_virtual_path(file.at("path"), "files.path");
+                if (path == request.entry_path)
+                    throw std::invalid_argument("files contains the entry_path");
+                files.push_back({path, file.at("source").get<std::string>()});
             }
             if (const auto shell = envelope.find("shell"); shell != envelope.end())
             {

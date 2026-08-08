@@ -143,8 +143,15 @@ namespace email_markup::platform
         return {std::istreambuf_iterator<char>{stream}, {}};
     }
 
-    std::string System::read_standard_input() const
+    std::string System::read_standard_input(const std::size_t maximum_bytes) const
     {
+        if (maximum_bytes != std::numeric_limits<std::size_t>::max())
+        {
+            std::string input(maximum_bytes + 1, '\0');
+            std::cin.read(input.data(), static_cast<std::streamsize>(input.size()));
+            input.resize(static_cast<std::size_t>(std::cin.gcount()));
+            return input;
+        }
         return {std::istreambuf_iterator<char>{std::cin}, {}};
     }
 

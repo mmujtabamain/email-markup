@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 4.0)
 
 project(
     EmailMarkup
-    VERSION 1.0.0
+    VERSION 1.1.0
     DESCRIPTION "A typed, component-based language for HTML email"
     LANGUAGES CXX
 )

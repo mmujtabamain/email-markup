@@ -2,7 +2,7 @@
   "name": "email-markup-language",
   "displayName": "Email Markup Language Support",
   "description": "Language support and secure final-HTML preview for Email Markup documents.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "publisher": "email-markup-lang",
   "license": "MIT",
   "engines": {

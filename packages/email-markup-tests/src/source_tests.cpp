@@ -58,6 +58,8 @@ TEST_CASE("memory resolver normalizes paths and rejects duplicates") {
     CHECK_THROWS_AS(MemoryFileResolver({
         ResolvedFile{"/same.em", "one"}, ResolvedFile{"/x/../same.em", "two"},
     }), std::invalid_argument);
+    CHECK_THROWS_AS(MemoryFileResolver({ResolvedFile{"relative.em", "source"}}),
+                    std::invalid_argument);
 }
 
 TEST_CASE("memory resolver compiles nested includes imports and a shell") {

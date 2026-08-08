@@ -47,9 +47,11 @@ Use `shasum -a 256 -c` on macOS if GNU `sha256sum` is unavailable.
 ## Version and protocol
 
 CMake, `email_markup::version()`, the vcpkg manifest, and the VS Code package must share
-the release version. The extension/server protocol has its own integer version;
-the client checks it at startup and refuses a mismatched bundled or overridden
-server.
+the release version. `external/vcpkg.version` pins the setup-managed dependency
+snapshot to the peeled `2026.07.29` tag commit. The extension/server protocol
+and stdin compilation protocol have their own integer versions. The extension
+client checks the server protocol at startup; embedding applications must check
+the compilation response protocol and compiler version.
 
 Before tagging, require a clean tree, all local gates, and review of the
 intentional-differences manifest. After the release workflow passes, install the

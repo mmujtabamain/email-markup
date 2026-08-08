@@ -80,6 +80,34 @@ if(NOT BAD_PROTOCOL_RESULT EQUAL 2 OR
   message(FATAL_ERROR "invalid protocol input did not return JSON and exit 2")
 endif()
 
+set(COMPILATION_ERROR_REQUEST
+    "{\"protocol\":\"email-markup.compile\",\"version\":1,\"entry_path\":\"/message.em\",\"source\":\"@Missing @/Missing\",\"recipient\":{}}")
+file(WRITE "${WORK_DIR}/compilation-error-request.json" "${COMPILATION_ERROR_REQUEST}")
+execute_process(
+  COMMAND "${EMC}" compile --request-stdin
+  INPUT_FILE "${WORK_DIR}/compilation-error-request.json"
+  RESULT_VARIABLE COMPILATION_ERROR_RESULT
+  OUTPUT_VARIABLE COMPILATION_ERROR_OUTPUT
+)
+if(NOT COMPILATION_ERROR_RESULT EQUAL 1 OR
+   NOT COMPILATION_ERROR_OUTPUT MATCHES "\\\"success\\\":false" OR
+   NOT COMPILATION_ERROR_OUTPUT MATCHES "EM0720")
+  message(FATAL_ERROR "compiler findings did not return JSON and exit 1")
+endif()
+
+string(REPEAT "x" 1048577 OVERSIZED_REQUEST)
+file(WRITE "${WORK_DIR}/oversized-request.json" "${OVERSIZED_REQUEST}")
+execute_process(
+  COMMAND "${EMC}" compile --request-stdin
+  INPUT_FILE "${WORK_DIR}/oversized-request.json"
+  RESULT_VARIABLE OVERSIZED_RESULT
+  OUTPUT_VARIABLE OVERSIZED_OUTPUT
+)
+if(NOT OVERSIZED_RESULT EQUAL 2 OR
+   NOT OVERSIZED_OUTPUT MATCHES "1 MiB protocol limit")
+  message(FATAL_ERROR "oversized protocol input was not rejected with exit 2")
+endif()
+
 execute_process(
   COMMAND "${EMC}" compile "${EXAMPLE_DIR}/message.em"
           --data-json "{}" --data-file "${EXAMPLE_DIR}/data.json"

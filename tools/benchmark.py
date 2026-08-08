@@ -64,6 +64,44 @@ def command_latency(binary: Path, source: Path, iterations: int) -> list[float]:
     return samples
 
 
+def request_latency(binary: Path, root: Path, iterations: int) -> list[float]:
+    example = root / "examples/09-css-inlining"
+    virtual_files = [
+        root / "lib/builtins.em",
+        root / "examples/_shared/theme.em",
+    ]
+    request = {
+        "protocol": "email-markup.compile",
+        "version": 1,
+        "entry_path": "/message.em",
+        "source": (example / "message.em").read_text(encoding="utf-8"),
+        "files": [
+            {"path": f"/library/{path.name}", "source": path.read_text(encoding="utf-8")}
+            for path in virtual_files
+        ],
+        "include_directories": ["/library"],
+        "imports": ["/library/builtins.em", "/library/theme.em"],
+        "shell": {
+            "path": "/shell.em",
+            "source": (root / "examples/_shared/shell.em").read_text(encoding="utf-8"),
+        },
+        "recipient": json.loads((example / "data.json").read_text(encoding="utf-8")),
+    }
+    encoded = json.dumps(request, separators=(",", ":")).encode()
+    samples: list[float] = []
+    for _ in range(iterations):
+        started = time.perf_counter()
+        subprocess.run(
+            [str(binary), "compile", "--request-stdin"],
+            input=encoded,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        samples.append((time.perf_counter() - started) * 1000)
+    return samples
+
+
 def build_latency(binary: Path, root: Path, iterations: int) -> list[float]:
     samples: list[float] = []
     with tempfile.TemporaryDirectory(prefix="email-markup-build-benchmark-") as directory:
@@ -161,6 +199,7 @@ def main() -> int:
         parser.error("--iterations must be at least 5")
     source = root / "examples/09-css-inlining/message.em"
     cli = command_latency(build / "emc", source, arguments.iterations)
+    request = request_latency(build / "emc", root, arguments.iterations)
     project_build = build_latency(build / "emc", root, arguments.iterations)
     benchmark_root = root / "build"
     benchmark_root.mkdir(exist_ok=True)
@@ -172,6 +211,7 @@ def main() -> int:
     print(json.dumps({
         "iterations": arguments.iterations,
         "emc_compile": summary(cli),
+        "emc_compile_request_stdin": summary(request),
         "emc_build": summary(project_build),
         "emc_compile_900kb": summary(maximum_cli),
         "edit_to_diagnostics": summary(diagnostics),

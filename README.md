@@ -75,6 +75,10 @@ data options override or extend project configuration.
 Writes are atomic. A failed compile never replaces the previous HTML output.
 Diagnostics do not print JSON values.
 
+Embedding applications can compile entirely virtual source trees without
+temporary files through the versioned `emc compile --request-stdin` JSON
+protocol. See [docs/COMPILE_PROTOCOL.md](docs/COMPILE_PROTOCOL.md).
+
 ## Standard library and HTML/CSS
 
 `lib/builtins.em` defines `Paragraph`, `Heading`, `Bullets`, `Numbered`, `Item`,

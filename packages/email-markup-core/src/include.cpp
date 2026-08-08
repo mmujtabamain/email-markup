@@ -99,6 +99,9 @@ MemoryFileResolver::MemoryFileResolver(std::vector<ResolvedFile> files,
                                        const std::size_t maximum_bytes)
     : maximum_bytes_(maximum_bytes) {
     for (auto& file : files) {
+        if (!portable_path(file.canonical_path).starts_with('/')) {
+            throw std::invalid_argument("virtual Email Markup paths must be absolute .em paths");
+        }
         const auto normalized = normalize_virtual_path(file.canonical_path);
         if (!normalized || normalized->extension() != ".em") {
             throw std::invalid_argument("virtual Email Markup paths must be absolute .em paths");
