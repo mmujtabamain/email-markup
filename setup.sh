@@ -29,6 +29,7 @@ run() {
 }
 
 REPO_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+VCPKG_PARENT_DIR="$REPO_DIR/external"
 VCPKG_DIR="$REPO_DIR/external/vcpkg"
 VCPKG_VERSION_FILE="$REPO_DIR/external/vcpkg.version"
 VCPKG_STATE_FILE="$VCPKG_DIR/.email-markup-version"
@@ -37,7 +38,7 @@ TOTAL_STEPS=4
 cd "$REPO_DIR"
 
 step "Step 1/$TOTAL_STEPS — Check build prerequisites"
-for command_name in git cmake ninja; do
+for command_name in git cmake ninja pkg-config; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
     fail "Missing required command: $command_name"
     exit 1
@@ -45,6 +46,7 @@ for command_name in git cmake ninja; do
 done
 
 step "Step 2/$TOTAL_STEPS — Clone vcpkg"
+run mkdir -p "$VCPKG_PARENT_DIR"
 VCPKG_VERSION=""
 if [ -f "$VCPKG_VERSION_FILE" ]; then
   VCPKG_VERSION=$(sed -n '1{s/^[[:space:]]*//;s/[[:space:]]*$//;p;}' "$VCPKG_VERSION_FILE")
@@ -70,9 +72,17 @@ fi
 
 if [ ! -f "$VCPKG_DIR/bootstrap-vcpkg.sh" ]; then
   if [ -n "$VCPKG_VERSION" ]; then
-    run git clone --depth 1 --branch "$VCPKG_VERSION" https://github.com/microsoft/vcpkg.git "$VCPKG_DIR"
+    run mkdir "$VCPKG_DIR"
+    run git -C "$VCPKG_DIR" init
+    run git -C "$VCPKG_DIR" remote add origin https://github.com/microsoft/vcpkg.git
+    run git -C "$VCPKG_DIR" fetch --depth 1 origin "$VCPKG_VERSION"
+    run git -C "$VCPKG_DIR" checkout --detach FETCH_HEAD
   else
     run git clone --depth 1 https://github.com/microsoft/vcpkg.git "$VCPKG_DIR"
+    VCPKG_VERSION=$(git -C "$VCPKG_DIR" rev-parse --verify HEAD)
+    VCPKG_REQUESTED_VERSION=$VCPKG_VERSION
+    printf '%s\n' "$VCPKG_VERSION" > "$VCPKG_VERSION_FILE"
+    success "Pinned vcpkg to $VCPKG_VERSION."
   fi
   printf '%s\n' "$VCPKG_REQUESTED_VERSION" > "$VCPKG_STATE_FILE"
   run rm -rf "$VCPKG_DIR/.git"

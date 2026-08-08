@@ -2,6 +2,7 @@
 setlocal EnableExtensions DisableDelayedExpansion
 
 set "REPO_DIR=%~dp0"
+set "VCPKG_PARENT_DIR=%REPO_DIR%external"
 set "VCPKG_DIR=%REPO_DIR%external\vcpkg"
 set "VCPKG_VERSION_FILE=%REPO_DIR%external\vcpkg.version"
 set "VCPKG_STATE_FILE=%VCPKG_DIR%\.email-markup-version"
@@ -34,6 +35,7 @@ where cmake >nul 2>nul || goto :missing_cmake
 where ninja >nul 2>nul || goto :missing_ninja
 
 call :step "Step 2/4 - Clone vcpkg"
+if not exist "%VCPKG_PARENT_DIR%" mkdir "%VCPKG_PARENT_DIR%" || goto :error
 if exist "%VCPKG_VERSION_FILE%" set /p "VCPKG_VERSION="<"%VCPKG_VERSION_FILE%"
 set "VCPKG_REQUESTED_VERSION=latest"
 if defined VCPKG_VERSION set "VCPKG_REQUESTED_VERSION=%VCPKG_VERSION%"
@@ -47,11 +49,7 @@ if exist "%VCPKG_DIR%\bootstrap-vcpkg.bat" (
 if exist "%VCPKG_DIR%\bootstrap-vcpkg.bat" goto :vcpkg_cloned
 if exist "%VCPKG_DIR%" goto :invalid_vcpkg
 
-if defined VCPKG_VERSION (
-  git clone --depth 1 --branch "%VCPKG_VERSION%" https://github.com/microsoft/vcpkg.git "%VCPKG_DIR%" || goto :error
-) else (
-  git clone --depth 1 https://github.com/microsoft/vcpkg.git "%VCPKG_DIR%" || goto :error
-)
+call :clone_vcpkg || goto :error
 >"%VCPKG_STATE_FILE%" echo %VCPKG_REQUESTED_VERSION%
 rmdir /s /q "%VCPKG_DIR%\.git" || goto :error
 goto :vcpkg_cloned
@@ -108,6 +106,24 @@ exit /b 0
 
 :warn
 echo %YELLOW%%~1%RESET%
+exit /b 0
+
+:clone_vcpkg
+if defined VCPKG_VERSION goto :clone_pinned_vcpkg
+git clone --depth 1 https://github.com/microsoft/vcpkg.git "%VCPKG_DIR%" || exit /b 1
+for /f "delims=" %%I in ('git -C "%VCPKG_DIR%" rev-parse --verify HEAD') do set "VCPKG_VERSION=%%I"
+if not defined VCPKG_VERSION exit /b 1
+set "VCPKG_REQUESTED_VERSION=%VCPKG_VERSION%"
+>"%VCPKG_VERSION_FILE%" echo %VCPKG_VERSION%
+call :success "Pinned vcpkg to %VCPKG_VERSION%."
+exit /b 0
+
+:clone_pinned_vcpkg
+mkdir "%VCPKG_DIR%" || exit /b 1
+git -C "%VCPKG_DIR%" init || exit /b 1
+git -C "%VCPKG_DIR%" remote add origin https://github.com/microsoft/vcpkg.git || exit /b 1
+git -C "%VCPKG_DIR%" fetch --depth 1 origin "%VCPKG_VERSION%" || exit /b 1
+git -C "%VCPKG_DIR%" checkout --detach FETCH_HEAD || exit /b 1
 exit /b 0
 
 :check_vcpkg_version

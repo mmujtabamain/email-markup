@@ -180,7 +180,7 @@ then-current language and assigned a version boundary.
 ```text
 email-markup/
 ├── external/vcpkg/             setup-managed C++ dependencies
-├── external/vcpkg.version       optional vcpkg release tag
+├── external/vcpkg.version       setup-recorded vcpkg commit
 ├── CMakeLists.txt               root project
 ├── CMakePresets.json
 ├── vcpkg.json                   fmt, nlohmann-json, Catch2
@@ -229,7 +229,7 @@ rm -rf external/vcpkg/.git
 Move the template build files to the repository root and rewrite them:
 
 - `vcpkg.json` uses manifest mode with `fmt`, `nlohmann-json`, and `catch2`; the
-  optional `external/vcpkg.version` release tag selects the dependency snapshot.
+  `external/vcpkg.version` records the exact setup-selected dependency snapshot.
 - Root `CMakeLists.txt` lists sources explicitly and adds each package as a
   subdirectory.
 - Dev builds copy `lib/` next to the binaries.
