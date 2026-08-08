@@ -1,11 +1,19 @@
-.DS_Store
+# build caches
 build/
 out/
 .cache/
 node_modules/
 dist/
+
+# extensions
 *.vsix
 extensions/vscode/server/*/email-markup-lsp
 extensions/vscode/server/*/email-markup-lsp.exe
 extensions/vscode/server/*/lib/
 extensions/vscode/server/*/brand/
+
+# vcpkg
+/external/vcpkg/
+
+# OS
+.DS_Store

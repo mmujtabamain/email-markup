@@ -30,6 +30,8 @@ run() {
 
 REPO_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 VCPKG_DIR="$REPO_DIR/external/vcpkg"
+VCPKG_VERSION_FILE="$REPO_DIR/external/vcpkg.version"
+VCPKG_STATE_FILE="$VCPKG_DIR/.email-markup-version"
 TOTAL_STEPS=4
 
 cd "$REPO_DIR"
@@ -42,8 +44,39 @@ for command_name in git cmake ninja; do
   fi
 done
 
-step "Step 2/$TOTAL_STEPS — Initialise the vcpkg submodule"
-run git submodule update --init --recursive --depth 1
+step "Step 2/$TOTAL_STEPS — Clone vcpkg"
+VCPKG_VERSION=""
+if [ -f "$VCPKG_VERSION_FILE" ]; then
+  VCPKG_VERSION=$(sed -n '1{s/^[[:space:]]*//;s/[[:space:]]*$//;p;}' "$VCPKG_VERSION_FILE")
+fi
+VCPKG_REQUESTED_VERSION=${VCPKG_VERSION:-latest}
+
+if [ -f "$VCPKG_DIR/bootstrap-vcpkg.sh" ]; then
+  VCPKG_INSTALLED_VERSION=""
+  if [ -f "$VCPKG_STATE_FILE" ]; then
+    VCPKG_INSTALLED_VERSION=$(sed -n '1p' "$VCPKG_STATE_FILE")
+  fi
+
+  if [ "$VCPKG_INSTALLED_VERSION" = "$VCPKG_REQUESTED_VERSION" ]; then
+    success "vcpkg $VCPKG_REQUESTED_VERSION is already cloned."
+  else
+    warn "The requested vcpkg version changed; replacing the generated checkout."
+    run rm -rf "$VCPKG_DIR"
+  fi
+elif [ -e "$VCPKG_DIR" ]; then
+  fail "$VCPKG_DIR exists but is not a valid vcpkg checkout."
+  exit 1
+fi
+
+if [ ! -f "$VCPKG_DIR/bootstrap-vcpkg.sh" ]; then
+  if [ -n "$VCPKG_VERSION" ]; then
+    run git clone --depth 1 --branch "$VCPKG_VERSION" https://github.com/microsoft/vcpkg.git "$VCPKG_DIR"
+  else
+    run git clone --depth 1 https://github.com/microsoft/vcpkg.git "$VCPKG_DIR"
+  fi
+  printf '%s\n' "$VCPKG_REQUESTED_VERSION" > "$VCPKG_STATE_FILE"
+  run rm -rf "$VCPKG_DIR/.git"
+fi
 
 step "Step 3/$TOTAL_STEPS — Bootstrap vcpkg"
 if [ -x "$VCPKG_DIR/vcpkg" ]; then
