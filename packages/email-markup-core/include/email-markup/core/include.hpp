@@ -40,4 +40,24 @@ private:
     std::size_t maximum_bytes_;
 };
 
+class MemoryFileResolver final : public FileResolver {
+public:
+    explicit MemoryFileResolver(std::vector<ResolvedFile> files,
+                                std::size_t maximum_bytes = 1024 * 1024);
+    [[nodiscard]] std::optional<ResolvedFile> resolve(
+        const std::filesystem::path& including_file,
+        std::string_view requested,
+        const std::vector<std::filesystem::path>& search_directories,
+        const std::vector<std::filesystem::path>& allowed_roots,
+        std::vector<std::filesystem::path>& attempted) override;
+
+private:
+    std::unordered_map<std::string, std::string> files_;
+    std::size_t maximum_bytes_;
+};
+
+[[nodiscard]] std::optional<std::filesystem::path> normalize_virtual_path(
+    const std::filesystem::path& path,
+    const std::filesystem::path& base = "/");
+
 }  // namespace email_markup

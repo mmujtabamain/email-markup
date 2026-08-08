@@ -80,8 +80,7 @@ namespace email_markup
         loader.load(request.entry_path, request.source, 0, true);
         const auto tokens =
             detail::resolve_tokens(loader.registry, request.data, loader.diagnostics);
-        const auto entry_key =
-            std::filesystem::weakly_canonical(request.entry_path, error).string();
+        const auto entry_key = request.entry_path.lexically_normal().string();
         const auto entry = loader.documents.find(entry_key);
         if (entry != loader.documents.end() && !detail::has_errors(loader.diagnostics))
         {

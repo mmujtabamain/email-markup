@@ -78,9 +78,8 @@ namespace email_markup::detail
                 issue("EM0902", "Compilation cancelled.", {});
             return;
         }
-        std::error_code error;
-        const auto canonical = std::filesystem::weakly_canonical(path, error);
-        const auto key = (error ? path.lexically_normal() : canonical).string();
+        const auto canonical = path.lexically_normal();
+        const auto key = canonical.string();
         if (std::find(stack.begin(), stack.end(), key) != stack.end())
         {
             std::string cycle;
