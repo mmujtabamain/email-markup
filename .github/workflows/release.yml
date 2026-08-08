@@ -51,6 +51,11 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
+      - name: Set up CMake and Ninja
+        uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb
+        with:
+          cmakeVersion: 4.4.2
+          ninjaVersion: 1.13.2
       - name: Set up MSVC
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
