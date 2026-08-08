@@ -17,3 +17,6 @@ extensions/vscode/server/*/brand/
 
 # OS
 .DS_Store
+
+# IDEs
+.vscode/settings.json
