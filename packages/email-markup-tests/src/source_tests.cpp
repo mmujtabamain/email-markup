@@ -60,6 +60,18 @@ TEST_CASE("memory resolver normalizes paths and rejects duplicates") {
     }), std::invalid_argument);
     CHECK_THROWS_AS(MemoryFileResolver({ResolvedFile{"relative.em", "source"}}),
                     std::invalid_argument);
+
+    CHECK(email_markup::portable_path_string("\\project\\shell.em") ==
+          "/project/shell.em");
+    MemoryFileResolver windows_style{{
+        ResolvedFile{"\\library\\portable.em", "portable"},
+    }};
+    attempted.clear();
+    const auto portable = windows_style.resolve(
+        "\\mail\\message.em", "\\library\\portable.em", {}, {"\\"}, attempted);
+    REQUIRE(portable.has_value());
+    CHECK(email_markup::portable_path_string(portable->canonical_path) ==
+          "/library/portable.em");
 }
 
 TEST_CASE("memory resolver compiles nested includes imports and a shell") {

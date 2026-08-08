@@ -41,6 +41,11 @@ namespace email_markup::detail
         }
     } // namespace
 
+    std::string path_key(const std::filesystem::path &path)
+    {
+        return portable_path_string(path.lexically_normal());
+    }
+
     void Loader::issue(std::string code, std::string message, const SourceRange range)
     {
         if (diagnostics.size() < request.limits.maximum_diagnostics)
@@ -79,7 +84,7 @@ namespace email_markup::detail
             return;
         }
         const auto canonical = path.lexically_normal();
-        const auto key = canonical.string();
+        const auto key = path_key(canonical);
         if (std::find(stack.begin(), stack.end(), key) != stack.end())
         {
             std::string cycle;

@@ -26,7 +26,7 @@ namespace email_markup::cli
                 const auto &source = result.snapshot->sources->get(diagnostic.range.source);
                 const auto start = source.position(diagnostic.range.start);
                 const auto end = source.position(diagnostic.range.end);
-                output["file"] = source.path.string();
+                output["file"] = email_markup::portable_path_string(source.path);
                 output["range"] = {
                     {"start", {{"line", start.line}, {"character", start.column}}},
                     {"end", {{"line", end.line}, {"character", end.column}}}};
@@ -72,7 +72,7 @@ namespace email_markup::cli
                 diagnostic.range.source < result.snapshot->sources->size())
             {
                 source = &result.snapshot->sources->get(diagnostic.range.source);
-                file = source->path.string();
+                file = email_markup::portable_path_string(source->path);
                 position = source->position(diagnostic.range.start);
             }
             fmt::print(stderr, "{}:{}:{}: {} {}: {}\n", file, position.line + 1,

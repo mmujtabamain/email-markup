@@ -26,7 +26,7 @@ public:
                         : including_file.parent_path() / requested;
         path = path.lexically_normal();
         attempted.push_back(path);
-        const auto found = files.find(path.string());
+        const auto found = files.find(email_markup::portable_path_string(path));
         if (found == files.end()) return std::nullopt;
         return email_markup::ResolvedFile{path, found->second};
     }

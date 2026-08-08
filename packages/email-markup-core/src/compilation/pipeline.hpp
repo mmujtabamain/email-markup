@@ -14,6 +14,7 @@
 namespace email_markup::detail
 {
     [[nodiscard]] bool has_errors(const std::vector<Diagnostic> &diagnostics);
+    [[nodiscard]] std::string path_key(const std::filesystem::path &path);
 
     struct Loader
     {

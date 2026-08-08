@@ -183,7 +183,7 @@ namespace email_markup::cli
             const auto result = email_markup::compile(request, resolver);
             Json dependencies = Json::array();
             for (const auto &dependency : result.dependencies)
-                dependencies.push_back(dependency.generic_string());
+                dependencies.push_back(email_markup::portable_path_string(dependency));
             fmt::print("{}\n",
                        Json{{"protocol", protocol},
                             {"version", protocol_version},

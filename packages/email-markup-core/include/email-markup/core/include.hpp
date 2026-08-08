@@ -56,6 +56,8 @@ private:
     std::size_t maximum_bytes_;
 };
 
+[[nodiscard]] std::string portable_path_string(std::filesystem::path path);
+
 [[nodiscard]] std::optional<std::filesystem::path> normalize_virtual_path(
     const std::filesystem::path& path,
     const std::filesystem::path& base = "/");

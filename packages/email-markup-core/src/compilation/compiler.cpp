@@ -80,7 +80,7 @@ namespace email_markup
         loader.load(request.entry_path, request.source, 0, true);
         const auto tokens =
             detail::resolve_tokens(loader.registry, request.data, loader.diagnostics);
-        const auto entry_key = request.entry_path.lexically_normal().string();
+        const auto entry_key = detail::path_key(request.entry_path);
         const auto entry = loader.documents.find(entry_key);
         if (entry != loader.documents.end() && !detail::has_errors(loader.diagnostics))
         {
@@ -89,7 +89,7 @@ namespace email_markup
                 entry->second.nodes, request.data, tokens);
             if (shell_path && !detail::has_errors(loader.diagnostics))
             {
-                const auto shell = loader.documents.find(shell_path->string());
+                const auto shell = loader.documents.find(detail::path_key(*shell_path));
                 if (shell != loader.documents.end())
                 {
                     generated = detail::render_shell_document(

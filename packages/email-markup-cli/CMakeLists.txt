@@ -16,7 +16,7 @@ target_link_libraries(
         email_markup::core
         email_markup::platform
         email_markup::runtime
-        fmt::fmt
+        fmt::fmt-header-only
 )
 
 target_compile_features(emc PRIVATE cxx_std_23)

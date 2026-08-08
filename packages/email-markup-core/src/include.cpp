@@ -20,20 +20,20 @@ bool beneath(const std::filesystem::path& child, const std::filesystem::path& ro
     return true;
 }
 
-std::string portable_path(std::filesystem::path path) {
+}  // namespace
+
+std::string portable_path_string(std::filesystem::path path) {
     auto value = path.generic_string();
     std::replace(value.begin(), value.end(), '\\', '/');
     return value;
 }
 
-}  // namespace
-
 std::optional<std::filesystem::path> normalize_virtual_path(
     const std::filesystem::path& path, const std::filesystem::path& base) {
-    const auto raw = portable_path(path);
+    const auto raw = portable_path_string(path);
     if (raw.empty() || raw.find('\0') != std::string::npos) return std::nullopt;
 
-    auto combined = raw.front() == '/' ? raw : portable_path(base / path);
+    auto combined = raw.front() == '/' ? raw : portable_path_string(base / path);
     if (combined.empty() || combined.front() != '/') return std::nullopt;
 
     std::vector<std::string> parts;
@@ -99,7 +99,7 @@ MemoryFileResolver::MemoryFileResolver(std::vector<ResolvedFile> files,
                                        const std::size_t maximum_bytes)
     : maximum_bytes_(maximum_bytes) {
     for (auto& file : files) {
-        if (!portable_path(file.canonical_path).starts_with('/')) {
+        if (!portable_path_string(file.canonical_path).starts_with('/')) {
             throw std::invalid_argument("virtual Email Markup paths must be absolute .em paths");
         }
         const auto normalized = normalize_virtual_path(file.canonical_path);
@@ -112,11 +112,12 @@ MemoryFileResolver::MemoryFileResolver(std::vector<ResolvedFile> files,
         if (!is_valid_utf8(file.contents)) {
             throw std::invalid_argument("virtual Email Markup source is not valid UTF-8");
         }
-        const auto [_, inserted] = files_.emplace(normalized->generic_string(),
+        const auto key = portable_path_string(*normalized);
+        const auto [_, inserted] = files_.emplace(key,
                                                   std::move(file.contents));
         if (!inserted) {
             throw std::invalid_argument("duplicate virtual Email Markup path: " +
-                                        normalized->generic_string());
+                                        key);
         }
     }
 }
@@ -128,7 +129,7 @@ std::optional<ResolvedFile> MemoryFileResolver::resolve(
     std::vector<std::filesystem::path>& attempted) {
     const std::filesystem::path requested_path{requested};
     std::vector<std::filesystem::path> bases;
-    if (portable_path(requested_path).starts_with('/')) {
+    if (portable_path_string(requested_path).starts_with('/')) {
         bases.emplace_back("/");
     } else {
         bases.push_back(including_file.parent_path());
@@ -151,7 +152,7 @@ std::optional<ResolvedFile> MemoryFileResolver::resolve(
         }
         if (!allowed) continue;
 
-        const auto found = files_.find(candidate->generic_string());
+        const auto found = files_.find(portable_path_string(*candidate));
         if (found == files_.end() || found->second.size() > maximum_bytes_) continue;
         return ResolvedFile{*candidate, found->second};
     }
