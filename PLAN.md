@@ -236,7 +236,7 @@ Move the template build files to the repository root and rewrite them:
 - `setup.sh`/`run.sh` and their `.bat` siblings remain behaviorally aligned.
 - User-facing Bash follows the repository's Bash 3.2 and safety conventions.
 
-The support floor is C++23, CMake 4.0, Ninja, current Apple Clang on macOS,
+The support floor is C++23, CMake 3.25, Ninja, current Apple Clang on macOS,
 current MSVC on Windows, and current Clang or GCC on Linux. CI records the exact
 versions used for the first release.
 

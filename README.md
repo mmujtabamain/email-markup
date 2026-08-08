@@ -24,7 +24,7 @@ examples, conformance tests, and a self-contained VS Code extension.
 
 ## Build from source
 
-Requirements are CMake 4+, Ninja, Git, pkg-config, and a current C++23 compiler.
+Requirements are CMake 3.25+, Ninja, Git, pkg-config, and a current C++23 compiler.
 Dependencies come from a setup-managed clone at `external/vcpkg`. On the first
 run, setup clones vcpkg's default branch and writes its exact commit to
 `external/vcpkg.version`. Later runs fetch that pinned commit, so every clone uses
