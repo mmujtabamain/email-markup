@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import os
 import shutil
 import subprocess
 import zipfile
@@ -9,6 +10,10 @@ from pathlib import Path
 
 
 VERSION = "1.1.0"
+
+
+def npm_executable(platform: str = os.name) -> str:
+    return "npm.cmd" if platform == "nt" else "npm"
 
 
 def checksum(path: Path) -> str:
@@ -65,7 +70,7 @@ def main() -> int:
     server.mkdir(parents=True)
     shutil.copy2(lsp, server / lsp.name)
     shutil.copytree(install / "share" / "email-markup" / "lib", server / "lib")
-    subprocess.run(["npm", "run", "package"], cwd=extension, check=True)
+    subprocess.run([npm_executable(), "run", "package"], cwd=extension, check=True)
     built = next(extension.glob(f"email-markup-language-{VERSION}.vsix"))
     vsix = output / f"email-markup-language-{arguments.platform}.vsix"
     shutil.move(built, vsix)
