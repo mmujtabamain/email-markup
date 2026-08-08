@@ -5,7 +5,7 @@ namespace email_markup
 
     std::string_view version() noexcept
     {
-        return "1.1.0";
+        return EMAIL_MARKUP_VERSION;
     }
 
 } // namespace email_markup

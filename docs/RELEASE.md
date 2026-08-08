@@ -1,7 +1,12 @@
 # Email Markup release guide
 
-Email Markup releases are produced from a single `v*` tag by
-`.github/workflows/release.yml`. Do not hand-assemble platform packages.
+Email Markup releases are produced by `.github/workflows/release.yml` after every push
+to `main`. Do not hand-assemble platform packages.
+
+The root `VERSION` file is the only release-version source. Each accepted release uses
+the canonical `v<version>` tag. If that tag already exists, the workflow fails before
+building and reports that the duplicate version was not published; the commit remains
+on `main`.
 
 ## Release contents
 
@@ -46,19 +51,29 @@ Use `shasum -a 256 -c` on macOS if GNU `sha256sum` is unavailable.
 
 ## Version and protocol
 
-CMake, `email_markup::version()`, the vcpkg manifest, and the VS Code package must share
-the release version. `external/vcpkg.version` pins the setup-managed dependency
-snapshot to the peeled `2026.07.29` tag commit. The extension/server protocol
-and stdin compilation protocol have their own integer versions. The extension
-client checks the server protocol at startup; embedding applications must check
-the compilation response protocol and compiler version.
+Change only the root `VERSION` file when preparing a release. CMake,
+`email_markup::version()`, the release packager, and VS Code packaging all read that
+value. The checked-in VS Code manifest uses `0.0.0` as a development sentinel; the
+packaging command injects the release version into the VSIX without modifying tracked
+files. `external/vcpkg.version` pins the setup-managed dependency snapshot to the
+peeled `2026.07.29` tag commit. The extension/server protocol and stdin compilation
+protocol have their own integer versions. The extension client checks the server
+protocol at startup; embedding applications must check the compilation response
+protocol and compiler version.
 
-Before tagging, require a clean tree, all local gates, and review of the
-intentional-differences manifest. After the release workflow passes, install the
-matching VSIX on each supported editor platform and perform the user-owned final
-visual and behavioral checks: the `@` file icon, Email Markup/HTML/CSS syntax colors,
-HTML and CSS completion, Email Markup diagnostics, component completion, secured preview,
-and representative rendered email output.
+Push commits and merge commits directly to `main` as usual. Every push starts the
+release workflow. A successful release consumes the current version, so update
+`VERSION` before the next push that should publish.
 
-No release job pushes source branches. Tag publication is the only trigger that
-creates the GitHub release, and every uploaded file is checksum-verified first.
+The legacy SHA-suffixed 1.1.0 release tag has already been migrated to canonical
+`v1.1.0`. All releases use canonical tags from that version onward.
+
+Before pushing a new version to `main`, require a clean tree, all local gates, and
+review of the intentional-differences manifest. After the release workflow passes,
+install the matching VSIX on each supported editor platform and perform the user-owned
+final visual and behavioral checks: the `@` file icon, Email Markup/HTML/CSS syntax
+colors, HTML and CSS completion, Email Markup diagnostics, component completion,
+secured preview, and representative rendered email output.
+
+No release job pushes source branches, and every uploaded file is checksum-verified
+before publication.

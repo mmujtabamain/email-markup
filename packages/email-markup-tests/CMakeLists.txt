@@ -24,7 +24,12 @@ target_link_libraries(
 )
 
 target_compile_features(email-markup-tests PRIVATE cxx_std_23)
-target_compile_definitions(email-markup-tests PRIVATE EMAIL_MARKUP_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+target_compile_definitions(
+    email-markup-tests
+    PRIVATE
+        EMAIL_MARKUP_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+        EMAIL_MARKUP_VERSION="${PROJECT_VERSION}"
+)
 
 catch_discover_tests(email-markup-tests)
 

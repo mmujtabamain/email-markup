@@ -40,7 +40,7 @@ The response always identifies the protocol and compiler version:
 {
   "protocol": "email-markup.compile",
   "version": 1,
-  "compiler_version": "1.1.0",
+  "compiler_version": "<release version>",
   "success": true,
   "html": "<!doctype html>...",
   "dependencies": [

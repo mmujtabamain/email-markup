@@ -2,7 +2,7 @@
   "name": "email-markup-language",
   "displayName": "Email Markup Language Support",
   "description": "Language support and secure final-HTML preview for Email Markup documents.",
-  "version": "1.1.0",
+  "version": "0.0.0",
   "publisher": "email-markup-lang",
   "license": "MIT",
   "engines": {
@@ -36,7 +36,7 @@
     "compile": "npm run generate && tsc -p . && node scripts/build-extension.mjs",
     "test": "npm run compile && node --test dist/test/*.test.js",
     "test:host": "npm run compile && node dist/test/runTest.js",
-    "package": "npm run compile && npx @vscode/vsce package --allow-missing-repository"
+    "package": "npm run compile && node scripts/package-extension.mjs"
   },
   "contributes": {
     "languages": [

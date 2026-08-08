@@ -36,6 +36,10 @@ target_include_directories(
 target_link_libraries(email-markup-core PUBLIC nlohmann_json::nlohmann_json)
 
 target_compile_features(email-markup-core PUBLIC cxx_std_23)
+target_compile_definitions(
+    email-markup-core
+    PRIVATE EMAIL_MARKUP_VERSION="${PROJECT_VERSION}"
+)
 
 set_target_properties(email-markup-core PROPERTIES OUTPUT_NAME email-markup-core)
 

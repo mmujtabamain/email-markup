@@ -5,9 +5,15 @@ if(CMAKE_HOST_WIN32 AND NOT DEFINED VCPKG_TARGET_TRIPLET)
         "Use self-contained Windows release binaries")
 endif()
 
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" EMAIL_MARKUP_VERSION)
+string(STRIP "${EMAIL_MARKUP_VERSION}" EMAIL_MARKUP_VERSION)
+if(NOT EMAIL_MARKUP_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
+    message(FATAL_ERROR "VERSION must contain a semantic version in X.Y.Z form")
+endif()
+
 project(
     EmailMarkup
-    VERSION 1.1.0
+    VERSION "${EMAIL_MARKUP_VERSION}"
     DESCRIPTION "A typed, component-based language for HTML email"
     LANGUAGES CXX
 )
