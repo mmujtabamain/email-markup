@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "analysis/context.hpp"
+#include "email-markup/core/context_schema.hpp"
 #include "email-markup/core/lexer.hpp"
 #include "email-markup/core/parser.hpp"
 #include "email-markup/core/types.hpp"
@@ -19,6 +20,30 @@
 
 namespace email_markup::lsp
 {
+    namespace
+    {
+        void add_schema_items(const Json &fields, const std::string &prefix, Json &items)
+        {
+            for (const auto &[name, field] : fields.items())
+            {
+                const auto path = prefix.empty() ? name : prefix + "." + name;
+                const auto type = field.at("type").get<std::string>();
+                auto detail = type;
+                if (field.value("required", false)) detail += " · required";
+                if (field.value("nullable", false)) detail += " · nullable";
+                Json item{{"label", path},
+                          {"kind", type == "object" ? 9 : 6},
+                          {"insertText", path},
+                          {"detail", detail}};
+                if (field.contains("description"))
+                    item["documentation"] = field.at("description");
+                items.push_back(std::move(item));
+                if (type == "object")
+                    add_schema_items(field.at("fields"), path, items);
+            }
+        }
+    }
+
     void Server::completion(const Json &id, const Json &params)
     {
         const auto *open = document(params);
@@ -61,7 +86,19 @@ namespace email_markup::lsp
                     add_data(child, path);
                 }
             };
-            add_data(request.data, "");
+            if (!request.context_schema.is_null())
+            {
+                try
+                {
+                    add_schema_items(parse_context_schema(request.context_schema).fields,
+                                     "", items);
+                }
+                catch (...)
+                {
+                }
+            }
+            else
+                add_data(request.data, "");
             const auto prefix = open->text.substr(0, offset);
             static const std::regex local{
                 R"(@For\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s+in\b)"};

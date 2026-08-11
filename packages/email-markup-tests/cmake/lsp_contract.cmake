@@ -1,5 +1,14 @@
 set(URI "file://${SOURCE_DIR}/examples/lsp_contract.em")
 set(EMT_URI "file://${SOURCE_DIR}/examples/lsp_contract.emt")
+set(SCHEMA_DIR "${BINARY_DIR}/lsp-schema-contract")
+file(MAKE_DIRECTORY "${SCHEMA_DIR}")
+file(WRITE "${SCHEMA_DIR}/context.em.schema.json"
+     "{\"format\":\"email-markup-context\",\"version\":1,\"name\":\"email-context\",\"fields\":{\"business\":{\"type\":\"object\",\"required\":true,\"fields\":{\"name\":{\"type\":\"name\",\"required\":true,\"description\":\"Business display name\",\"example\":\"Acme\"}}}}}")
+file(WRITE "${SCHEMA_DIR}/em.json"
+     "{\"include\":[\"${SOURCE_DIR}/lib\"],\"imports\":[\"${SOURCE_DIR}/lib/builtins.em\"],\"context_schema\":\"context.em.schema.json\"}")
+set(SCHEMA_URI "file://${SCHEMA_DIR}/schema-preview.em")
+set(COMPONENT_URI "file://${SCHEMA_DIR}/component-preview.em")
+set(DEFERRED_URI "file://${SCHEMA_DIR}/deferred-preview.em")
 set(WIRE "")
 
 function(append_message BODY)
@@ -40,6 +49,17 @@ append_message("{\"jsonrpc\":\"2.0\",\"id\":25,\"method\":\"textDocument/documen
 append_message("{\"jsonrpc\":\"2.0\",\"id\":26,\"method\":\"email-markup/preview\",\"params\":{\"uri\":\"${EMT_URI}\"}}")
 append_message("{\"jsonrpc\":\"2.0\",\"id\":27,\"method\":\"textDocument/hover\",\"params\":{\"textDocument\":{\"uri\":\"${EMT_URI}\"},\"position\":{\"line\":14,\"character\":2}}}")
 append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didClose\",\"params\":{\"textDocument\":{\"uri\":\"${EMT_URI}\"}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"${SCHEMA_URI}\",\"languageId\":\"email-markup\",\"version\":1,\"text\":\"<p>@{business.name}</p>\"}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"id\":28,\"method\":\"textDocument/completion\",\"params\":{\"textDocument\":{\"uri\":\"${SCHEMA_URI}\"},\"position\":{\"line\":0,\"character\":14}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"id\":29,\"method\":\"textDocument/hover\",\"params\":{\"textDocument\":{\"uri\":\"${SCHEMA_URI}\"},\"position\":{\"line\":0,\"character\":13}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"id\":30,\"method\":\"email-markup/preview\",\"params\":{\"uri\":\"${SCHEMA_URI}\"}}")
+append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didClose\",\"params\":{\"textDocument\":{\"uri\":\"${SCHEMA_URI}\"}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"${COMPONENT_URI}\",\"languageId\":\"email-markup\",\"version\":1,\"text\":\"@DefineComponent(name: \\\"Badge\\\")\\n  @Props\\n    label: string\\n  @/Props\\n  @Template\\n    <strong>@{label}</strong>\\n  @/Template\\n@/DefineComponent\"}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"id\":31,\"method\":\"email-markup/preview\",\"params\":{\"uri\":\"${COMPONENT_URI}\"}}")
+append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didClose\",\"params\":{\"textDocument\":{\"uri\":\"${COMPONENT_URI}\"}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"${DEFERRED_URI}\",\"languageId\":\"email-markup\",\"version\":1,\"text\":\"@Engine(\\\"engines/django.emt\\\"); <p>@[business.name]</p>\"}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"id\":32,\"method\":\"email-markup/preview\",\"params\":{\"uri\":\"${DEFERRED_URI}\"}}")
+append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didClose\",\"params\":{\"textDocument\":{\"uri\":\"${DEFERRED_URI}\"}}}")
 append_message("{\"jsonrpc\":\"2.0\",\"id\":10,\"method\":\"shutdown\",\"params\":null}")
 append_message("{\"jsonrpc\":\"2.0\",\"method\":\"exit\",\"params\":null}")
 
@@ -98,6 +118,16 @@ foreach(REQUIRED
     "\\\"id\\\":27"
     "Typed recipient-time condition"
     "\\\"html\\\":\\\""
+    "\\\"id\\\":28"
+    "business.name"
+    "Business display name"
+    "\\\"id\\\":29"
+    "\\\"id\\\":30"
+    "<p>Acme</p>"
+    "\\\"id\\\":31"
+    "<strong>String</strong>"
+    "\\\"id\\\":32"
+    "\\\"output_kind\\\":\\\"sample-html\\\""
     "\\\"version\\\":2"
     "-32800"
     "\\\"id\\\":10")

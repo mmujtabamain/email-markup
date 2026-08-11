@@ -1,10 +1,12 @@
 #include "server/server.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <regex>
 #include <string>
 
 #include "analysis/context.hpp"
+#include "email-markup/core/context_schema.hpp"
 #include "email-markup/core/engine.hpp"
 #include "email-markup/core/parser.hpp"
 #include "email-markup/core/types.hpp"
@@ -12,6 +14,47 @@
 
 namespace email_markup::lsp
 {
+    namespace
+    {
+        std::string context_path_at(const std::string &source, const std::size_t offset)
+        {
+            const auto interpolation = source.rfind("@{", offset);
+            const auto deferred = source.rfind("@[", offset);
+            const auto open = interpolation == std::string::npos ? deferred
+                              : deferred == std::string::npos ? interpolation
+                                                             : std::max(interpolation, deferred);
+            if (open == std::string::npos) return {};
+            const auto closing = source.find(source[open + 1] == '{' ? '}' : ']', open + 2);
+            if (closing != std::string::npos && offset > closing) return {};
+            auto end = open + 2;
+            while (end < source.size() &&
+                   (std::isalnum(static_cast<unsigned char>(source[end])) ||
+                    source[end] == '_' || source[end] == '.'))
+                ++end;
+            if (offset < open + 2 || offset > end) return {};
+            return source.substr(open + 2, end - (open + 2));
+        }
+
+        const Json *schema_field_at(const Json &fields, const std::string &path)
+        {
+            const Json *current_fields = &fields;
+            const Json *field = nullptr;
+            std::size_t cursor = 0;
+            while (cursor < path.size())
+            {
+                const auto dot = path.find('.', cursor);
+                const auto name = path.substr(cursor, dot - cursor);
+                if (!current_fields->contains(name)) return nullptr;
+                field = &current_fields->at(name);
+                if (dot == std::string::npos) return field;
+                if (field->at("type") != "object") return nullptr;
+                current_fields = &field->at("fields");
+                cursor = dot + 1;
+            }
+            return field;
+        }
+    }
+
     void Server::hover(const Json &id, const Json &params)
     {
         const auto *open = document(params);
@@ -23,6 +66,36 @@ namespace email_markup::lsp
         const auto &position = params.at("position");
         const auto offset = text::offset_at(open->text, position.value("line", 0),
                                             position.value("character", 0));
+        const auto path = context_path_at(open->text, offset);
+        if (!path.empty())
+        {
+            try
+            {
+                const auto request = workspace_.compilation_request(*open);
+                if (!request.context_schema.is_null())
+                {
+                    const auto schema = parse_context_schema(request.context_schema);
+                    if (const auto *field = schema_field_at(schema.fields, path))
+                    {
+                        std::string markdown = "**" + path + "**\n\n`" +
+                                               field->at("type").get<std::string>() + "`";
+                        if (field->value("required", false)) markdown += " · required";
+                        if (field->value("nullable", false)) markdown += " · nullable";
+                        if (field->contains("description"))
+                            markdown += "\n\n" +
+                                        field->at("description").get<std::string>();
+                        if (field->contains("example"))
+                            markdown += "\n\nExample: `" + field->at("example").dump() + "`";
+                        respond(id, {{"contents", {{"kind", "markdown"},
+                                                     {"value", markdown}}}});
+                        return;
+                    }
+                }
+            }
+            catch (...)
+            {
+            }
+        }
         const auto word = text::word_at(open->text, offset);
         if (!analysis::directive_name_at(open->text, offset, word))
         {
