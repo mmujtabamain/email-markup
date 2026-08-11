@@ -20,10 +20,12 @@ const grammar = {
     { include: "#comments" },
     { include: "#interpolation" },
     { include: "#props" },
+    { include: "#params" },
     { include: "#slots" },
     { include: "#defineStyle" },
     { include: "#media" },
     { include: "#close" },
+    { include: "#deferred" },
     { include: "#invocation" },
     { include: "#construct" },
     { include: "#escaped" },
@@ -268,6 +270,27 @@ const grammar = {
         },
       ],
     },
+    deferred: {
+      name: "meta.deferred-call.email-markup",
+      begin: "(@)([A-Z][A-Za-z0-9_]*)?(\\[)",
+      beginCaptures: {
+        1: { name: "punctuation.definition.tag.email-markup" },
+        2: { name: "entity.name.function.deferred.email-markup" },
+        3: { name: "punctuation.section.deferred.begin.email-markup" },
+      },
+      end: "(?<!\\\\)(\\])",
+      endCaptures: {
+        1: { name: "punctuation.section.deferred.end.email-markup" },
+      },
+      patterns: [
+        { include: "#interpolation" },
+        { name: "constant.character.escape.email-markup", match: "\\\\[\\],\\\\]" },
+        { name: "keyword.operator.word.email-markup", match: "\\b(?:and|or|not)\\b" },
+        { name: "keyword.operator.email-markup", match: "(?:==|!=|<=|>=|[<>])" },
+        { name: "support.type.property-name.email-markup", match: "\\b[A-Za-z_][A-Za-z0-9_]*(?=\\s*:)" },
+        { name: "variable.other.deferred.email-markup", match: "[A-Za-z_][A-Za-z0-9_.]*" },
+      ],
+    },
     construct: {
       match: "@([A-Z][A-Za-z0-9_]*)",
       captures: {
@@ -280,6 +303,11 @@ const grammar = {
   metadata: { generatedFrom: "syntax/lexical.json", version: lexical.version },
 };
 
+grammar.repository.params = structuredClone(grammar.repository.props);
+grammar.repository.params.name = "meta.block.params.email-markup";
+grammar.repository.params.begin = "(@)(Params)\\b";
+grammar.repository.params.end = "(@/)(Params)\\b";
+
 const languageConfiguration = {
   comments: {
     lineComment: lexical.lineComment,
@@ -289,15 +317,18 @@ const languageConfiguration = {
   brackets: [
     ["(", ")"],
     ["{", "}"],
+    ["[", "]"],
   ],
   autoClosingPairs: [
     { open: "(", close: ")" },
     { open: "{", close: "}" },
+    { open: "[", close: "]" },
     { open: '"', close: '"', notIn: ["string", "comment"] },
   ],
   surroundingPairs: [
     ["(", ")"],
     ["{", "}"],
+    ["[", "]"],
     ['"', '"'],
   ],
   folding: {
@@ -328,10 +359,12 @@ const injectionGrammar = {
     { include: "source.email-markup#comments" },
     { include: "source.email-markup#interpolation" },
     { include: "source.email-markup#props" },
+    { include: "source.email-markup#params" },
     { include: "source.email-markup#slots" },
     { include: "source.email-markup#defineStyle" },
     { include: "source.email-markup#media" },
     { include: "source.email-markup#close" },
+    { include: "source.email-markup#deferred" },
     { include: "source.email-markup#invocation" },
     { include: "source.email-markup#construct" },
     { include: "source.email-markup#escaped" },

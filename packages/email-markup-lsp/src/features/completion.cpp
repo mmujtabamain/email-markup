@@ -101,11 +101,22 @@ namespace email_markup::lsp
         {
             if (context == analysis::PropsCompletionContext::type)
             {
-                for (const auto *type : {"string", "int", "decimal", "number", "bool",
-                                         "name", "url", "email", "color"})
-                    items.push_back({{"label", type},
-                                     {"kind", 25},
-                                     {"detail", "Email Markup prop type"}});
+                if (open->path.extension() == ".emt")
+                {
+                    for (const auto *type : {"int", "decimal", "number", "bool", "name",
+                                             "raw", "path", "condition"})
+                        items.push_back({{"label", type},
+                                         {"kind", 25},
+                                         {"detail", "Deferred macro parameter type"}});
+                }
+                else
+                {
+                    for (const auto *type : {"string", "int", "decimal", "number", "bool",
+                                             "name", "url", "email", "color"})
+                        items.push_back({{"label", type},
+                                         {"kind", 25},
+                                         {"detail", "Email Markup prop type"}});
+                }
             }
             else
             {
@@ -254,12 +265,37 @@ namespace email_markup::lsp
             }
             else
             {
-                for (const auto &keyword : {"If", "Else", "For", "Include",
-                                            "DefineComponent", "DefineStyle", "DefineToken",
-                                            "Media", "Props", "Slots", "Template", "Slot"})
+                const std::vector<std::string> keywords =
+                    open->path.extension() == ".emt"
+                        ? std::vector<std::string>{"DefineBareTemplate", "DefineTemplate",
+                                                   "Params", "Slots", "Template", "If",
+                                                   "Slot"}
+                        : std::vector<std::string>{"Engine", "If", "Else", "For",
+                                                   "Include", "DefineComponent",
+                                                   "DefineStyle", "DefineToken", "Media",
+                                                   "Props", "Slots", "Template", "Slot"};
+                for (const auto &keyword : keywords)
                     items.push_back({{"label", "@" + std::string{keyword}},
                                      {"kind", 14},
                                      {"textEdit", edit("@" + std::string{keyword})}});
+                if (open->path.extension() != ".emt")
+                {
+                    items.push_back({{"label", "@[…]"},
+                                     {"kind", 15},
+                                     {"insertTextFormat", 2},
+                                     {"textEdit", edit("@[${1:recipient.path}]")},
+                                     {"detail", "Deferred Django value"}});
+                    items.push_back({{"label", "@If[…]"},
+                                     {"kind", 15},
+                                     {"insertTextFormat", 2},
+                                     {"textEdit", edit("@If[${1:condition}]\n  ${0}\n@/If")},
+                                     {"detail", "Deferred Django condition"}});
+                    items.push_back({{"label", "@For[…]"},
+                                     {"kind", 15},
+                                     {"insertTextFormat", 2},
+                                     {"textEdit", edit("@For[collection: ${1:recipient.items}, binding: ${2:item}, limit: ${3:20}]\n  ${0}\n@/For")},
+                                     {"detail", "Bounded deferred Django loop"}});
+                }
                 for (const auto &[name, definition] : definitions)
                 {
                     std::string snippet = "@" + name;

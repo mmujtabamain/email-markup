@@ -240,8 +240,17 @@ namespace email_markup::lsp
             error(id, -32801, "Preview became stale");
             return;
         }
+        const auto output_kind = document->path.extension() == ".emt"
+                                     ? "engine-definition"
+                                 : result.output_kind == email_markup::OutputKind::engine_template
+                                     ? "engine-template"
+                                     : "final-html";
+        const auto preview_source = document->path.extension() == ".emt"
+                                        ? document->text
+                                        : result.generated.html;
         respond(id, {{"version", version},
-                     {"html", result.ok() ? Json(result.generated.html) : Json{}},
+                     {"html", result.ok() ? Json(preview_source) : Json{}},
+                     {"output_kind", output_kind},
                      {"diagnostics", workspace_.diagnostics(result, *document)}});
     }
 } // namespace email_markup::lsp

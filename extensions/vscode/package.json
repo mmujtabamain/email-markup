@@ -47,7 +47,8 @@
           "email-markup"
         ],
         "extensions": [
-          ".em"
+          ".em",
+          ".emt"
         ],
         "icon": {
           "light": "./icons/email-markup-light.svg",

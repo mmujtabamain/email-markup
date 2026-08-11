@@ -27,10 +27,17 @@ namespace email_markup::lsp::analysis
                                             const std::size_t offset)
     {
         const auto cursor = std::min(offset, text.size());
-        const auto open = text.rfind("@Props", cursor);
+        const auto props = text.rfind("@Props", cursor);
+        const auto params = text.rfind("@Params", cursor);
+        const auto open = props == std::string_view::npos
+                              ? params
+                          : params == std::string_view::npos
+                              ? props
+                              : std::max(props, params);
         if (open == std::string_view::npos)
             return PropsCompletionContext::none;
-        const auto close = text.rfind("@/Props", cursor);
+        const auto params_block = open == params;
+        const auto close = text.rfind(params_block ? "@/Params" : "@/Props", cursor);
         if (close != std::string_view::npos && close > open)
             return PropsCompletionContext::none;
 

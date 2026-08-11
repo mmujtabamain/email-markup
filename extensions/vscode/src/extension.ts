@@ -24,6 +24,13 @@ let previewRefreshTimer: ReturnType<typeof setTimeout> | undefined;
 let previewRequest = 0;
 let remoteImagesEnabled = false;
 
+function escapePreviewCode(source: string): string {
+  return source
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
 function platformDirectory(): string {
   const platform =
     process.platform === "darwin"
@@ -61,7 +68,7 @@ async function startServer(context: vscode.ExtensionContext): Promise<void> {
     debug: { command: executable, transport: TransportKind.stdio },
   };
   const watcher = vscode.workspace.createFileSystemWatcher(
-    "**/{*.em,em.json,*.json}",
+    "**/{*.em,*.emt,em.json,*.json}",
   );
   context.subscriptions.push(watcher);
   const clientOptions: LanguageClientOptions = {
@@ -114,9 +121,13 @@ async function refreshPreview(
   const request = ++previewRequest;
   const params: { uri: string; data?: unknown } = { uri };
   if (previewData !== undefined) params.data = previewData;
-  let result: { version: number; html: unknown };
+  let result: { version: number; html: unknown; output_kind?: unknown };
   try {
-    result = await client.sendRequest<{ version: number; html: unknown }>(
+    result = await client.sendRequest<{
+      version: number;
+      html: unknown;
+      output_kind?: unknown;
+    }>(
       "email-markup/preview",
       params,
     );
@@ -154,7 +165,12 @@ async function refreshPreview(
     );
     return;
   }
-  previewHtml = result.html;
+  const deferred =
+    result.output_kind === "engine-template" ||
+    result.output_kind === "engine-definition";
+  previewHtml = deferred
+    ? `<main style="font:14px/1.5 ui-monospace,monospace;padding:24px;color:#202124"><h1 style="font:600 18px/1.4 system-ui,sans-serif">Template not rendered</h1><p style="font-family:system-ui,sans-serif">This is deferred target source. Email Markup preview does not execute Django.</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere">${escapePreviewCode(result.html)}</pre></main>`
+    : result.html;
   remoteImagesEnabled = false;
   if (!previewPanel) {
     previewPanel = vscode.window.createWebviewPanel(
@@ -169,7 +185,9 @@ async function refreshPreview(
       output?.info("Preview detached from its Email Markup document.");
     });
   }
-  previewPanel.title = `Email Markup Preview: ${path.basename(document.uri.fsPath)}`;
+  previewPanel.title = deferred
+    ? `Email Markup Template Source: ${path.basename(document.uri.fsPath)}`
+    : `Email Markup Preview: ${path.basename(document.uri.fsPath)}`;
   previewPanel.webview.html = previewDocument(previewHtml, false);
   if (reveal) previewPanel.reveal(vscode.ViewColumn.Beside, true);
   output?.debug(

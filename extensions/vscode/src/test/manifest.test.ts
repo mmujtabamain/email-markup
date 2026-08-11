@@ -9,7 +9,7 @@ test("manifest contributes only the current Email Markup language", () => {
   const manifest = JSON.parse(
     readFileSync(path.join(root, "package.json"), "utf8"),
   );
-  assert.deepEqual(manifest.contributes.languages[0].extensions, [".em"]);
+  assert.deepEqual(manifest.contributes.languages[0].extensions, [".em", ".emt"]);
   assert.match(
     manifest.contributes.languages[0].icon.light,
     /email-markup-light\.svg$/,
@@ -41,6 +41,8 @@ test("extension source enforces trust and a script-free preview", () => {
   assert.match(source, /typeof result\.html !== "string"/);
   assert.match(source, /onDidChangeTextDocument/);
   assert.match(source, /previewRefreshDelayMs/);
+  assert.match(source, /Template not rendered/);
+  assert.match(source, /does not execute Django/);
 });
 
 test("production bundle has no unresolved language-service module imports", () => {
@@ -58,6 +60,9 @@ test("every staged language server includes its runtime assets", () => {
     const staged = path.join(serverRoot, platform);
     assert.doesNotThrow(() =>
       readFileSync(path.join(staged, "lib/builtins.em")),
+    );
+    assert.doesNotThrow(() =>
+      readFileSync(path.join(staged, "lib/engines/django.emt")),
     );
   }
 });
@@ -115,6 +120,8 @@ test("generated grammar records the shared lexical source", () => {
     grammar.repository.props.patterns[2].captures[1].name,
     /support\.type\.property-name\.email-markup/,
   );
+  assert.match(grammar.repository.deferred.name, /deferred-call/);
+  assert.match(grammar.repository.params.name, /block\.params/);
   assert.ok(
     grammar.repository.defineStyle.patterns.some(
       (pattern: { include?: string }) =>
@@ -151,6 +158,7 @@ test("generated grammar records the shared lexical source", () => {
   assert.deepEqual(configuration.brackets, [
     ["(", ")"],
     ["{", "}"],
+    ["[", "]"],
   ]);
   assert.match(configuration.folding.markers.start, /Else/);
   assert.equal(

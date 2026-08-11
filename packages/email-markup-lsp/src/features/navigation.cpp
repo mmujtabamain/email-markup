@@ -5,6 +5,7 @@
 #include <string>
 
 #include "analysis/context.hpp"
+#include "email-markup/core/engine.hpp"
 #include "email-markup/core/parser.hpp"
 #include "email-markup/core/types.hpp"
 #include "text/positions.hpp"
@@ -27,6 +28,41 @@ namespace email_markup::lsp
         {
             respond(id, nullptr);
             return;
+        }
+        if (word == "Engine")
+        {
+            respond(id, {{"contents", {{"kind", "markdown"},
+                                         {"value", "**@Engine**\n\nSelects a canonical `.emt` target and changes the output kind to `engine-template`."}}}});
+            return;
+        }
+        if (word == "If" || word == "For")
+        {
+            const auto bracket = open->text.find('[', offset);
+            const auto paren = open->text.find('(', offset);
+            if (bracket != std::string::npos &&
+                (paren == std::string::npos || bracket < paren))
+            {
+                const auto value = word == "If"
+                                       ? "**@If[…]**\n\nTyped recipient-time condition emitted through EMIR."
+                                       : "**@For[…]**\n\nTyped bounded recipient-time loop emitted through EMIR.";
+                respond(id, {{"contents", {{"kind", "markdown"}, {"value", value}}}});
+                return;
+            }
+        }
+        if (open->path.extension() == ".emt")
+        {
+            const auto parsed = email_markup::parse_engine_definition(
+                open->path, 0, open->text);
+            if (const auto found = parsed.engine.macros.find(word);
+                found != parsed.engine.macros.end())
+            {
+                std::string markdown = "**@" + word + "[…]**";
+                for (const auto &parameter : found->second.parameters)
+                    markdown += "\n\n`" + format_declaration(parameter) + "`";
+                respond(id, {{"contents", {{"kind", "markdown"},
+                                             {"value", markdown}}}});
+                return;
+            }
         }
         const auto definitions = workspace_.metadata(*open);
         const auto found = definitions.find(word);

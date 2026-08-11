@@ -1,4 +1,5 @@
 set(URI "file://${SOURCE_DIR}/examples/lsp_contract.em")
+set(EMT_URI "file://${SOURCE_DIR}/examples/lsp_contract.emt")
 set(WIRE "")
 
 function(append_message BODY)
@@ -33,6 +34,12 @@ append_message("{\"jsonrpc\":\"2.0\",\"id\":23,\"method\":\"textDocument/hover\"
 append_message("{\"jsonrpc\":\"2.0\",\"method\":\"$/cancelRequest\",\"params\":{\"id\":11}}")
 append_message("{\"jsonrpc\":\"2.0\",\"id\":11,\"method\":\"textDocument/completion\",\"params\":{\"textDocument\":{\"uri\":\"${URI}\"},\"position\":{\"line\":12,\"character\":2}}}")
 append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didClose\",\"params\":{\"textDocument\":{\"uri\":\"${URI}\"}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"${EMT_URI}\",\"languageId\":\"email-markup\",\"version\":1,\"text\":\"@Engine(name: \\\"django\\\", version: \\\"1\\\")\\n  @Params\\n    condition: condition\\n  @/Params\\n  @DefineTemplate(name: \\\"If\\\")\\n    @Params\\n      condition: condition\\n    @/Params\\n    @Template\\n      {% if @{condition} %}@Slot(default);{% endif %}\\n    @/Template\\n  @/DefineTemplate\\n@/Engine\\n\\n@If[recipient.active];\"}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"id\":24,\"method\":\"textDocument/completion\",\"params\":{\"textDocument\":{\"uri\":\"${EMT_URI}\"},\"position\":{\"line\":2,\"character\":15}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"id\":25,\"method\":\"textDocument/documentSymbol\",\"params\":{\"textDocument\":{\"uri\":\"${EMT_URI}\"}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"id\":26,\"method\":\"email-markup/preview\",\"params\":{\"uri\":\"${EMT_URI}\"}}")
+append_message("{\"jsonrpc\":\"2.0\",\"id\":27,\"method\":\"textDocument/hover\",\"params\":{\"textDocument\":{\"uri\":\"${EMT_URI}\"},\"position\":{\"line\":14,\"character\":2}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didClose\",\"params\":{\"textDocument\":{\"uri\":\"${EMT_URI}\"}}}")
 append_message("{\"jsonrpc\":\"2.0\",\"id\":10,\"method\":\"shutdown\",\"params\":null}")
 append_message("{\"jsonrpc\":\"2.0\",\"method\":\"exit\",\"params\":null}")
 
@@ -81,6 +88,15 @@ foreach(REQUIRED
     "\\\"id\\\":21"
     "\\\"id\\\":22"
     "\\\"id\\\":23"
+    "\\\"id\\\":24"
+    "Deferred macro parameter type"
+    "\\\"id\\\":25"
+    "\\\"name\\\":\\\"If\\\""
+    "\\\"id\\\":26"
+    "\\\"output_kind\\\":\\\"engine-definition\\\""
+    "\\\"html\\\":\\\"@Engine"
+    "\\\"id\\\":27"
+    "Typed recipient-time condition"
     "\\\"html\\\":\\\""
     "\\\"version\\\":2"
     "-32800"

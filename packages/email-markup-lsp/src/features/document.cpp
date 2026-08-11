@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "email-markup/core/format.hpp"
+#include "email-markup/core/engine.hpp"
 #include "email-markup/core/lexer.hpp"
 #include "email-markup/core/parser.hpp"
 #include "email-markup/core/types.hpp"
@@ -21,7 +22,6 @@ namespace email_markup::lsp
             respond(id, Json::array());
             return;
         }
-        const auto parsed = email_markup::parse(0, open->text);
         Json result = Json::array();
         const auto add = [&](const std::string &name, const email_markup::SourceRange range,
                              const int kind)
@@ -36,12 +36,25 @@ namespace email_markup::lsp
                   {{"start", text::position_at(open->text, range.start)},
                    {"end", text::position_at(open->text, range.end)}}}});
         };
-        for (const auto &[name, definition] : parsed.document.components)
-            add(name, definition.range, 5);
-        for (const auto &[name, definition] : parsed.document.styles)
-            add(name, definition.range, 13);
-        for (const auto &[name, definition] : parsed.document.tokens)
-            add(name, definition.range, 14);
+        if (open->path.extension() == ".emt")
+        {
+            const auto parsed = email_markup::parse_engine_definition(
+                open->path, 0, open->text);
+            if (parsed.engine.bare)
+                add("BareTemplate", parsed.engine.bare->range, 12);
+            for (const auto &[name, definition] : parsed.engine.macros)
+                add(name, definition.range, 12);
+        }
+        else
+        {
+            const auto parsed = email_markup::parse(0, open->text);
+            for (const auto &[name, definition] : parsed.document.components)
+                add(name, definition.range, 5);
+            for (const auto &[name, definition] : parsed.document.styles)
+                add(name, definition.range, 13);
+            for (const auto &[name, definition] : parsed.document.tokens)
+                add(name, definition.range, 14);
+        }
         respond(id, std::move(result));
     }
 

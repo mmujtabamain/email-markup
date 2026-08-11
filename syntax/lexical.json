@@ -1,12 +1,12 @@
 {
   "version": 2,
-  "fileExtensions": [".em"],
+  "fileExtensions": [".em", ".emt"],
   "sigil": "@",
   "namePattern": "[A-Z][A-Za-z0-9_]*",
   "lineComment": "@//",
   "blockComment": ["@*", "*@"],
   "escape": "@@",
-  "rawBodies": ["Props", "Slots", "DefineStyle", "Media"],
+  "rawBodies": ["Props", "Params", "Slots", "DefineStyle", "Media"],
   "propTypes": [
     "string",
     "int",
@@ -21,17 +21,20 @@
   "deferredParameterTypes": ["int", "decimal", "number", "bool", "name", "raw", "path", "condition"],
   "keywords": [
     "DefineComponent",
+    "DefineBareTemplate",
+    "DefineTemplate",
     "DefineStyle",
     "DefineToken",
     "Else",
     "For",
     "If",
     "Include",
+    "Engine",
     "Media",
+    "Params",
     "Props",
     "Slot",
     "Slots",
     "Template"
-  ],
-  "unsupported": [".emt", "@Engine", "@[", "@Name["]
+  ]
 }
