@@ -384,6 +384,76 @@ namespace email_markup::browser
             return definitions;
         }
 
+        std::string preview_literal(const Declaration &declaration)
+        {
+            if (declaration.has_default) return declaration.default_expression;
+            switch (declaration.value_type)
+            {
+            case DeclarationType::integer:
+                return declaration.range_constraint
+                           ? declaration.range_constraint->minimum.spelling
+                           : "1";
+            case DeclarationType::decimal:
+            case DeclarationType::number:
+                return declaration.range_constraint
+                           ? declaration.range_constraint->minimum.spelling
+                           : "1.0";
+            case DeclarationType::boolean: return "true";
+            case DeclarationType::name: return "\"Name\"";
+            case DeclarationType::url: return "\"https://example.invalid/\"";
+            case DeclarationType::email: return "\"name@example.invalid\"";
+            case DeclarationType::color: return "\"#8e51d0\"";
+            case DeclarationType::string:
+            default: return "\"String\"";
+            }
+        }
+
+        std::string definition_preview_source(const ParseResult &parsed,
+                                              const std::string_view source)
+        {
+            if (!parsed.document.nodes.empty() || parsed.document.components.empty())
+                return std::string{source};
+            std::vector<std::string> names;
+            for (const auto &[name, _] : parsed.document.components) names.push_back(name);
+            std::sort(names.begin(), names.end());
+            std::string preview{source};
+            preview += "\n\n<!-- Component preview -->\n";
+            for (const auto &name : names)
+            {
+                const auto &definition = parsed.document.components.at(name);
+                preview += "@" + name;
+                bool first = true;
+                for (const auto &prop : definition.props)
+                {
+                    if (prop.optional) continue;
+                    preview += first ? "(" : ", ";
+                    preview += prop.name + ": " + preview_literal(prop);
+                    first = false;
+                }
+                if (!first) preview += ")";
+                std::vector<SlotDeclaration> required_slots;
+                std::copy_if(definition.slots.begin(), definition.slots.end(),
+                             std::back_inserter(required_slots),
+                             [](const auto &slot) { return slot.required; });
+                if (required_slots.empty())
+                {
+                    preview += ";\n";
+                    continue;
+                }
+                preview += "\n";
+                for (const auto &slot : required_slots)
+                {
+                    if (slot.name == "default")
+                        preview += "  Sample content\n";
+                    else
+                        preview += "  @Slot(" + slot.name + ")Sample " + slot.name +
+                                   "@/Slot\n";
+                }
+                preview += "@/" + name + "\n";
+            }
+            return preview;
+        }
+
         void add_data_items(const Json &value, const std::string &prefix, Json &items)
         {
             if (!value.is_object())
@@ -785,7 +855,10 @@ namespace email_markup::browser
             }
             MemoryFileResolver resolver{workspace.files,
                                         workspace.request.limits.maximum_source_bytes};
-            const auto result = compile(workspace.request, resolver);
+            auto request = workspace.request;
+            const auto parsed = parse(0, request.source);
+            request.source = definition_preview_source(parsed, request.source);
+            const auto result = compile(request, resolver);
             std::vector<std::string> dependencies;
             for (const auto &dependency : result.dependencies)
                 dependencies.push_back(portable_path_string(dependency));

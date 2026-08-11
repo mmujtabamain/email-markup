@@ -48,7 +48,7 @@ namespace email_markup
         std::filesystem::path entry_path;
         std::string source;
         Json data{Json::object()};
-        Json context_schema{nullptr};
+        Json context_schema = nullptr;
         std::vector<std::filesystem::path> include_directories;
         std::vector<std::filesystem::path> allowed_roots;
         std::vector<std::filesystem::path> imports;

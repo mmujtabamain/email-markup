@@ -170,6 +170,31 @@ TEST_CASE("browser completion and preview use optional context schema examples")
           std::string::npos);
 }
 
+TEST_CASE("browser preview synthesizes component definition calls")
+{
+    auto params = workspace(R"EM(@DefineComponent(name: "Notice")
+  @Props
+    title: name
+    count: int
+    website: url
+  @/Props
+  @Slots
+    default: required
+  @/Slots
+  @Template
+    <section><h1>@{title}</h1><p>@{count}</p><a href="@{website}">@Slot(default);</a></section>
+  @/Template
+@/DefineComponent)EM");
+    const auto analyzed = request("analyze", params);
+    REQUIRE(analyzed["ok"] == true);
+    INFO(analyzed.dump(2));
+    REQUIRE(analyzed["result"]["success"] == true);
+    const auto html = analyzed["result"]["preview"]["html"].get<std::string>();
+    CHECK(html.find("Name") != std::string::npos);
+    CHECK(html.find("https://example.invalid/") != std::string::npos);
+    CHECK(html.find("Sample content") != std::string::npos);
+}
+
 TEST_CASE("browser protocol rejects unknown versions and oversized requests")
 {
     auto invalid = Json{{"protocol", email_markup::browser::protocol_name},
