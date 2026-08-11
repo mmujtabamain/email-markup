@@ -41,8 +41,9 @@ namespace email_markup::detail
 
     [[nodiscard]] std::optional<EmirArtifact> lower_deferred_to_emir(
         GeneratedHtml &generated, const DeferredStore &deferred,
-        const EngineDefinition &engine, std::vector<Diagnostic> &diagnostics,
-        bool subject = false);
+        const EngineDefinition &engine, const SourceManager &sources,
+        const std::filesystem::path &entry_path,
+        std::vector<Diagnostic> &diagnostics, bool subject = false);
 
     struct Loader
     {

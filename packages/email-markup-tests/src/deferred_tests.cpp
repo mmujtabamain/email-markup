@@ -68,8 +68,18 @@ TEST_CASE("deferred Django values compile through public EMIR v1")
     CHECK(result.target->name == "django");
     CHECK(result.generated.html == "<p>Hello {{ business.name }}</p>");
     CHECK_FALSE(result.emir->value["source_map"]["mappings"].empty());
+    CHECK(result.emir->value["source_map"]["sources"][0]["path"] ==
+          "message.em");
+    const auto &mappings = result.emir->value["source_map"]["mappings"];
+    CHECK(std::is_sorted(mappings.begin(), mappings.end(), [](const auto &left,
+                                                              const auto &right)
+                         {
+                             return left["output_start"].template get<std::size_t>() <
+                                    right["output_start"].template get<std::size_t>();
+                         }));
 
     const auto serialized = email_markup::canonical_emir_json(*result.emir);
+    CHECK(serialized.find("/project/") == std::string::npos);
     const auto reparsed = email_markup::parse_emir(serialized);
     REQUIRE(reparsed.ok());
     CHECK(email_markup::canonical_emir_json(*reparsed.artifact) == serialized);
@@ -115,6 +125,8 @@ TEST_CASE("entry Engine selection resolves the packaged library identity")
     REQUIRE(children.size() == 5);
     CHECK(children[1]["escape"] == "url");
     CHECK(children[3]["escape"] == "html_text");
+    CHECK(result.emir->value["requirements"]["recipient"]["business.website"]
+              ["type"] == "url");
     CHECK(result.emir->value["target"]["engine"] ==
           "${EMAIL_MARKUP_LIB}/engines/django.emt");
 }
@@ -136,6 +148,18 @@ TEST_CASE("unsupported EMIR versions fail explicitly")
     REQUIRE_FALSE(parsed.ok());
     REQUIRE_FALSE(parsed.diagnostics.empty());
     CHECK(parsed.diagnostics.front().code == "EMIR0003");
+}
+
+TEST_CASE("check-ir rejects an EMIR source map without a source table")
+{
+    const auto result = compile_deferred("@[business.name]");
+    REQUIRE(result.emir.has_value());
+    auto broken = result.emir->value;
+    broken["source_map"].erase("sources");
+    const auto parsed = email_markup::parse_emir(broken.dump());
+    REQUIRE_FALSE(parsed.ok());
+    REQUIRE_FALSE(parsed.diagnostics.empty());
+    CHECK(parsed.diagnostics.front().code == "EMIR0006");
 }
 
 TEST_CASE("deferred parameter annotations enforce exact bounds")

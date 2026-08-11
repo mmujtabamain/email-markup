@@ -412,6 +412,18 @@ namespace email_markup
                                                          name); });
         }
 
+        bool only_keys(const Json &value,
+                       const std::initializer_list<std::string_view> allowed)
+        {
+            if (!value.is_object())
+                return false;
+            for (auto item = value.begin(); item != value.end(); ++item)
+                if (std::find(allowed.begin(), allowed.end(), item.key()) ==
+                    allowed.end())
+                    return false;
+            return true;
+        }
+
         bool valid_condition(const Json &condition)
         {
             if (!condition.is_object() || !condition.contains("kind") ||
@@ -419,22 +431,28 @@ namespace email_markup
                 return false;
             const auto kind = condition.at("kind").get<std::string>();
             if (kind == "path")
-                return condition.contains("segments") &&
+                return only_keys(condition, {"kind", "segments"}) &&
+                       condition.contains("segments") &&
                        valid_path(condition.at("segments"));
             if (kind == "literal")
-                return condition.contains("value") &&
+                return only_keys(condition, {"kind", "value"}) &&
+                       condition.contains("value") &&
                        condition.at("value").is_primitive();
             if (kind == "not")
-                return condition.contains("operand") &&
+                return only_keys(condition, {"kind", "operand"}) &&
+                       condition.contains("operand") &&
                        valid_condition(condition.at("operand"));
             if (kind == "and" || kind == "or")
-                return condition.contains("operands") &&
+                return only_keys(condition, {"kind", "operands"}) &&
+                       condition.contains("operands") &&
                        condition.at("operands").is_array() &&
                        condition.at("operands").size() == 2 &&
                        valid_condition(condition.at("operands").at(0)) &&
                        valid_condition(condition.at("operands").at(1));
             if (kind == "comparison")
-                return condition.contains("operator") &&
+                return only_keys(condition,
+                                 {"kind", "operator", "left", "right"}) &&
+                       condition.contains("operator") &&
                        condition.at("operator").is_string() &&
                        std::set<std::string>{"==", "!=", "<", "<=", ">", ">="}.contains(
                            condition.at("operator").get<std::string>()) &&
@@ -446,21 +464,40 @@ namespace email_markup
 
         bool valid_nodes(const Json &nodes);
 
+        bool valid_source(const Json &source)
+        {
+            return only_keys(source, {"id", "start", "end"}) &&
+                   source.contains("id") &&
+                   source.at("id").is_number_unsigned() &&
+                   source.contains("start") && source.at("start").is_number_unsigned() &&
+                   source.contains("end") && source.at("end").is_number_unsigned() &&
+                   source.at("start").get<std::size_t>() <=
+                       source.at("end").get<std::size_t>();
+        }
+
         bool valid_node(const Json &node)
         {
             if (!node.is_object() || !node.contains("kind") || !node.at("kind").is_string())
                 return false;
+            if (node.contains("source") && !valid_source(node.at("source")))
+                return false;
             const auto kind = node.at("kind").get<std::string>();
             if (kind == "literal")
-                return node.contains("value") && node.at("value").is_string();
+                return only_keys(node, {"kind", "value", "source"}) &&
+                       node.contains("value") && node.at("value").is_string();
             if (kind == "runtime_value")
-                return node.contains("path") && valid_path(node.at("path")) &&
+                return only_keys(node, {"kind", "path", "value_type", "escape",
+                                        "source"}) &&
+                       node.contains("path") && valid_path(node.at("path")) &&
+                       node.value("value_type", std::string{}) == "string" &&
                        node.contains("escape") && node.at("escape").is_string() &&
                        std::set<std::string>{"html_text", "html_attribute", "url",
                                              "subject"}.contains(
                            node.at("escape").get<std::string>());
             if (kind == "runtime_if")
-                return node.contains("condition") &&
+                return only_keys(node, {"kind", "condition", "children",
+                                        "else_children", "source"}) &&
+                       node.contains("condition") &&
                        valid_condition(node.at("condition")) &&
                        node.contains("children") && valid_nodes(node.at("children")) &&
                        node.contains("else_children") &&
@@ -468,7 +505,9 @@ namespace email_markup
             if (kind == "runtime_for")
             {
                 static const std::regex binding{R"(^[A-Za-z_][A-Za-z0-9_]*$)"};
-                return node.contains("collection") &&
+                return only_keys(node, {"kind", "collection", "binding", "limit",
+                                        "children", "source"}) &&
+                       node.contains("collection") &&
                        valid_path(node.at("collection")) &&
                        node.contains("binding") && node.at("binding").is_string() &&
                        std::regex_match(node.at("binding").get<std::string>(), binding) &&
@@ -484,6 +523,66 @@ namespace email_markup
         {
             return nodes.is_array() &&
                    std::all_of(nodes.begin(), nodes.end(), valid_node);
+        }
+
+        bool valid_requirements(const Json &requirements)
+        {
+            if (!only_keys(requirements, {"recipient"}) ||
+                !requirements.contains("recipient") ||
+                !requirements.at("recipient").is_object())
+                return false;
+            for (const auto &[path, requirement] : requirements.at("recipient").items())
+            {
+                if (!parse_path(path) ||
+                    !only_keys(requirement, {"type", "required", "header_safe"}) ||
+                    !requirement.contains("type") || !requirement.at("type").is_string() ||
+                    !std::set<std::string>{"string", "url", "scalar", "array"}.contains(
+                        requirement.at("type").get<std::string>()) ||
+                    !requirement.contains("required") ||
+                    !requirement.at("required").is_boolean() ||
+                    (requirement.contains("header_safe") &&
+                     !requirement.at("header_safe").is_boolean()))
+                    return false;
+            }
+            return true;
+        }
+
+        bool valid_source_map(const Json &source_map)
+        {
+            if (!only_keys(source_map, {"version", "sources", "mappings"}) ||
+                source_map.value("version", 0) != 1 ||
+                !source_map.contains("sources") ||
+                !source_map.at("sources").is_array() ||
+                !source_map.contains("mappings") ||
+                !source_map.at("mappings").is_array())
+                return false;
+            std::set<std::size_t> ids;
+            for (const auto &source : source_map.at("sources"))
+            {
+                if (!only_keys(source, {"id", "path"}) ||
+                    !source.contains("id") ||
+                    !source.at("id").is_number_unsigned() ||
+                    !source.contains("path") || !source.at("path").is_string() ||
+                    source.at("path").get<std::string>().empty() ||
+                    !ids.insert(source.at("id").get<std::size_t>()).second)
+                    return false;
+            }
+            for (const auto &mapping : source_map.at("mappings"))
+            {
+                if (!only_keys(mapping,
+                               {"output_start", "output_end", "source"}) ||
+                    !mapping.contains("output_start") ||
+                    !mapping.at("output_start").is_number_unsigned() ||
+                    !mapping.contains("output_end") ||
+                    !mapping.at("output_end").is_number_unsigned() ||
+                    mapping.at("output_start").get<std::size_t>() >
+                        mapping.at("output_end").get<std::size_t>() ||
+                    !mapping.contains("source") ||
+                    !valid_source(mapping.at("source")) ||
+                    !ids.contains(mapping.at("source").at("id").get<std::size_t>()))
+                    return false;
+            }
+            return true;
         }
     } // namespace
 
@@ -528,9 +627,19 @@ namespace email_markup
                       "; this compiler supports version 1.");
             return result;
         }
-        if (value.value("output_kind", std::string{}) != "engine-template" ||
-            !value.contains("target") || !value.at("target").is_object() ||
-            !value.contains("document") || !value.at("document").is_object() ||
+        if (!only_keys(value, {"format", "version", "output_kind", "target",
+                               "document", "requirements", "source_map"}) ||
+            value.value("output_kind", std::string{}) != "engine-template" ||
+            !value.contains("target") ||
+            !only_keys(value.at("target"), {"name", "engine"}) ||
+            !value.at("target").contains("name") ||
+            !value.at("target").at("name").is_string() ||
+            value.at("target").at("name").get<std::string>().empty() ||
+            !value.at("target").contains("engine") ||
+            !value.at("target").at("engine").is_string() ||
+            value.at("target").at("engine").get<std::string>().empty() ||
+            !value.contains("document") ||
+            !only_keys(value.at("document"), {"kind", "children"}) ||
             value.at("document").value("kind", std::string{}) != "document" ||
             !value.at("document").contains("children") ||
             !value.at("document").at("children").is_array())
@@ -541,6 +650,15 @@ namespace email_markup
         if (!valid_nodes(value.at("document").at("children")))
         {
             issue(result.diagnostics, "EMIR0005", "EMIR contains an invalid node.");
+            return result;
+        }
+        if (!value.contains("requirements") ||
+            !valid_requirements(value.at("requirements")) ||
+            !value.contains("source_map") ||
+            !valid_source_map(value.at("source_map")))
+        {
+            issue(result.diagnostics, "EMIR0006",
+                  "EMIR requirements or source map shape is invalid.");
             return result;
         }
         result.artifact = EmirArtifact{std::move(value)};
@@ -1029,7 +1147,7 @@ namespace email_markup::detail
                     if (!path || !std::regex_match(binding, name_pattern) || !limit)
                     {
                         diagnostics.push_back({"EM0835", Severity::error,
-                                               "Deferred For requires a collection path, local binding name, and limit from 1 to 10000.",
+                                               "Deferred For requires a collection path, local binding name, and limit from 1 to 100.",
                                                call.range});
                         return {{"kind", "literal"}, {"value", ""}};
                     }
@@ -1100,7 +1218,9 @@ namespace email_markup::detail
                     const auto &path = node.at("path");
                     if (!path.empty() &&
                         !locals.contains(path.at(0).get<std::string>()))
-                        recipient[joined_path(path)] = {{"type", "string"},
+                        recipient[joined_path(path)] = {{"type", node.at("escape") == "url"
+                                                                    ? "url"
+                                                                    : "string"},
                                                        {"required", true},
                                                        {"header_safe", subject}};
                 }
@@ -1128,8 +1248,9 @@ namespace email_markup::detail
 
     std::optional<EmirArtifact> lower_deferred_to_emir(
         GeneratedHtml &generated, const DeferredStore &deferred,
-        const EngineDefinition &engine, std::vector<Diagnostic> &diagnostics,
-        const bool subject)
+        const EngineDefinition &engine, const SourceManager &sources,
+        const std::filesystem::path &entry_path,
+        std::vector<Diagnostic> &diagnostics, const bool subject)
     {
         MarkerParser parser{generated, deferred, engine, diagnostics, {}, subject};
         auto nodes = parser.parse_nodes();
@@ -1141,6 +1262,28 @@ namespace email_markup::detail
         const auto packaged = engine_identity.rfind("/engines/");
         if (packaged != std::string::npos && engine.name == "django")
             engine_identity = "${EMAIL_MARKUP_LIB}" + engine_identity.substr(packaged);
+        Json source_files = Json::array();
+        const auto entry_parent = entry_path.lexically_normal().parent_path();
+        for (SourceId id = 0; id < sources.size(); ++id)
+        {
+            const auto &file = sources.get(id);
+            auto path = file.path.lexically_normal();
+            auto portable = portable_path_string(path);
+            const auto library = portable.rfind("/lib/");
+            if (library != std::string::npos)
+                portable = "${EMAIL_MARKUP_LIB}" + portable.substr(library + 4);
+            else
+            {
+                const auto relative = path.lexically_relative(entry_parent);
+                const auto relative_text = portable_path_string(relative);
+                if (!relative_text.empty() && relative_text != "." &&
+                    !relative_text.starts_with("../"))
+                    portable = relative_text;
+                else if (path.is_absolute())
+                    portable = "${EXTERNAL}/" + path.filename().string();
+            }
+            source_files.push_back({{"id", id}, {"path", std::move(portable)}});
+        }
         EmirArtifact artifact{{{"format", emir_format},
                                {"version", emir_version},
                                {"output_kind", "engine-template"},
@@ -1150,10 +1293,17 @@ namespace email_markup::detail
                                              {"children", std::move(nodes)}}},
                                {"requirements", {{"recipient", std::move(recipient)}}},
                                {"source_map", {{"version", 1},
+                                               {"sources", std::move(source_files)},
                                                {"mappings", Json::array()}}}}};
         std::string emitted;
         auto &mappings = artifact.value["source_map"]["mappings"];
         render_nodes_mapped(artifact.value["document"]["children"], emitted, mappings);
+        std::sort(mappings.begin(), mappings.end(), [](const auto &left, const auto &right)
+                  {
+                      if (left.at("output_start") != right.at("output_start"))
+                          return left.at("output_start") < right.at("output_start");
+                      return left.at("output_end") < right.at("output_end");
+                  });
         generated.html = std::move(emitted);
         generated.segments.clear();
         return artifact;

@@ -77,6 +77,10 @@ emc inspect-ir message.emir.json
 emc emit --target django message.emir.json -o message.django.html
 ```
 
+The normative, separately versioned EMIR v1 contract is published as
+`schema/emir-v1.schema.json`. Canonical artifacts include portable source names
+and output-to-source mappings; they never serialize machine-specific project paths.
+
 Use `--subject` for a text-only, unescaped, header-safe subject artifact.
 
 `emc` finds the nearest `em.json`. The repository’s config demonstrates all

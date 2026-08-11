@@ -215,7 +215,8 @@ namespace email_markup
             if (engine)
             {
                 result.emir = detail::lower_deferred_to_emir(
-                    generated, deferred, *engine, loader.diagnostics,
+                    generated, deferred, *engine, *loader.sources,
+                    request.entry_path, loader.diagnostics,
                     request.subject);
                 if (result.emir)
                 {
