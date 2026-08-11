@@ -1,0 +1,19 @@
+{
+  "name": "@email-markup/browser",
+  "version": "1.2.0",
+  "private": true,
+  "type": "module",
+  "files": ["dist"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/email-markup.worker.mjs"
+    },
+    "./protocol": "./dist/browser-protocol-v1.schema.json"
+  },
+  "scripts": {
+    "build:wasm": "node scripts/build-wasm.mjs",
+    "package": "node scripts/package.mjs",
+    "test": "node --test test/*.test.mjs"
+  }
+}

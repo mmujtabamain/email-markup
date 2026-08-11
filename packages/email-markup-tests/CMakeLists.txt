@@ -8,6 +8,7 @@ add_executable(
     src/css_lint_tests.cpp
     src/declaration_tests.cpp
     src/deferred_tests.cpp
+    src/browser_protocol_tests.cpp
     src/lexer_parser_tests.cpp
     src/lsp_support_tests.cpp
     src/platform_tests.cpp
@@ -20,6 +21,7 @@ target_link_libraries(
     email-markup-tests
     PRIVATE
         email_markup::core
+        email_markup::browser
         email_markup::platform
         email-markup-lsp-support
         Catch2::Catch2WithMain

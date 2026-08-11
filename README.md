@@ -136,6 +136,13 @@ In untrusted workspaces only grammar highlighting is enabled. Preview scripts an
 local resource roots are disabled, and remote images stay inert until the user
 explicitly enables them for the current preview.
 
+For custom Monaco hosts, `email_markup::browser` and the packaged Web Worker
+provide deterministic diagnostics, formatting, completion, hover, signature,
+symbols, and safe live preview through the versioned `email-markup.browser`
+JSON protocol. Browser output is explicitly non-authoritative and never
+executes Django; the native server-side `emc` revalidates every verified
+preview, test send, and publication. See `docs/BROWSER_PROTOCOL.md`.
+
 ## Reference and release evidence
 
 - `EMAIL-MARKUP.md` — implemented Email Markup 1 language and tooling reference
@@ -144,6 +151,7 @@ explicitly enables them for the current preview.
 - `docs/PERFORMANCE.md` — latency, memory, and limits
 - `docs/LANGUAGE_REVIEW.md` — recorded Email Markup 1 syntax and optimization decisions
 - `docs/RELEASE.md` — release contents and verification
+- `docs/BROWSER_PROTOCOL.md` — custom Monaco worker protocol and trust boundary
 - `templates.md` — future deferred-templating proposal, not Email Markup 1
 
 Email Markup is licensed under the MIT License.

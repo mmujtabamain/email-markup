@@ -8,6 +8,15 @@ if(NOT INSTALL_RESULT EQUAL 0)
   message(FATAL_ERROR "install failed: ${INSTALL_ERROR}")
 endif()
 
+foreach(REQUIRED
+    "include/email-markup/browser/protocol.hpp"
+    "share/email-markup/schema/browser-protocol-v1.schema.json"
+    "share/email-markup/docs/BROWSER_PROTOCOL.md")
+  if(NOT EXISTS "${INSTALL_DIR}/${REQUIRED}")
+    message(FATAL_ERROR "installed browser compiler surface omitted ${REQUIRED}")
+  endif()
+endforeach()
+
 set(INSTALLED_EMC "${INSTALL_DIR}/bin/emc")
 if(WIN32)
   set(INSTALLED_EMC "${INSTALL_DIR}/bin/emc.exe")

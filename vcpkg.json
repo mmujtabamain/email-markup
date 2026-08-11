@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
   "name": "email-markup",
-  "description": "The Email Markup compiler, CLI, language server, and conformance tests",
+  "description": "The Email Markup compiler, CLI, language server, browser worker core, and conformance tests",
   "dependencies": [
     "catch2",
     {

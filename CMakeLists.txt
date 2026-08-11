@@ -25,6 +25,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
 set(EMAIL_MARKUP_SANITIZERS "" CACHE STRING "Comma-separated sanitizers for development builds")
+option(EMAIL_MARKUP_BROWSER_ONLY
+       "Build only the portable compiler core and browser/WASM surface" OFF)
 if(EMAIL_MARKUP_SANITIZERS AND CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     add_compile_options("-fsanitize=${EMAIL_MARKUP_SANITIZERS}" -fno-omit-frame-pointer)
     add_link_options("-fsanitize=${EMAIL_MARKUP_SANITIZERS}" -fno-omit-frame-pointer)
@@ -33,12 +35,19 @@ endif()
 include(GNUInstallDirs)
 include(CTest)
 
-find_package(Catch2 CONFIG REQUIRED)
-find_package(CURL CONFIG REQUIRED)
-find_package(fmt CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
 add_subdirectory(packages/email-markup-core)
+add_subdirectory(packages/email-markup-browser)
+
+if(EMAIL_MARKUP_BROWSER_ONLY)
+    return()
+endif()
+
+find_package(Catch2 CONFIG REQUIRED)
+find_package(CURL CONFIG REQUIRED)
+find_package(fmt CONFIG REQUIRED)
+
 add_subdirectory(packages/email-markup-platform)
 add_subdirectory(packages/email-markup-runtime)
 add_subdirectory(packages/email-markup-cli)

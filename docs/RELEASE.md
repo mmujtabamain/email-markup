@@ -18,8 +18,9 @@ The release matrix builds and tests:
 
 Each platform publishes an installed compiler/server ZIP, a matching self-contained
 VSIX, and SHA-256 files for both. The install tree contains `emc`, `email-markup-lsp`, the
-core library and headers, the Email Markup standard library, grammar, syntax
-metadata, config schema, documentation, and license. The VSIX
+core and portable browser libraries and headers, the Email Markup standard
+library, grammar, syntax metadata, config and browser-protocol schemas,
+documentation, and license. The VSIX
 bundles the server matching its platform and architecture.
 
 ## Local release verification
@@ -34,7 +35,15 @@ cd extensions/vscode
 npm ci
 npm test
 npm run package
+
+cd ../../packages/email-markup-browser
+npm test
 ```
+
+When the Emscripten SDK and WASM dependency prefix are available, also run
+`npm run build:wasm` and `npm run package`. The native release matrix validates
+the portable browser library and installed protocol boundary; publishing the
+web package additionally requires its actual `.mjs`/`.wasm` package gate.
 
 Also run the sanitizer preset and performance benchmark documented in
 `docs/PERFORMANCE.md`. The installed-prefix CTest contract compiles a fixture
@@ -57,7 +66,7 @@ value. The checked-in VS Code manifest uses `0.0.0` as a development sentinel; t
 packaging command injects the release version into the VSIX without modifying tracked
 files. `external/vcpkg.version` pins the setup-managed dependency snapshot to the
 peeled `2026.07.29` tag commit. The extension/server protocol and stdin compilation
-protocol have their own integer versions. The extension client checks the server
+protocol and browser worker protocol have their own integer versions. The extension client checks the server
 protocol at startup; embedding applications must check the compilation response
 protocol and compiler version.
 
