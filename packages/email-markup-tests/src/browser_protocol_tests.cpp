@@ -67,7 +67,7 @@ TEST_CASE("browser analysis produces deterministic final HTML assistance")
           std::string::npos);
 }
 
-TEST_CASE("browser deferred preview remains unrendered target source")
+TEST_CASE("browser deferred preview renders safe sample HTML")
 {
     auto params = workspace("<p>Hello @[business.name]</p>");
     params["engine"] =
@@ -85,11 +85,12 @@ TEST_CASE("browser deferred preview remains unrendered target source")
     REQUIRE(response["ok"] == true);
     REQUIRE(response["result"]["success"] == true);
     CHECK(response["result"]["output_kind"] == "engine-template");
-    CHECK(response["result"]["preview"]["kind"] == "target-source");
-    CHECK(response["result"]["preview"]["rendered"] == false);
+    CHECK(response["result"]["preview"]["kind"] == "sample-html");
+    CHECK(response["result"]["preview"]["rendered"] == true);
+    CHECK(response["result"]["preview"]["sample"] == true);
     CHECK(response["result"]["preview"]["executes_target"] == false);
-    CHECK(response["result"]["preview"]["source"].get<std::string>().find(
-              "{{ business.name }}") != std::string::npos);
+    CHECK(response["result"]["preview"]["html"].get<std::string>().find(
+              "Hello Acme") != std::string::npos);
     CHECK(response["result"]["emir"]["version"] == 1);
 }
 
@@ -193,6 +194,25 @@ TEST_CASE("browser preview synthesizes component definition calls")
     CHECK(html.find("Name") != std::string::npos);
     CHECK(html.find("https://example.invalid/") != std::string::npos);
     CHECK(html.find("Sample content") != std::string::npos);
+}
+
+TEST_CASE("browser safely renders deferred EMIR with sample data")
+{
+    auto params = workspace("<p>@[business.name]</p>");
+    params["engine"] = {{"path", "/engines/django.emt"},
+                        {"source", "@DefineBareTemplate\n"
+                                   "  @Params\n"
+                                   "    value: path\n"
+                                   "  @/Params\n"
+                                   "  @Template {{ @{value} }} @/Template\n"
+                                   "@/DefineBareTemplate"}};
+    const auto analyzed = request("analyze", params);
+    INFO(analyzed.dump(2));
+    REQUIRE(analyzed["ok"] == true);
+    REQUIRE(analyzed["result"]["success"] == true);
+    CHECK(analyzed["result"]["preview"]["kind"] == "sample-html");
+    CHECK(analyzed["result"]["preview"]["html"] == "<p>Acme</p>");
+    CHECK(analyzed["result"]["preview"]["executes_target"] == false);
 }
 
 TEST_CASE("browser protocol rejects unknown versions and oversized requests")
