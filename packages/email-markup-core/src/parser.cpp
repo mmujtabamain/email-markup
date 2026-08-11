@@ -38,6 +38,44 @@ namespace email_markup
             return std::regex_replace(text, newline, " ");
         }
 
+        bool layout_node(const NodePtr &node)
+        {
+            return std::holds_alternative<ComponentNode>(node->value) ||
+                   std::holds_alternative<IfNode>(node->value) ||
+                   std::holds_alternative<ForNode>(node->value) ||
+                   std::holds_alternative<SlotNode>(node->value) ||
+                   std::holds_alternative<DeferredCallNode>(node->value);
+        }
+
+        bool layout_token(const Token &token)
+        {
+            if (token.kind == TokenKind::deferred_open ||
+                token.kind == TokenKind::deferred_self_closing ||
+                token.kind == TokenKind::deferred_bare)
+                return true;
+            return (token.kind == TokenKind::open ||
+                    token.kind == TokenKind::self_closing) &&
+                   token.name != "Include" && token.name != "Engine";
+        }
+
+        void trim_leading_layout(std::string &text)
+        {
+            const auto first = text.find_first_not_of(" \t\r\n");
+            const auto layout = first == std::string::npos
+                                    ? std::string_view{text}
+                                    : std::string_view{text}.substr(0, first);
+            if (layout.find('\n') != std::string_view::npos)
+                text.erase(0, first == std::string::npos ? text.size() : first);
+        }
+
+        void trim_trailing_layout(std::string &text)
+        {
+            const auto last = text.find_last_not_of(" \t\r\n");
+            const auto start = last == std::string::npos ? 0 : last + 1;
+            if (std::string_view{text}.substr(start).find('\n') != std::string_view::npos)
+                text.erase(start);
+        }
+
         std::vector<Parameter> parameters(const Token &token, std::vector<Diagnostic> &diagnostics)
         {
             std::vector<Parameter> result;
@@ -205,7 +243,12 @@ namespace email_markup
                     if (token.kind == TokenKind::text)
                     {
                         advance();
-                        auto text = normalize(token.text);
+                        auto raw = std::move(token.text);
+                        if (!result.empty() && layout_node(result.back()))
+                            trim_leading_layout(raw);
+                        if (layout_token(peek()))
+                            trim_trailing_layout(raw);
+                        auto text = normalize(std::move(raw));
                         if (text.find_first_not_of(" \t\r\n") != std::string::npos)
                             result.push_back(
                                 std::make_shared<Node>(Node{token.range, TextNode{std::move(text)}}));

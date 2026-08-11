@@ -8,6 +8,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "email-markup/core/format.hpp"
 #include "email-markup/core/render.hpp"
 
 namespace
@@ -159,6 +160,29 @@ TEST_CASE("compiler rejects missing data and invalid component contracts")
     const auto result = email_markup::compile(request, resolver);
 
     CHECK_FALSE(result.ok());
+}
+
+TEST_CASE("formatter layout around structural nodes preserves rendered whitespace")
+{
+    constexpr std::string_view compact =
+        "@DefineComponent(name: \"Card\")@Slots\n"
+        "default: required\n"
+        "@/Slots@Template<p>@Slot(default);</p>@/Template@/DefineComponent";
+    MemoryResolver resolver;
+    email_markup::CompilationRequest request;
+    request.entry_path = "/project/message.em";
+    request.source = "@Include(\"component.em\"); @Card Hello @/Card";
+
+    resolver.files["/project/component.em"] = std::string{compact};
+    const auto before = email_markup::compile(request, resolver);
+    REQUIRE(before.ok());
+
+    resolver.files["/project/component.em"] = email_markup::format_source(compact);
+    const auto after = email_markup::compile(request, resolver);
+    INFO((after.diagnostics.empty() ? "" : after.diagnostics.front().message));
+    REQUIRE(after.ok());
+    CHECK(after.generated.html == before.generated.html);
+    CHECK(after.generated.html == "<p>Hello</p>");
 }
 
 TEST_CASE("compiler enforces output and cancellation limits")
