@@ -40,10 +40,12 @@ cd ../../packages/email-markup-browser
 npm test
 ```
 
-When the Emscripten SDK and WASM dependency prefix are available, also run
-`npm run build:wasm` and `npm run package`. The native release matrix validates
-the portable browser library and installed protocol boundary; publishing the
-web package additionally requires its actual `.mjs`/`.wasm` package gate.
+For a browser-package release, activate the exact Emscripten toolchain pinned in
+`packages/email-markup-browser/package.json`, then run `npm run verify:wasm`.
+That gate builds and packages the real `.mjs`/`.wasm`, verifies its checksummed
+artifact manifest, invokes the protocol from the packaged module, and inspects
+the WASM import boundary. The native release matrix still validates the
+portable browser library and installed protocol boundary separately.
 
 Also run the sanitizer preset and performance benchmark documented in
 `docs/PERFORMANCE.md`. The installed-prefix CTest contract compiles a fixture

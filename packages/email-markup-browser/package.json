@@ -3,17 +3,29 @@
   "version": "1.2.0",
   "private": true,
   "type": "module",
+  "emailMarkup": {
+    "browserProtocol": 1,
+    "toolchain": {
+      "emscriptenVersion": "4.0.23",
+      "emsdkCommit": "c0bb220cb6e6f4e0fabb6f6db9efd53390ef5e56",
+      "emscriptenCommit": "7a5d93b50f6a3a35e85a0d2fc9e667b8498e6aed",
+      "releasesHash": "aaa43392544d695232b70eda706d751f18980c2a"
+    }
+  },
   "files": ["dist"],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/email-markup.worker.mjs"
     },
-    "./protocol": "./dist/browser-protocol-v1.schema.json"
+    "./protocol": "./dist/browser-protocol-v1.schema.json",
+    "./manifest": "./dist/manifest.json"
   },
   "scripts": {
     "build:wasm": "node scripts/build-wasm.mjs",
     "package": "node scripts/package.mjs",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/package.test.mjs",
+    "test:artifact": "node --test test/artifact.test.mjs",
+    "verify:wasm": "npm run build:wasm && npm run package && npm test && npm run test:artifact"
   }
 }

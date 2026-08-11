@@ -46,18 +46,39 @@ disabled.
 ## Build and package
 
 The ordinary native build always compiles and tests the portable
-`email_markup::browser` library. To produce the worker assets, activate the
-Emscripten SDK and make a WASM-compatible `nlohmann_json` CMake package
-available through `EMAIL_MARKUP_WASM_PREFIX`, then run:
+`email_markup::browser` library. The web package is pinned to Emscripten
+`4.0.23`: emsdk commit
+`c0bb220cb6e6f4e0fabb6f6db9efd53390ef5e56`, compiler commit
+`7a5d93b50f6a3a35e85a0d2fc9e667b8498e6aed`, and releases payload
+`aaa43392544d695232b70eda706d751f18980c2a`. These values also live in the
+package metadata, and `build:wasm` rejects a different compiler.
+
+Keep emsdk outside the repository. For an isolated local setup:
 
 ```bash
-npm --prefix packages/email-markup-browser run build:wasm
-npm --prefix packages/email-markup-browser run package
+EMSDK_ROOT="$(mktemp -d /tmp/email-markup-emsdk.XXXXXX)"
+git clone --depth 1 --branch 4.0.23 https://github.com/emscripten-core/emsdk.git "$EMSDK_ROOT/emsdk"
+test "$(git -C "$EMSDK_ROOT/emsdk" rev-parse HEAD)" = "c0bb220cb6e6f4e0fabb6f6db9efd53390ef5e56"
+"$EMSDK_ROOT/emsdk/emsdk" install 4.0.23
+"$EMSDK_ROOT/emsdk/emsdk" activate 4.0.23
+source "$EMSDK_ROOT/emsdk/emsdk_env.sh"
+```
+
+The compiler depends only on the `nlohmann_json` headers. `build:wasm` finds
+their CMake package in a native release/debug vcpkg tree. In a different build
+layout, set `EMAIL_MARKUP_WASM_NLOHMANN_DIR` to the directory containing
+`nlohmann_jsonConfig.cmake`. Then run the complete artifact gate:
+
+```bash
+npm --prefix packages/email-markup-browser run verify:wasm
 ```
 
 The package step emits the ES-module worker, `.mjs` loader, `.wasm` binary,
 TypeScript declarations, protocol schema, language syntax, and packaged Email
-Markup library into `packages/email-markup-browser/dist/`. The Emscripten build
-uses the browser-only CMake path, disables the virtual filesystem, exports only
-the version and single-request C boundary, and does not link platform, CURL,
-CLI, LSP process, or native runtime code.
+Markup library into `packages/email-markup-browser/dist/`. `manifest.json`
+records the exact toolchain and SHA-256/byte size of every executable protocol
+asset. The gate loads the real packaged `.wasm` in Node, invokes both stable C
+exports, and inspects its imports. The Emscripten build uses the browser-only
+CMake path, disables the virtual filesystem, exports only the version and
+single-request C boundary, and does not link platform, CURL, CLI, LSP process,
+or native runtime code.

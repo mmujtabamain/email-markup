@@ -4,6 +4,8 @@ out/
 .cache/
 node_modules/
 dist/
+!packages/email-markup-browser/dist/
+!packages/email-markup-browser/dist/**
 
 # extensions
 *.vsix

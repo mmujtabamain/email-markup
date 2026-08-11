@@ -22,6 +22,12 @@ test("browser package exposes worker, types, and protocol schema", () => {
   assert.equal(manifest.exports["."].default, "./dist/email-markup.worker.mjs");
   assert.equal(manifest.exports["."].types, "./dist/index.d.ts");
   assert.equal(manifest.exports["./protocol"], "./dist/browser-protocol-v1.schema.json");
+  assert.equal(manifest.exports["./manifest"], "./dist/manifest.json");
+  assert.equal(manifest.emailMarkup.browserProtocol, 1);
+  assert.equal(manifest.emailMarkup.toolchain.emscriptenVersion, "4.0.23");
+  assert.match(manifest.emailMarkup.toolchain.emsdkCommit, /^[0-9a-f]{40}$/);
+  assert.match(manifest.emailMarkup.toolchain.emscriptenCommit, /^[0-9a-f]{40}$/);
+  assert.match(manifest.emailMarkup.toolchain.releasesHash, /^[0-9a-f]{40}$/);
   const schema = JSON.parse(
     readFileSync(path.join(root, "schema/browser-protocol-v1.schema.json"), "utf8"),
   );
