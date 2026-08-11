@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "email-markup/core/css.hpp"
+#include "email-markup/core/context_schema.hpp"
 #include "email-markup/core/engine.hpp"
 #include "email-markup/core/images.hpp"
 #include "email-markup/core/lint.hpp"
@@ -42,6 +43,20 @@ namespace email_markup
                               const CancellationToken cancellation)
     {
         CompilationResult result;
+        if (!request.context_schema.is_null())
+        {
+            try
+            {
+                const auto schema = parse_context_schema(request.context_schema);
+                for (const auto &message : validate_context_data(schema, request.data))
+                    result.diagnostics.push_back({"EM0901", Severity::error, message, {}});
+            }
+            catch (const std::exception &error)
+            {
+                result.diagnostics.push_back({"EM0900", Severity::error, error.what(), {}});
+            }
+            if (!result.diagnostics.empty()) return result;
+        }
         if (request.entry_path.extension() != ".em")
         {
             result.diagnostics.push_back({"EM0001", Severity::error, "Email Markup 1 accepts only .em source files.", {}});

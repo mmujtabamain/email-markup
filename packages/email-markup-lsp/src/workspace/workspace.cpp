@@ -6,6 +6,7 @@
 
 #include "email-markup/core/parser.hpp"
 #include "email-markup/core/engine.hpp"
+#include "email-markup/core/context_schema.hpp"
 #include "email-markup/platform/system.hpp"
 #include "text/positions.hpp"
 
@@ -109,6 +110,19 @@ namespace email_markup::lsp
                     const auto raw = read_optional(data_path);
                     if (!raw.empty())
                         request.data = Json::parse(raw);
+                }
+                if (config.contains("context_schema"))
+                {
+                    const auto schema_path = expand(
+                        config.at("context_schema").get<std::string>(), root);
+                    const auto raw = read_optional(schema_path);
+                    if (!raw.empty())
+                    {
+                        request.context_schema = Json::parse(raw);
+                        if (!preview_data && request.data.empty())
+                            request.data = context_schema_example(
+                                parse_context_schema(request.context_schema));
+                    }
                 }
             }
             catch (...)

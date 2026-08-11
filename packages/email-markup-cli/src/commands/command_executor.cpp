@@ -178,6 +178,7 @@ namespace email_markup::cli
             request.data = envelope.value("recipient", Json::object());
             if (!request.data.is_object())
                 throw std::invalid_argument("recipient must be a JSON object");
+            request.context_schema = envelope.value("context_schema", Json{nullptr});
             const auto output_context = envelope.value("output_context", std::string{"html"});
             if (output_context != "html" && output_context != "subject")
                 throw std::invalid_argument("output_context must be html or subject");

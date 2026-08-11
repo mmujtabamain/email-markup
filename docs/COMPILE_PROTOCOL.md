@@ -26,6 +26,12 @@ to every source, JSON value, include, expansion, loop, AST, output, and diagnost
     "business": { "name": "Example" },
     "rep": {},
     "unsubscribe_url": "https://example.test/unsubscribe"
+  },
+  "context_schema": {
+    "format": "email-markup-context",
+    "version": 1,
+    "name": "email-context",
+    "fields": {}
   }
 }
 ```

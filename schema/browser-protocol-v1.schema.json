@@ -51,6 +51,7 @@
           ]
         },
         "data": { "type": "object" },
+        "context_schema": { "type": "object" },
         "output_context": { "enum": ["html", "subject"] },
         "position": { "$ref": "#/$defs/position" }
       }

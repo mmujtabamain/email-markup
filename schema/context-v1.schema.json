@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://email-markup.dev/schema/context-v1.schema.json",
+  "title": "Email Markup context schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "version", "name", "fields"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "format": { "const": "email-markup-context" },
+    "version": { "const": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "fields": { "$ref": "#/$defs/fields" }
+  },
+  "$defs": {
+    "fields": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/field" }
+    },
+    "field": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "enum": ["string", "int", "decimal", "number", "bool", "name", "url", "email", "object", "array"]
+        },
+        "required": { "type": "boolean" },
+        "nullable": { "type": "boolean" },
+        "description": { "type": "string" },
+        "example": {},
+        "minimum": { "type": "number" },
+        "maximum": { "type": "number" },
+        "minLength": { "type": "integer", "minimum": 0 },
+        "maxLength": { "type": "integer", "minimum": 0 },
+        "fields": { "$ref": "#/$defs/fields" },
+        "items": { "$ref": "#/$defs/field" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

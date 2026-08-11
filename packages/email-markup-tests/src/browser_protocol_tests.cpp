@@ -138,6 +138,38 @@ TEST_CASE("browser formatting and Monaco metadata share compiler declarations")
               "title: string(1..120)") != std::string::npos);
 }
 
+TEST_CASE("browser completion and preview use optional context schema examples")
+{
+    auto params = workspace("<p>@{business.na</p>");
+    params.erase("data");
+    params["context_schema"] = {
+        {"format", "email-markup-context"}, {"version", 1}, {"name", "email-context"},
+        {"fields", {{"business", {{"type", "object"}, {"fields", {
+            {"name", {{"type", "string"}, {"description", "Trading name"},
+                      {"example", "Northstar"}}}}}}}}}};
+    params["position"] = {{"line", 0}, {"character", 16}};
+    const auto completed = request("complete", params);
+    REQUIRE(completed["ok"] == true);
+    CHECK(std::any_of(completed["result"]["items"].begin(),
+                      completed["result"]["items"].end(), [](const auto &item)
+                      { return item["label"] == "business.name"; }));
+
+    auto hover_params = params;
+    hover_params["source"] = "<p>@{business.name}</p>";
+    hover_params["position"] = {{"line", 0}, {"character", 14}};
+    const auto hovered = request("hover", hover_params);
+    REQUIRE(hovered["ok"] == true);
+    CHECK(hovered["result"]["markdown"].get<std::string>().find("Trading name") !=
+          std::string::npos);
+
+    params.erase("position");
+    params["source"] = "<p>@{business.name}</p>";
+    const auto analyzed = request("analyze", params);
+    REQUIRE(analyzed["ok"] == true);
+    CHECK(analyzed["result"]["preview"]["html"].get<std::string>().find("Northstar") !=
+          std::string::npos);
+}
+
 TEST_CASE("browser protocol rejects unknown versions and oversized requests")
 {
     auto invalid = Json{{"protocol", email_markup::browser::protocol_name},

@@ -16,6 +16,7 @@
 #include <nlohmann/json.hpp>
 
 #include "email-markup/core/engine.hpp"
+#include "email-markup/core/context_schema.hpp"
 #include "email-markup/core/format.hpp"
 #include "email-markup/core/include.hpp"
 #include "email-markup/core/parser.hpp"
@@ -118,7 +119,8 @@ namespace email_markup::browser
                 throw std::invalid_argument("params must be an object");
             if (!only_keys(params, {"entry_path", "source", "files",
                                     "include_directories", "imports", "shell",
-                                    "engine", "data", "output_context", "position"}))
+                                    "engine", "data", "context_schema",
+                                    "output_context", "position"}))
                 throw std::invalid_argument("params contains unknown workspace fields");
             Workspace workspace;
             workspace.request.entry_path =
@@ -142,6 +144,13 @@ namespace email_markup::browser
             if (workspace.request.data.dump().size() >
                 workspace.request.limits.maximum_json_bytes)
                 throw std::invalid_argument("data exceeds the 1 MiB JSON limit");
+            if (params.contains("context_schema"))
+            {
+                workspace.request.context_schema = params.at("context_schema");
+                const auto schema = parse_context_schema(workspace.request.context_schema);
+                if (workspace.request.data.empty())
+                    workspace.request.data = context_schema_example(schema);
+            }
             const auto context = params.value("output_context", std::string{"html"});
             if (context != "html" && context != "subject")
                 throw std::invalid_argument("output_context must be html or subject");
@@ -394,6 +403,39 @@ namespace email_markup::browser
             }
         }
 
+        void add_schema_items(const Json &fields, const std::string &prefix, Json &items)
+        {
+            std::vector<std::string> keys;
+            for (const auto &[key, _] : fields.items()) keys.push_back(key);
+            std::sort(keys.begin(), keys.end());
+            for (const auto &key : keys)
+            {
+                const auto &field = fields.at(key);
+                const auto path = prefix.empty() ? key : prefix + "." + key;
+                const auto type = field.at("type").get<std::string>();
+                auto detail = type;
+                if (field.value("required", false)) detail += " · required";
+                Json item{{"label", path}, {"kind", type == "object" ? "module" : "value"},
+                          {"insert_text", path}, {"detail", detail}};
+                if (field.contains("description"))
+                    item["documentation"] = field.at("description");
+                items.push_back(std::move(item));
+                if (field.at("type") == "object")
+                    add_schema_items(field.at("fields"), path, items);
+            }
+        }
+
+        void add_context_items(const Workspace &workspace, Json &items)
+        {
+            if (!workspace.request.context_schema.is_null())
+            {
+                add_schema_items(parse_context_schema(workspace.request.context_schema).fields,
+                                 "", items);
+                return;
+            }
+            add_data_items(workspace.request.data, "", items);
+        }
+
         Json completion(const Workspace &workspace, const Json &position)
         {
             const auto &source = workspace.request.source;
@@ -440,7 +482,16 @@ namespace email_markup::browser
                 (interpolation_close == std::string::npos ||
                  interpolation_close < interpolation))
             {
-                add_data_items(workspace.request.data, "", items);
+                add_context_items(workspace, items);
+                return {{"is_incomplete", false}, {"items", std::move(items)}};
+            }
+
+            const auto deferred = source.rfind("@[", offset);
+            const auto deferred_close = source.rfind(']', offset);
+            if (deferred != std::string::npos &&
+                (deferred_close == std::string::npos || deferred_close < deferred))
+            {
+                add_context_items(workspace, items);
                 return {{"is_incomplete", false}, {"items", std::move(items)}};
             }
 
@@ -578,6 +629,54 @@ namespace email_markup::browser
         {
             const auto &source = workspace.request.source;
             const auto offset = offset_at(source, position);
+            if (!workspace.request.context_schema.is_null())
+            {
+                const auto interpolation = source.rfind("@{", offset);
+                const auto deferred = source.rfind("@[", offset);
+                const auto open = interpolation == std::string::npos ? deferred
+                                  : deferred == std::string::npos ? interpolation
+                                                                 : std::max(interpolation, deferred);
+                if (open != std::string::npos)
+                {
+                    const auto closing = source.find(source[open + 1] == '{' ? '}' : ']', open + 2);
+                    if (closing == std::string::npos || offset <= closing)
+                    {
+                        auto end = std::min(offset, source.size());
+                        while (end < source.size() &&
+                               (std::isalnum(static_cast<unsigned char>(source[end])) ||
+                                source[end] == '_' || source[end] == '.'))
+                            ++end;
+                        const auto path = source.substr(open + 2, end - (open + 2));
+                        const auto schema = parse_context_schema(workspace.request.context_schema);
+                        const Json *fields = &schema.fields;
+                        const Json *field = nullptr;
+                        std::size_t cursor = 0;
+                        while (cursor < path.size())
+                        {
+                            const auto dot = path.find('.', cursor);
+                            const auto name = path.substr(cursor, dot - cursor);
+                            if (!fields->contains(name)) { field = nullptr; break; }
+                            field = &fields->at(name);
+                            if (dot == std::string::npos) break;
+                            if (field->at("type") != "object") { field = nullptr; break; }
+                            fields = &field->at("fields");
+                            cursor = dot + 1;
+                        }
+                        if (field)
+                        {
+                            std::string markdown = "**" + path + "**\n\n`" +
+                                                   field->at("type").get<std::string>() + "`";
+                            if (field->value("required", false)) markdown += " · required";
+                            if (field->value("nullable", false)) markdown += " · nullable";
+                            if (field->contains("description"))
+                                markdown += "\n\n" + field->at("description").get<std::string>();
+                            if (field->contains("example"))
+                                markdown += "\n\nExample: `" + field->at("example").dump() + "`";
+                            return {{"markdown", std::move(markdown)}};
+                        }
+                    }
+                }
+            }
             const auto word = word_at(source, offset);
             if (word.empty())
                 return nullptr;

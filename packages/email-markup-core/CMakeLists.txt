@@ -4,6 +4,7 @@ add_library(
     src/compilation/compiler.cpp
     src/compilation/loader.cpp
     src/compilation/tokens.cpp
+    src/context_schema.cpp
     src/data.cpp
     src/diagnostic.cpp
     src/engine.cpp

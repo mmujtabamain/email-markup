@@ -23,6 +23,7 @@ namespace email_markup::cli
         std::vector<std::filesystem::path> includes;
         std::vector<std::filesystem::path> imports;
         std::optional<std::filesystem::path> data;
+        std::optional<std::filesystem::path> context_schema;
         std::optional<std::filesystem::path> shell;
         std::optional<std::filesystem::path> engine;
         std::filesystem::path output{"build"};
@@ -46,5 +47,6 @@ namespace email_markup::cli
         const platform::System &system_;
         ProjectConfig config_;
         email_markup::Json data_;
+        email_markup::Json context_schema_{nullptr};
     };
 } // namespace email_markup::cli

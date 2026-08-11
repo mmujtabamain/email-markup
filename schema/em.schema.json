@@ -17,6 +17,11 @@
       "uniqueItems": true
     },
     "data": { "type": "string", "description": "Development JSON fixture" },
+    "context_schema": {
+      "type": "string",
+      "pattern": "\\.em\\.schema\\.json$",
+      "description": "Optional authoritative Email Markup context schema"
+    },
     "shell": { "type": "string", "pattern": "\\.em$" },
     "engine": { "type": "string", "pattern": "\\.emt$" },
     "out": { "type": "string" }

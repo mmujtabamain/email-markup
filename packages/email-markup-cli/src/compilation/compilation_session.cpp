@@ -8,6 +8,7 @@
 #include <nlohmann/json.hpp>
 
 #include "email-markup/platform/system.hpp"
+#include "email-markup/core/context_schema.hpp"
 #include "email-markup/core/images.hpp"
 
 namespace email_markup::cli
@@ -78,6 +79,9 @@ namespace email_markup::cli
                         expand_path(value.get<std::string>(), root, assets));
                 if (json.contains("data"))
                     config.data = expand_path(json.at("data").get<std::string>(), root, assets);
+                if (json.contains("context_schema"))
+                    config.context_schema = expand_path(
+                        json.at("context_schema").get<std::string>(), root, assets);
                 if (json.contains("shell"))
                     config.shell = expand_path(json.at("shell").get<std::string>(), root, assets);
                 if (json.contains("engine"))
@@ -127,6 +131,14 @@ namespace email_markup::cli
         if (ignore_shell)
             config_.shell.reset();
         data_ = load_data(options_, config_, system_);
+        if (config_.context_schema)
+        {
+            context_schema_ = Json::parse(system_.read_text_file(*config_.context_schema));
+            const auto parsed = email_markup::parse_context_schema(context_schema_);
+            if (data_.empty() && !options_.data_json && !options_.data_file &&
+                !options_.data_stdin)
+                data_ = email_markup::context_schema_example(parsed);
+        }
     }
 
     const ProjectConfig &CompilationSession::config() const noexcept
@@ -141,6 +153,7 @@ namespace email_markup::cli
         request.entry_path = std::filesystem::absolute(input).lexically_normal();
         request.source = system_.read_text_file(request.entry_path);
         request.data = data_;
+        request.context_schema = context_schema_;
         request.include_directories = config_.includes;
         request.include_directories.insert(request.include_directories.end(),
                                            options_.includes.begin(), options_.includes.end());
