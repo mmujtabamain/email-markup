@@ -24,7 +24,21 @@ slot              = "@Slot(" , lower-name , ");"
 definition        = component-definition | style-definition | token-definition ;
 component-definition = "@DefineComponent(" , named-string , ")",
                        [ props ], [ slots ], template, "@/DefineComponent" ;
-props             = "@Props" , raw-declaration-lines , "@/Props" ;
+props             = "@Props" , { prop-declaration , newline }, "@/Props" ;
+prop-declaration  = lower-name , [ "?" ] , ":" , prop-type,
+                    [ range-constraint ], [ comparison-constraint ],
+                    [ "=" , expression ] ;
+parameter-declaration = lower-name , [ "?" ],
+                    [ ":" , parameter-type, [ range-constraint ],
+                      [ comparison-constraint ] ], [ "=" , raw-default ] ;
+prop-type         = "string" | "int" | "decimal" | "number" | "bool"
+                  | "name" | "url" | "email" | "color" ;
+parameter-type    = "int" | "decimal" | "number" | "bool" | "name"
+                  | "raw" | "path" | "condition" ;
+range-constraint  = "(" , numeric-bound , ".." , numeric-bound , ")" ;
+comparison-constraint = (">=" | "<=" | ">" | "<") , numeric-bound ;
+numeric-bound     = [ "+" | "-" ] , digit , { digit },
+                    [ "." , digit , { digit } ] ;
 slots             = "@Slots" , raw-slot-lines , "@/Slots" ;
 template          = "@Template" , { content }, "@/Template" ;
 style-definition  = "@DefineStyle(" , named-string , ")",

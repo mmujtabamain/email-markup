@@ -103,6 +103,30 @@ TEST_CASE("formatter separates definitions and protects raw declaration bodies")
     CHECK(email_markup::format_source(expected) == expected);
 }
 
+TEST_CASE("formatter preserves rich declaration annotations")
+{
+    const auto source =
+        "@DefineComponent(name: \"Meter\")@Props\n"
+        "size: int(1..100) >= 20 = 20\n"
+        "opacity?: decimal(0.0..1.0)\n"
+        "alias?: name\n"
+        "@/Props@Template<span>@{size}</span>@/Template@/DefineComponent";
+    const auto expected =
+        "@DefineComponent(name: \"Meter\")\n"
+        "  @Props\n"
+        "    size: int(1..100) >= 20 = 20\n"
+        "    opacity?: decimal(0.0..1.0)\n"
+        "    alias?: name\n"
+        "  @/Props\n"
+        "  @Template\n"
+        "    <span>@{size}</span>\n"
+        "  @/Template\n"
+        "@/DefineComponent\n";
+
+    CHECK(email_markup::format_source(source) == expected);
+    CHECK(email_markup::format_source(expected) == expected);
+}
+
 TEST_CASE("formatter keeps multiline component heads on one directive line")
 {
     const auto source =

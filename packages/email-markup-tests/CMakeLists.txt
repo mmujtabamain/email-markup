@@ -6,6 +6,7 @@ add_executable(
     src/image_tests.cpp
     src/conformance_tests.cpp
     src/css_lint_tests.cpp
+    src/declaration_tests.cpp
     src/lexer_parser_tests.cpp
     src/lsp_support_tests.cpp
     src/platform_tests.cpp

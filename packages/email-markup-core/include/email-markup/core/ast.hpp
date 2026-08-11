@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <variant>
@@ -68,20 +69,69 @@ namespace email_markup
         NodeValue value;
     };
 
-    struct PropDeclaration
+    enum class DeclarationType
+    {
+        string,
+        integer,
+        decimal,
+        number,
+        boolean,
+        name,
+        url,
+        email,
+        color,
+        raw,
+        path,
+        condition
+    };
+
+    enum class ComparisonOperator
+    {
+        greater,
+        greater_equal,
+        less,
+        less_equal
+    };
+
+    struct NumericBound
+    {
+        std::string spelling;
+        bool integer{};
+        SourceRange range;
+    };
+
+    struct RangeConstraint
+    {
+        NumericBound minimum;
+        NumericBound maximum;
+    };
+
+    struct ComparisonConstraint
+    {
+        ComparisonOperator operation{};
+        NumericBound bound;
+        SourceRange operator_range;
+    };
+
+    struct Declaration
     {
         std::string name;
         std::string type;
+        DeclarationType value_type{DeclarationType::string};
+        bool has_explicit_type{};
         bool optional{};
         std::string default_expression;
         bool has_default{};
-        double minimum{};
-        double maximum{};
-        bool has_range{};
-        std::string comparison;
-        double bound{};
+        std::optional<RangeConstraint> range_constraint;
+        std::optional<ComparisonConstraint> comparison_constraint;
         SourceRange range;
+        SourceRange name_range;
+        SourceRange optional_range;
+        SourceRange type_range;
+        SourceRange default_range;
     };
+
+    using PropDeclaration = Declaration;
 
     struct SlotDeclaration
     {

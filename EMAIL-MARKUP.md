@@ -107,10 +107,16 @@ Definitions are Email Markup source:
 @/DefineComponent
 ```
 
-Supported prop types are `string`, `int`, `number`, `bool`, `url`, `email`, and
-`color`. A declaration may be optional with `?`, carry a default with `=`, and
-use a range such as `int(4..120)`. Calls reject missing required props, unknown
-props, invalid values, undeclared slots, and the wrong body form.
+Supported prop types are `string`, `int`, `decimal`, `number`, `bool`, `name`,
+`url`, `email`, and `color`. A declaration may be optional with `?`, carry a
+default with `=`, use an inclusive range such as `int(4..120)`, and add a numeric
+comparison such as `int(1..100) >= 20`. String ranges count Unicode scalar
+values. Integer bounds remain exact integers, while `decimal` requires a JSON
+non-integer number and `number` accepts either numeric form. `name` accepts
+`[A-Za-z_][A-Za-z0-9_]*`. The reserved `raw`, `path`, and `condition` declaration
+types are rejected for ordinary component props. Calls and defaults reject
+missing required props, unknown props, invalid values, undeclared slots, and the
+wrong body form.
 
 Slots are declared as `required` or `optional`. A plain call body fills the
 `default` slot. Named fills use `@Slot(name) ... @/Slot`; templates emit them with

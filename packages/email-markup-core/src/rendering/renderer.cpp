@@ -370,8 +370,9 @@ namespace email_markup::detail
                     if (declaration.has_default)
                     {
                         auto value = evaluate(declaration.default_expression,
-                                              nested.evaluation, declaration.range);
-                        if (value)
+                                              nested.evaluation, declaration.default_range);
+                        if (value && validate_prop(declaration, *value, diagnostics_,
+                                                   declaration.default_range))
                             nested.evaluation.props[declaration.name] = std::move(*value);
                     }
                     else if (declaration.optional)
