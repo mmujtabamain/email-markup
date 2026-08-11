@@ -5,6 +5,7 @@ add_library(
     src/compilation/loader.cpp
     src/compilation/tokens.cpp
     src/context_schema.cpp
+    src/sample_preview.cpp
     src/data.cpp
     src/diagnostic.cpp
     src/engine.cpp
