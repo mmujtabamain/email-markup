@@ -21,7 +21,7 @@ namespace email_markup
             "If", "For"};
         const std::unordered_set<std::string> reserved_keywords{
             "DefineComponent", "DefineStyle", "DefineToken", "Props", "Slots", "Template",
-            "Media", "If", "Else", "For", "Slot", "Include"};
+            "Media", "If", "Else", "For", "Slot", "Include", "Engine"};
 
         std::string trim(std::string value)
         {
@@ -250,6 +250,10 @@ namespace email_markup
             NodePtr tag(const bool top_level)
             {
                 auto token = advance();
+                if (token.kind == TokenKind::deferred_bare ||
+                    token.kind == TokenKind::deferred_open ||
+                    token.kind == TokenKind::deferred_self_closing)
+                    return parse_deferred(token);
                 if (block_keywords.contains(token.name) && token.kind == TokenKind::self_closing)
                 {
                     error("EM0210", "@" + token.name + " requires a body.", token.range);
@@ -263,6 +267,8 @@ namespace email_markup
                     return parse_slot(token);
                 if (token.name == "Include")
                     return parse_include(token, top_level);
+                if (token.name == "Engine")
+                    return parse_engine(token, top_level);
                 if (token.name == "DefineComponent")
                 {
                     parse_component_definition(token, top_level);
@@ -356,6 +362,31 @@ namespace email_markup
                 }
                 return std::make_shared<Node>(
                     Node{token.range, IncludeNode{trim(token.parameters)}});
+            }
+
+            NodePtr parse_engine(const Token &token, const bool top_level)
+            {
+                if (!top_level || token.kind != TokenKind::self_closing)
+                    error("EM0223", "@Engine is a top-level void construct.", token.range);
+                return std::make_shared<Node>(
+                    Node{token.range, EngineNode{trim(token.parameters)}});
+            }
+
+            NodePtr parse_deferred(const Token &token)
+            {
+                const bool bare = token.kind == TokenKind::deferred_bare;
+                const bool self_closing = bare ||
+                                          token.kind == TokenKind::deferred_self_closing;
+                std::vector<NodePtr> children;
+                if (!self_closing)
+                {
+                    children = nodes({});
+                    close(token.name, token.range);
+                }
+                return std::make_shared<Node>(Node{
+                    token.range,
+                    DeferredCallNode{token.name, token.parameters, std::move(children),
+                                     self_closing, bare}});
             }
 
             std::string definition_name(const Token &token)

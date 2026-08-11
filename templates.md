@@ -2,11 +2,9 @@
 
 ## Status and version boundary
 
-This is a proposal for the next minor language version after Email Markup 1.1.
-It is not accepted by the current grammar or required by `PLAN.md`. Before
-implementation, assign the feature a release version, add its grammar to
-`grammar/email-markup.ebnf`, and update the negative conformance tests that
-currently reject `.emt`, `@Engine`, `@[…]`, and `@Name[…]`.
+This contract is implemented by Email Markup 1.2. Engine selection is explicit,
+and the no-engine path remains the Email Markup 1 final-HTML model. The first
+packaged target is the restricted Django profile in `lib/engines/django.emt`.
 
 The existing execution model remains the default:
 
@@ -288,7 +286,7 @@ and explain these escapes.
 ```emt
 @DefineBareTemplate
   @Params
-    value
+    value: path
   @/Params
   @Template
     {{ @{value} }}
@@ -297,7 +295,7 @@ and explain these escapes.
 
 @DefineTemplate(name: "If")
   @Params
-    condition
+    condition: condition
   @/Params
   @Slots
     default: required
@@ -316,18 +314,72 @@ and explain these escapes.
 
 @DefineTemplate(name: "For")
   @Params
-    seq
-    var: name
+    collection: path
+    binding: name
+    limit: int(1..100) = 20
   @/Params
   @Slots
     default: required
   @/Slots
   @Template
-    {% for @{var} in @{seq} %}
+    {% for @{binding} in @{collection}|slice:":@{limit}" %}
       @Slot(default);
     {% endfor %}
   @/Template
 @/DefineTemplate
+```
+
+The packaged Django definition is more restrictive than a general trusted
+engine definition. Its bare value is a compiler-parsed `path`, its `If`
+condition is a compiler-parsed host-neutral `condition`, and its `For` accepts a
+collection `path`, lexical local `name`, and compile-time bounded `int` limit.
+Project templates cannot invoke a `raw` macro through this profile.
+
+For example:
+
+```email-markup
+@Engine("${EMAIL_MARKUP_LIB}/engines/django.emt");
+
+<p>Hello @[business.name]</p>
+```
+
+has this illustrative EMIR shape (the normative artifact also includes source
+map data):
+
+```json
+{
+  "format": "email-markup-ir",
+  "version": 1,
+  "output_kind": "engine-template",
+  "target": {
+    "name": "django",
+    "engine": "${EMAIL_MARKUP_LIB}/engines/django.emt"
+  },
+  "document": {
+    "kind": "document",
+    "children": [
+      {"kind": "literal", "value": "<p>Hello "},
+      {
+        "kind": "runtime_value",
+        "path": ["business", "name"],
+        "value_type": "string",
+        "escape": "html_text"
+      },
+      {"kind": "literal", "value": "</p>"}
+    ]
+  },
+  "requirements": {
+    "recipient": {
+      "business.name": {"type": "string", "required": true}
+    }
+  }
+}
+```
+
+The Django emitter produces:
+
+```django
+<p>Hello {{ business.name }}</p>
 ```
 
 `@DefineBareTemplate` declares `@[…]`; `@DefineTemplate(name: "Name")`

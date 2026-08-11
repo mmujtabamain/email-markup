@@ -28,6 +28,9 @@ namespace email_markup
                                      const Json &value,
                                      std::vector<Diagnostic> &diagnostics,
                                      SourceRange value_range);
+    [[nodiscard]] bool validate_deferred_parameter(
+        const Declaration &declaration, std::string_view value,
+        std::vector<Diagnostic> &diagnostics, SourceRange value_range);
     [[nodiscard]] std::string format_declaration(const Declaration &declaration);
 
 } // namespace email_markup

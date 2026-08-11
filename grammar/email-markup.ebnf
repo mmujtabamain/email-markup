@@ -1,6 +1,7 @@
 document          = { top-level } ;
 top-level         = text | interpolation | comment | include | definition
-                  | media | control | component ;
+                  | media | control | component | engine-selection
+                  | deferred-call ;
 
 text              = { any-character-except-recognised-sigil } ;
 interpolation     = "@{" , expression , "}" ;
@@ -11,7 +12,15 @@ escaped-at        = "@@" ;
 include           = "@Include(" , string , ");" ;
 component         = "@" , upper-name , [ parameters ] ,
                     ( ";" | { content }, "@/" , upper-name ) ;
-content           = text | interpolation | comment | control | component | slot ;
+content           = text | interpolation | comment | control | component | slot
+                  | deferred-call ;
+engine-selection  = "@Engine(" , string , ");" ;
+deferred-call     = bare-deferred-call | named-deferred-call ;
+bare-deferred-call = "@[" , deferred-payload , "]" ;
+named-deferred-call = "@" , upper-name , "[" , deferred-payload , "]" ,
+                    ( ";" | { content | deferred-call } , "@/" , upper-name ) ;
+deferred-payload  = { deferred-character | deferred-escape | interpolation } ;
+deferred-escape   = "\\]" | "\\," | "\\\\" | "@@" ;
 
 control           = if | for ;
 if                = "@If(" , expression , ")" , { content },
@@ -63,3 +72,12 @@ primary           = number | string | "true" | "false" | "null" | path
 path              = lower-name , { "." , lower-name } ;
 upper-name        = upper , { letter | digit | "_" } ;
 lower-name        = (lower | "_") , { letter | digit | "_" } ;
+
+engine-document   = { comment | engine-template-definition } ;
+engine-template-definition = bare-template-definition | named-template-definition ;
+bare-template-definition = "@DefineBareTemplate", [ params ], template,
+                           "@/DefineBareTemplate" ;
+named-template-definition = "@DefineTemplate(" , named-string , ")",
+                            [ params ], [ slots ], template,
+                            "@/DefineTemplate" ;
+params            = "@Params" , { parameter-declaration , newline }, "@/Params" ;

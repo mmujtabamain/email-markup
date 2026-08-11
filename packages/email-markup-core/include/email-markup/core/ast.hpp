@@ -59,9 +59,22 @@ namespace email_markup
     {
         std::string expression;
     };
+    struct EngineNode
+    {
+        std::string expression;
+    };
+    struct DeferredCallNode
+    {
+        std::string name;
+        std::string payload;
+        std::vector<NodePtr> children;
+        bool self_closing{};
+        bool bare{};
+    };
 
     using NodeValue = std::variant<TextNode, ExpressionNode, ComponentNode, IfNode,
-                                   ForNode, SlotNode, IncludeNode>;
+                                   ForNode, SlotNode, IncludeNode, EngineNode,
+                                   DeferredCallNode>;
 
     struct Node
     {

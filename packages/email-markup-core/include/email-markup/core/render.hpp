@@ -10,6 +10,7 @@
 #include "email-markup/core/ast.hpp"
 #include "email-markup/core/diagnostic.hpp"
 #include "email-markup/core/expr.hpp"
+#include "email-markup/core/emir.hpp"
 #include "email-markup/core/include.hpp"
 #include "email-markup/core/images.hpp"
 #include "email-markup/core/provenance.hpp"
@@ -51,14 +52,31 @@ namespace email_markup
         std::vector<std::filesystem::path> allowed_roots;
         std::vector<std::filesystem::path> imports;
         std::optional<std::filesystem::path> shell;
+        std::optional<std::filesystem::path> engine;
+        bool subject{};
         ImageFetcher image_fetcher;
         CompilationLimits limits;
+    };
+
+    enum class OutputKind
+    {
+        final_html,
+        engine_template
+    };
+
+    struct TargetIdentity
+    {
+        std::string name;
+        std::filesystem::path engine;
     };
 
     struct CompilationResult
     {
         std::shared_ptr<const DocumentSnapshot> snapshot;
         GeneratedHtml generated;
+        OutputKind output_kind{OutputKind::final_html};
+        std::optional<TargetIdentity> target;
+        std::optional<EmirArtifact> emir;
         std::vector<std::filesystem::path> dependencies;
         std::vector<Diagnostic> diagnostics;
 

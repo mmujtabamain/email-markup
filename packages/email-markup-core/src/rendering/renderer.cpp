@@ -1,6 +1,8 @@
 #include "compilation/pipeline.hpp"
 
 #include <algorithm>
+#include <charconv>
+#include <cctype>
 #include <regex>
 #include <unordered_set>
 
@@ -9,6 +11,26 @@
 
 namespace email_markup::detail
 {
+    std::size_t DeferredStore::add(const DeferredCallNode &call, const SourceRange range,
+                                   std::string escape)
+    {
+        const auto id = calls.size();
+        calls.push_back({id, call.name, call.payload, range, std::move(escape), call.bare,
+                         call.self_closing});
+        return id;
+    }
+
+    std::string DeferredStore::marker(const char kind, const std::size_t id,
+                                      const std::string_view slot)
+    {
+        auto result = std::string(1, '\x1e') + "EMD:" + kind + ":" +
+                      std::to_string(id);
+        if (!slot.empty())
+            result += ":" + std::string{slot};
+        result.push_back('\x1f');
+        return result;
+    }
+
     namespace
     {
         std::string html_escape(const std::string_view text)
@@ -58,9 +80,10 @@ namespace email_markup::detail
         public:
             Renderer(const Registry &registry, const CompilationLimits &limits,
                      const CancellationToken cancellation,
-                     std::vector<Diagnostic> &diagnostics)
+                     std::vector<Diagnostic> &diagnostics,
+                     DeferredStore *deferred, const bool subject)
                 : registry_(registry), limits_(limits), cancellation_(cancellation),
-                  diagnostics_(diagnostics)
+                  diagnostics_(diagnostics), deferred_(deferred), subject_(subject)
             {
             }
 
@@ -200,7 +223,9 @@ namespace email_markup::detail
                     return;
                 try
                 {
-                    append(html_escape(emit_scalar(*value)), node.range);
+                    append(subject_ ? emit_scalar(*value)
+                                    : html_escape(emit_scalar(*value)),
+                           node.range);
                 }
                 catch (...)
                 {
@@ -212,6 +237,127 @@ namespace email_markup::detail
 
             void render_node(const IncludeNode &, const Node &, RenderScope &, std::size_t)
             {
+            }
+
+            void render_node(const EngineNode &, const Node &, RenderScope &, std::size_t)
+            {
+            }
+
+            void render_node(const DeferredCallNode &call, const Node &node,
+                             RenderScope &scope, const std::size_t depth)
+            {
+                if (!deferred_)
+                {
+                    diagnostic("EM0801",
+                               "Deferred square-bracket syntax requires a selected engine.",
+                               node.range);
+                    return;
+                }
+                auto prepared = call;
+                prepared.payload = expand_deferred_payload(call.payload, scope, node.range);
+                const auto id = deferred_->add(prepared, node.range,
+                                               deferred_escape_context());
+                append(DeferredStore::marker('B', id), node.range);
+                for (const auto &child : call.children)
+                {
+                    if (const auto *slot = std::get_if<SlotNode>(&child->value);
+                        slot && !slot->reference)
+                    {
+                        append(DeferredStore::marker('S', id, slot->name), child->range);
+                        render_nodes(slot->body, scope, depth);
+                    }
+                    else
+                    {
+                        append(DeferredStore::marker('S', id, "default"), child->range);
+                        render_nodes({child}, scope, depth);
+                    }
+                }
+                append(DeferredStore::marker('E', id), node.range);
+            }
+
+            [[nodiscard]] std::string expand_deferred_payload(
+                const std::string_view payload, RenderScope &scope,
+                const SourceRange range)
+            {
+                std::string output;
+                for (std::size_t position = 0; position < payload.size();)
+                {
+                    if (payload[position] != '@' || position + 1 >= payload.size())
+                    {
+                        output.push_back(payload[position++]);
+                        continue;
+                    }
+                    if (payload[position + 1] == '@')
+                    {
+                        output.push_back('@');
+                        position += 2;
+                        continue;
+                    }
+                    if (payload[position + 1] != '{')
+                    {
+                        output.push_back(payload[position++]);
+                        continue;
+                    }
+                    const auto end = payload.find('}', position + 2);
+                    if (end == std::string_view::npos)
+                    {
+                        diagnostic("EM0860",
+                                   "Unclosed interpolation in deferred payload.", range);
+                        break;
+                    }
+                    auto value = evaluate(std::string{payload.substr(
+                                              position + 2, end - position - 2)},
+                                          scope.evaluation, range);
+                    if (value)
+                    {
+                        try
+                        {
+                            output += emit_scalar(*value);
+                        }
+                        catch (...)
+                        {
+                            diagnostic("EM0861",
+                                       "Deferred payload interpolation requires a scalar value.",
+                                       range);
+                        }
+                    }
+                    position = end + 1;
+                }
+                return output;
+            }
+
+            [[nodiscard]] std::string deferred_escape_context() const
+            {
+                if (subject_)
+                    return "subject";
+                const auto open = output_.html.rfind('<');
+                const auto close = output_.html.rfind('>');
+                if (open == std::string::npos ||
+                    (close != std::string::npos && close > open))
+                    return "html_text";
+                const auto head = output_.html.substr(open);
+                const auto double_quote = head.rfind("=\"");
+                const auto single_quote = head.rfind("='");
+                const auto assignment = double_quote == std::string::npos
+                                            ? single_quote
+                                        : single_quote == std::string::npos
+                                            ? double_quote
+                                            : std::max(double_quote, single_quote);
+                if (assignment == std::string::npos)
+                    return "html_attribute";
+                auto name_end = assignment;
+                while (name_end > 0 &&
+                       std::isspace(static_cast<unsigned char>(head[name_end - 1])))
+                    --name_end;
+                auto name_start = name_end;
+                while (name_start > 0 &&
+                       (std::isalnum(static_cast<unsigned char>(head[name_start - 1])) ||
+                        head[name_start - 1] == '-' || head[name_start - 1] == '_'))
+                    --name_start;
+                const auto name = head.substr(name_start, name_end - name_start);
+                return name == "href" || name == "src" || name == "action"
+                           ? "url"
+                           : "html_attribute";
             }
 
             void render_node(const IfNode &condition, const Node &node, RenderScope &scope,
@@ -456,6 +602,8 @@ namespace email_markup::detail
             std::size_t loop_iterations_{};
             bool output_limited_{};
             const GeneratedHtml *shell_content_{};
+            DeferredStore *deferred_{};
+            bool subject_{};
         };
     } // namespace
 
@@ -463,18 +611,20 @@ namespace email_markup::detail
         const Registry &registry, const CompilationLimits &limits,
         const CancellationToken cancellation, std::vector<Diagnostic> &diagnostics,
         const std::vector<NodePtr> &nodes, const Json &data,
-        const std::unordered_map<std::string, Json> &tokens)
+        const std::unordered_map<std::string, Json> &tokens,
+        DeferredStore *deferred, const bool subject)
     {
-        return Renderer{registry, limits, cancellation, diagnostics}.render(nodes, data, tokens);
+        return Renderer{registry, limits, cancellation, diagnostics, deferred, subject}.render(nodes, data, tokens);
     }
 
     GeneratedHtml render_shell_document(
         const Registry &registry, const CompilationLimits &limits,
         const CancellationToken cancellation, std::vector<Diagnostic> &diagnostics,
         const std::vector<NodePtr> &nodes, const Json &data,
-        const std::unordered_map<std::string, Json> &tokens, const GeneratedHtml &content)
+        const std::unordered_map<std::string, Json> &tokens, const GeneratedHtml &content,
+        DeferredStore *deferred, const bool subject)
     {
-        return Renderer{registry, limits, cancellation, diagnostics}.render_shell(
+        return Renderer{registry, limits, cancellation, diagnostics, deferred, subject}.render_shell(
             nodes, data, tokens, content);
     }
 } // namespace email_markup::detail

@@ -10,7 +10,7 @@ namespace email_markup
     {
 
         const std::unordered_set<std::string> raw_body_names{
-            "Props", "Slots", "DefineStyle", "Media"};
+            "Props", "Params", "Slots", "DefineStyle", "Media"};
 
         bool name_start(const char ch)
         {
@@ -66,6 +66,48 @@ namespace email_markup
                     }
                 }
                 output.push_back(ch);
+            }
+            return std::string_view::npos;
+        }
+
+        std::size_t deferred_payload(const std::string_view text, const std::size_t start,
+                                     std::string &output)
+        {
+            std::size_t position = start + 1;
+            bool escaped = false;
+            while (position < text.size())
+            {
+                const char ch = text[position];
+                if (escaped)
+                {
+                    output.push_back(ch);
+                    escaped = false;
+                    ++position;
+                    continue;
+                }
+                if (ch == '\\')
+                {
+                    output.push_back(ch);
+                    escaped = true;
+                    ++position;
+                    continue;
+                }
+                if (ch == '@' && position + 1 < text.size() && text[position + 1] == '{')
+                {
+                    output.append("@{");
+                    std::string expression;
+                    const auto end = delimited(text, position + 1, '{', '}', expression);
+                    if (end == std::string_view::npos)
+                        return std::string_view::npos;
+                    output += expression;
+                    output.push_back('}');
+                    position = end;
+                    continue;
+                }
+                if (ch == ']')
+                    return position + 1;
+                output.push_back(ch);
+                ++position;
             }
             return std::string_view::npos;
         }
@@ -178,12 +220,18 @@ namespace email_markup
             if (next == '[')
             {
                 flush(start);
-                const auto end = text.find(']', position + 2);
-                const auto stop = end == std::string_view::npos ? text.size() : end + 1;
-                add_error(result, {source, start, stop}, "EM0107",
-                          "Square-bracket macro syntax is not part of Email Markup 1.",
-                          diagnostic_limit);
-                position = stop;
+                std::string payload;
+                const auto end = deferred_payload(text, position + 1, payload);
+                if (end == std::string_view::npos)
+                {
+                    add_error(result, {source, start, text.size()}, "EM0107",
+                              "Unclosed deferred payload; expected ].", diagnostic_limit);
+                    position = text.size();
+                    continue;
+                }
+                result.tokens.push_back({TokenKind::deferred_bare, {}, std::move(payload), {},
+                                         {source, start, end}});
+                position = end;
                 continue;
             }
             if (!name_start(next))
@@ -200,13 +248,33 @@ namespace email_markup
             while (position < text.size() && name_continue(text[position]))
                 ++position;
             const auto name = std::string{text.substr(start + 1, position - start - 1)};
-            if (name == "Engine")
-            {
-                add_error(result, {source, start, position}, "EM0108",
-                          "@Engine is deferred syntax and is not part of Email Markup 1.",
-                          diagnostic_limit);
-            }
             std::string parameters;
+            if (position < text.size() && text[position] == '[')
+            {
+                const auto end = deferred_payload(text, position, parameters);
+                if (end == std::string_view::npos)
+                {
+                    add_error(result, {source, start, text.size()}, "EM0107",
+                              "Unclosed deferred payload; expected ].", diagnostic_limit);
+                    result.tokens.push_back({TokenKind::invalid, name, std::move(parameters), {},
+                                             {source, start, text.size()}});
+                    position = text.size();
+                    continue;
+                }
+                position = end;
+                if (position < text.size() && text[position] == ';')
+                {
+                    ++position;
+                    result.tokens.push_back({TokenKind::deferred_self_closing, name,
+                                             std::move(parameters), {}, {source, start, position}});
+                }
+                else
+                {
+                    result.tokens.push_back({TokenKind::deferred_open, name,
+                                             std::move(parameters), {}, {source, start, position}});
+                }
+                continue;
+            }
             if (position < text.size() && text[position] == '(')
             {
                 const auto end = delimited(text, position, '(', ')', parameters);

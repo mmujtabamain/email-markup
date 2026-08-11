@@ -15,6 +15,9 @@ namespace email_markup
         expression,
         open,
         self_closing,
+        deferred_open,
+        deferred_self_closing,
+        deferred_bare,
         close,
         end,
         invalid

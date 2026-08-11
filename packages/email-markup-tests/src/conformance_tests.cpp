@@ -25,11 +25,11 @@ namespace
 
 } // namespace
 
-TEST_CASE("deferred syntax is rejected by Email Markup 1")
+TEST_CASE("deferred syntax is gated by engine selection")
 {
-    CHECK_FALSE(email_markup::lex(0, "@[legacy]").diagnostics.empty());
-    CHECK_FALSE(email_markup::parse(0, "@Engine(\"jinja\");").diagnostics.empty());
-    CHECK_FALSE(email_markup::parse(0, "@Name[value]").diagnostics.empty());
+    CHECK(email_markup::lex(0, "@[legacy]").diagnostics.empty());
+    CHECK(email_markup::parse(0, "@Engine(\"django.emt\");").diagnostics.empty());
+    CHECK(email_markup::parse(0, "@Name[value];").diagnostics.empty());
 
     EmptyResolver resolver;
     email_markup::CompilationRequest request;

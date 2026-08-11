@@ -98,7 +98,7 @@ namespace email_markup
             auto canonical = std::filesystem::weakly_canonical(candidate, error);
             if (error || !std::filesystem::is_regular_file(canonical, error))
                 continue;
-            if (canonical.extension() != ".em")
+            if (canonical.extension() != ".em" && canonical.extension() != ".emt")
                 continue;
             bool allowed = allowed_roots.empty();
             for (const auto &root : allowed_roots)
@@ -131,12 +131,13 @@ namespace email_markup
         {
             if (!portable_path_string(file.canonical_path).starts_with('/'))
             {
-                throw std::invalid_argument("virtual Email Markup paths must be absolute .em paths");
+                throw std::invalid_argument("virtual Email Markup paths must be absolute paths");
             }
             const auto normalized = normalize_virtual_path(file.canonical_path);
-            if (!normalized || normalized->extension() != ".em")
+            if (!normalized || (normalized->extension() != ".em" &&
+                                normalized->extension() != ".emt"))
             {
-                throw std::invalid_argument("virtual Email Markup paths must be absolute .em paths");
+                throw std::invalid_argument("virtual Email Markup paths must use .em or .emt");
             }
             if (file.contents.size() > maximum_bytes_)
             {
@@ -181,7 +182,7 @@ namespace email_markup
             if (!candidate)
                 continue;
             attempted.push_back(*candidate);
-            if (candidate->extension() != ".em")
+            if (candidate->extension() != ".em" && candidate->extension() != ".emt")
                 continue;
 
             bool allowed = allowed_roots.empty();

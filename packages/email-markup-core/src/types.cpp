@@ -769,6 +769,94 @@ namespace email_markup
         return true;
     }
 
+    bool validate_deferred_parameter(const Declaration &declaration,
+                                     const std::string_view value,
+                                     std::vector<Diagnostic> &diagnostics,
+                                     const SourceRange value_range)
+    {
+        static const std::regex integer{R"(^[+-]?[0-9]+$)"};
+        static const std::regex decimal{R"(^[+-]?[0-9]+\.[0-9]+$)"};
+        static const std::regex name{R"(^[A-Za-z_][A-Za-z0-9_]*$)"};
+        static const std::regex path{
+            R"(^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$)"};
+        bool valid = false;
+        switch (declaration.value_type)
+        {
+        case DeclarationType::raw:
+            valid = true;
+            break;
+        case DeclarationType::integer:
+            valid = std::regex_match(value.begin(), value.end(), integer);
+            break;
+        case DeclarationType::decimal:
+            valid = std::regex_match(value.begin(), value.end(), decimal);
+            break;
+        case DeclarationType::number:
+            valid = std::regex_match(value.begin(), value.end(), integer) ||
+                    std::regex_match(value.begin(), value.end(), decimal);
+            break;
+        case DeclarationType::boolean:
+            valid = value == "true" || value == "false";
+            break;
+        case DeclarationType::name:
+            valid = std::regex_match(value.begin(), value.end(), name);
+            break;
+        case DeclarationType::path:
+            valid = std::regex_match(value.begin(), value.end(), path);
+            break;
+        case DeclarationType::condition:
+            valid = !trim(std::string{value}).empty();
+            break;
+        case DeclarationType::string:
+        case DeclarationType::url:
+        case DeclarationType::email:
+        case DeclarationType::color:
+            valid = false;
+            break;
+        }
+        if (!valid)
+        {
+            error(diagnostics, "EM0430", "Deferred parameter “" + declaration.name +
+                                               "” is not valid " + declaration.type + ".",
+                  value_range);
+            return false;
+        }
+        if (!numeric_type(declaration.value_type))
+            return true;
+        const auto measured = std::string{value};
+        if (declaration.range_constraint &&
+            (compare_exact(measured,
+                           declaration.range_constraint->minimum.spelling) < 0 ||
+             compare_exact(measured,
+                           declaration.range_constraint->maximum.spelling) > 0))
+        {
+            error(diagnostics, "EM0431", "Deferred parameter “" + declaration.name +
+                                               "” is outside its declared range.",
+                  value_range);
+            return false;
+        }
+        if (declaration.comparison_constraint)
+        {
+            const auto &constraint = *declaration.comparison_constraint;
+            const auto compared = compare_exact(measured, constraint.bound.spelling);
+            const bool within = constraint.operation == ComparisonOperator::greater
+                                    ? compared > 0
+                                : constraint.operation == ComparisonOperator::greater_equal
+                                    ? compared >= 0
+                                : constraint.operation == ComparisonOperator::less
+                                    ? compared < 0
+                                    : compared <= 0;
+            if (!within)
+            {
+                error(diagnostics, "EM0432", "Deferred parameter “" + declaration.name +
+                                                   "” violates its declared numeric bound.",
+                      value_range);
+                return false;
+            }
+        }
+        return true;
+    }
+
     std::string format_declaration(const Declaration &declaration)
     {
         std::string output = declaration.name;

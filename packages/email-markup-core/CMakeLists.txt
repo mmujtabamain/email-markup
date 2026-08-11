@@ -6,6 +6,8 @@ add_library(
     src/compilation/tokens.cpp
     src/data.cpp
     src/diagnostic.cpp
+    src/engine.cpp
+    src/emir.cpp
     src/expr.cpp
     src/format.cpp
     src/include.cpp
