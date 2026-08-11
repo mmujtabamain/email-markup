@@ -118,7 +118,7 @@ namespace email_markup
                     }
                 }
             }
-            generated = inline_css(std::move(generated));
+            generated = inline_css(std::move(generated), loader.diagnostics);
             embed_remote_images(generated, loader.diagnostics, request.image_fetcher,
                                 100 * 1024, 1024 * 1024,
                                 request.limits.maximum_html_bytes);

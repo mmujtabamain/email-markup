@@ -3,7 +3,9 @@
 #include <map>
 #include <string>
 #include <string_view>
+#include <vector>
 
+#include "email-markup/core/diagnostic.hpp"
 #include "email-markup/core/provenance.hpp"
 
 namespace email_markup
@@ -17,5 +19,7 @@ namespace email_markup
                                                 const CssDeclarations &additions);
     [[nodiscard]] std::string inline_css(std::string html);
     [[nodiscard]] GeneratedHtml inline_css(GeneratedHtml generated);
+    [[nodiscard]] GeneratedHtml inline_css(GeneratedHtml generated,
+                                           std::vector<Diagnostic> &diagnostics);
 
 } // namespace email_markup

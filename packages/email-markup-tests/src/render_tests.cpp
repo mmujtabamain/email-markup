@@ -88,7 +88,7 @@ TEST_CASE("compiler applies shell media and final lint")
 @Media("(max-width: 600px)")
   .stack { display: block !important; }
 @/Media
-<!doctype html><html><head></head><body>@Slot(default);<a href="/unsubscribe">Unsubscribe</a></body></html>
+<!doctype html><html><head></head><body><div class="stack">@Slot(default);</div><a href="/unsubscribe">Unsubscribe</a></body></html>
 )EM";
     email_markup::CompilationRequest request;
     request.entry_path = "/project/message.em";
