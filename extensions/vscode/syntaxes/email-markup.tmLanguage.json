@@ -118,7 +118,7 @@
           "include": "#interpolation"
         },
         {
-          "match": "\\b([A-Za-z_][A-Za-z0-9_]*)(\\??)(\\s*)(:)(\\s*)([A-Za-z_][A-Za-z0-9_]*(?:\\([^)]*\\))?)",
+          "match": "\\b([A-Za-z_][A-Za-z0-9_]*)(\\??)(\\s*)(:)(\\s*)(string|int|decimal|number|bool|name|url|email|color|raw|path|condition)\\b",
           "captures": {
             "1": {
               "name": "support.type.property-name.email-markup"
@@ -133,6 +133,10 @@
               "name": "storage.type.email-markup"
             }
           }
+        },
+        {
+          "name": "keyword.operator.comparison.email-markup",
+          "match": "(?:\\.\\.|>=|<=|>|<)"
         },
         {
           "name": "keyword.operator.assignment.email-markup",
@@ -419,6 +423,6 @@
   },
   "metadata": {
     "generatedFrom": "syntax/lexical.json",
-    "version": 1
+    "version": 2
   }
 }

@@ -63,6 +63,9 @@ test("every staged language server includes its runtime assets", () => {
 });
 
 test("generated grammar records the shared lexical source", () => {
+  const lexical = JSON.parse(
+    readFileSync(path.join(root, "../../syntax/lexical.json"), "utf8"),
+  );
   const grammar = JSON.parse(
     readFileSync(
       path.join(root, "syntaxes/email-markup.tmLanguage.json"),
@@ -70,6 +73,14 @@ test("generated grammar records the shared lexical source", () => {
     ),
   );
   assert.equal(grammar.metadata.generatedFrom, "syntax/lexical.json");
+  assert.equal(grammar.metadata.version, lexical.version);
+  const props = JSON.stringify(grammar.repository.props);
+  for (const declarationType of [
+    ...lexical.propTypes,
+    ...lexical.deferredParameterTypes,
+  ]) {
+    assert.match(props, new RegExp(`\\b${declarationType}\\b`));
+  }
   assert.equal(grammar.scopeName, "source.email-markup");
   assert.ok(
     grammar.patterns.some(

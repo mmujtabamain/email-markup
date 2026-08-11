@@ -6,6 +6,7 @@
 
 #include "analysis/context.hpp"
 #include "email-markup/core/parser.hpp"
+#include "email-markup/core/types.hpp"
 #include "text/positions.hpp"
 
 namespace email_markup::lsp
@@ -36,8 +37,7 @@ namespace email_markup::lsp
         }
         std::string markdown = "**@" + word + "**";
         for (const auto &prop : found->second.props)
-            markdown += "\n\n`" + prop.name + ": " + prop.type +
-                        (prop.optional ? "?" : "") + "`";
+            markdown += "\n\n`" + format_declaration(prop) + "`";
         respond(id, {{"contents", {{"kind", "markdown"}, {"value", markdown}}}});
     }
 
@@ -73,7 +73,7 @@ namespace email_markup::lsp
                     { return candidate.name == word; });
                 prop != definition.props.end())
             {
-                location(analysis::identifier_range(open->text, prop->range, prop->name));
+                location(prop->name_range);
                 return;
             }
             if (const auto slot = std::find_if(
@@ -98,7 +98,7 @@ namespace email_markup::lsp
                         { return candidate.name == word; });
                     prop != component->second.props.end())
                 {
-                    location(analysis::identifier_range(open->text, prop->range, prop->name));
+                    location(prop->name_range);
                     return;
                 }
             }
@@ -180,7 +180,7 @@ namespace email_markup::lsp
         if (params.value("context", Json::object()).value("includeDeclaration", false))
         {
             const auto declaration =
-                prop ? analysis::identifier_range(open->text, prop->range, prop->name)
+                prop ? prop->name_range
                      : analysis::identifier_range(open->text, slot->range, slot->name);
             add(declaration.start, declaration.end);
         }

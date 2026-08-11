@@ -8,6 +8,7 @@
 #include "email-markup/core/format.hpp"
 #include "email-markup/core/lexer.hpp"
 #include "email-markup/core/parser.hpp"
+#include "email-markup/core/types.hpp"
 #include "text/positions.hpp"
 
 namespace email_markup::lsp
@@ -121,7 +122,7 @@ namespace email_markup::lsp
             const auto &prop = found->second.props[index];
             if (index)
                 label += ", ";
-            const auto part = prop.name + ": " + prop.type;
+            const auto part = format_declaration(prop);
             label += part;
             parameters.push_back({{"label", part}});
         }

@@ -7,6 +7,9 @@ const extension = resolve(here, "..");
 const lexical = JSON.parse(
   await readFile(resolve(extension, "../../syntax/lexical.json"), "utf8"),
 );
+const declarationTypes = [
+  ...new Set([...lexical.propTypes, ...lexical.deferredParameterTypes]),
+].join("|");
 
 const grammar = {
   $schema:
@@ -84,13 +87,17 @@ const grammar = {
         { include: "#interpolation" },
         {
           match:
-            "\\b([A-Za-z_][A-Za-z0-9_]*)(\\??)(\\s*)(:)(\\s*)([A-Za-z_][A-Za-z0-9_]*(?:\\([^)]*\\))?)",
+            `\\b([A-Za-z_][A-Za-z0-9_]*)(\\??)(\\s*)(:)(\\s*)(${declarationTypes})\\b`,
           captures: {
             1: { name: "support.type.property-name.email-markup" },
             2: { name: "keyword.operator.optional.email-markup" },
             4: { name: "punctuation.separator.key-value.email-markup" },
             6: { name: "storage.type.email-markup" },
           },
+        },
+        {
+          name: "keyword.operator.comparison.email-markup",
+          match: "(?:\\.\\.|>=|<=|>|<)",
         },
         { name: "keyword.operator.assignment.email-markup", match: "=" },
         {

@@ -14,6 +14,7 @@
 #include "analysis/context.hpp"
 #include "email-markup/core/lexer.hpp"
 #include "email-markup/core/parser.hpp"
+#include "email-markup/core/types.hpp"
 #include "text/positions.hpp"
 
 namespace email_markup::lsp
@@ -100,8 +101,8 @@ namespace email_markup::lsp
         {
             if (context == analysis::PropsCompletionContext::type)
             {
-                for (const auto *type : {"string", "int", "number", "bool", "url",
-                                         "email", "color"})
+                for (const auto *type : {"string", "int", "decimal", "number", "bool",
+                                         "name", "url", "email", "color"})
                     items.push_back({{"label", type},
                                      {"kind", 25},
                                      {"detail", "Email Markup prop type"}});
@@ -162,7 +163,8 @@ namespace email_markup::lsp
                         items.push_back({{"label", prop.name},
                                          {"kind", 5},
                                          {"insertText", prop.name + ": "},
-                                         {"detail", "Email Markup prop: " + prop.type}});
+                                         {"detail", "Email Markup prop: " + prop.type +
+                                                        " — " + format_declaration(prop)}});
                     }
                     if (!invocation->used_arguments.contains("style"))
                         items.push_back({{"label", "style"},

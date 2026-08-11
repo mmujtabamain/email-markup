@@ -40,9 +40,16 @@ namespace email_markup::lsp::analysis
         const auto colon = line.find(':');
         if (colon == std::string_view::npos)
             return PropsCompletionContext::none;
-        return line.find('=', colon + 1) == std::string_view::npos
+        if (line.find('=', colon + 1) != std::string_view::npos)
+            return PropsCompletionContext::default_value;
+        auto annotation = line.substr(colon + 1);
+        while (!annotation.empty() &&
+               std::isspace(static_cast<unsigned char>(annotation.front())))
+            annotation.remove_prefix(1);
+        return std::all_of(annotation.begin(), annotation.end(), [](const unsigned char ch)
+                           { return std::isalnum(ch) || ch == '_'; })
                    ? PropsCompletionContext::type
-                   : PropsCompletionContext::default_value;
+                   : PropsCompletionContext::none;
     }
 
     bool slot_requirement_context_at(const std::string_view text, const std::size_t offset)

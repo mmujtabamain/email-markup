@@ -8,7 +8,7 @@ endfunction()
 
 append_message("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"workspaceFolders\":[{\"uri\":\"file://${SOURCE_DIR}\",\"name\":\"email-markup\"}],\"capabilities\":{}}}")
 append_message("{\"jsonrpc\":\"2.0\",\"method\":\"initialized\",\"params\":{}}")
-append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"${URI}\",\"languageId\":\"email-markup\",\"version\":1,\"text\":\"@DefineComponent(name: \\\"Card\\\")\\n  @Props\\n    title: string\\n  @/Props\\n  @Slots\\n    default: required\\n  @/Slots\\n  @Template\\n    <section>@{title}: @Slot(default);</section>\\n  @/Template\\n@/DefineComponent\\n\\n@Card(title: \\\"Greeting\\\") \\ud83d\\udc4b Hi @/Card\\n@Include(\\\"08-includes/components/notice.em\\\");\\nordinary Card prose\"}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"${URI}\",\"languageId\":\"email-markup\",\"version\":1,\"text\":\"@DefineComponent(name: \\\"Card\\\")\\n  @Props\\n    title: string(1..120)\\n  @/Props\\n  @Slots\\n    default: required\\n  @/Slots\\n  @Template\\n    <section>@{title}: @Slot(default);</section>\\n  @/Template\\n@/DefineComponent\\n\\n@Card(title: \\\"Greeting\\\") \\ud83d\\udc4b Hi @/Card\\n@Include(\\\"08-includes/components/notice.em\\\");\\nordinary Card prose\"}}}")
 append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didChange\",\"params\":{\"textDocument\":{\"uri\":\"${URI}\",\"version\":2},\"contentChanges\":[{\"range\":{\"start\":{\"line\":12,\"character\":28},\"end\":{\"line\":12,\"character\":30}},\"text\":\"Hello\"}]}}")
 append_message("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"textDocument/completion\",\"params\":{\"textDocument\":{\"uri\":\"${URI}\"},\"position\":{\"line\":12,\"character\":2}}}")
 append_message("{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"textDocument/hover\",\"params\":{\"textDocument\":{\"uri\":\"${URI}\"},\"position\":{\"line\":12,\"character\":3}}}")
@@ -56,6 +56,7 @@ foreach(REQUIRED
     "Compile data"
     "builtins.em"
     "Email Markup prop: string"
+    "1..120"
     "\\\"id\\\":3"
     "\\\"id\\\":4"
     "\\\"id\\\":5"
@@ -69,6 +70,8 @@ foreach(REQUIRED
     "\\\"id\\\":15"
     "\\\"id\\\":16"
     "Email Markup prop type"
+    "\\\"label\\\":\\\"decimal\\\""
+    "\\\"label\\\":\\\"name\\\""
     "\\\"id\\\":17"
     "Email Markup slot requirement"
     "\\\"id\\\":18"

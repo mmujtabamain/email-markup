@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "fileExtensions": [".em"],
   "sigil": "@",
   "namePattern": "[A-Z][A-Za-z0-9_]*",
@@ -7,6 +7,18 @@
   "blockComment": ["@*", "*@"],
   "escape": "@@",
   "rawBodies": ["Props", "Slots", "DefineStyle", "Media"],
+  "propTypes": [
+    "string",
+    "int",
+    "decimal",
+    "number",
+    "bool",
+    "name",
+    "url",
+    "email",
+    "color"
+  ],
+  "deferredParameterTypes": ["int", "decimal", "number", "bool", "name", "raw", "path", "condition"],
   "keywords": [
     "DefineComponent",
     "DefineStyle",
