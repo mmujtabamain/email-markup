@@ -47,6 +47,6 @@ namespace email_markup::cli
         const platform::System &system_;
         ProjectConfig config_;
         email_markup::Json data_;
-        email_markup::Json context_schema_{nullptr};
+        email_markup::Json context_schema_ = nullptr;
     };
 } // namespace email_markup::cli
