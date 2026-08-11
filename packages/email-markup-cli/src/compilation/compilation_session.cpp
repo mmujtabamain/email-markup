@@ -80,6 +80,8 @@ namespace email_markup::cli
                     config.data = expand_path(json.at("data").get<std::string>(), root, assets);
                 if (json.contains("shell"))
                     config.shell = expand_path(json.at("shell").get<std::string>(), root, assets);
+                if (json.contains("engine"))
+                    config.engine = expand_path(json.at("engine").get<std::string>(), root, assets);
                 if (json.contains("out"))
                     config.output = expand_path(json.at("out").get<std::string>(), root, assets);
                 else
@@ -147,7 +149,14 @@ namespace email_markup::cli
         request.imports = config_.imports;
         request.imports.insert(request.imports.end(), options_.imports.begin(),
                                options_.imports.end());
-        request.shell = options_.shell ? options_.shell : config_.shell;
+        request.shell = options_.subject
+                            ? std::nullopt
+                            : (options_.shell ? options_.shell : config_.shell);
+        request.engine = options_.engine
+                             ? std::optional<std::filesystem::path>{
+                                   std::filesystem::absolute(*options_.engine).lexically_normal()}
+                             : config_.engine;
+        request.subject = options_.subject;
         if (options_.command == Command::compile || options_.command == Command::build)
         {
             request.image_fetcher =

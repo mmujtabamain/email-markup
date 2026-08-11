@@ -18,6 +18,9 @@ namespace email_markup::cli
         lint,
         format,
         build,
+        check_ir,
+        inspect_ir,
+        emit,
     };
 
     struct Options
@@ -28,12 +31,16 @@ namespace email_markup::cli
         std::vector<std::filesystem::path> includes;
         std::vector<std::filesystem::path> imports;
         std::optional<std::filesystem::path> shell;
+        std::optional<std::filesystem::path> engine;
+        std::optional<std::string> target;
         std::optional<std::string> data_json;
         std::optional<std::filesystem::path> data_file;
         bool data_stdin{};
         bool request_stdin{};
         bool json{};
         bool write{};
+        bool emit_ir{};
+        bool subject{};
         email_markup::LintRole lint_role{email_markup::LintRole::content};
     };
 

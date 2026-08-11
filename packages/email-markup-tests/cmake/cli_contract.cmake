@@ -183,3 +183,52 @@ execute_process(
 if(NOT SCHEMA_RESULT EQUAL 0 OR NOT SCHEMA_OUTPUT MATCHES "Email Markup project configuration")
   message(FATAL_ERROR "emc schema failed")
 endif()
+
+file(MAKE_DIRECTORY "${WORK_DIR}/deferred-project")
+file(WRITE "${WORK_DIR}/deferred-project/em.json"
+     "{\"include\":[\"${SOURCE_DIR}/lib\"],\"out\":\"out\"}")
+file(WRITE "${WORK_DIR}/deferred-project/deferred.em" "<p>Hello @[business.name]</p>\n")
+execute_process(
+  COMMAND "${EMC}" compile "${WORK_DIR}/deferred-project/deferred.em"
+          --engine "${SOURCE_DIR}/lib/engines/django.emt"
+          --emit-ir -o "${WORK_DIR}/deferred.emir.json"
+  RESULT_VARIABLE EMIR_COMPILE_RESULT
+  ERROR_VARIABLE EMIR_COMPILE_ERROR
+)
+if(NOT EMIR_COMPILE_RESULT EQUAL 0)
+  message(FATAL_ERROR "EMIR compile failed: ${EMIR_COMPILE_ERROR}")
+endif()
+execute_process(
+  COMMAND "${EMC}" check-ir "${WORK_DIR}/deferred.emir.json"
+  RESULT_VARIABLE EMIR_CHECK_RESULT
+)
+execute_process(
+  COMMAND "${EMC}" inspect-ir "${WORK_DIR}/deferred.emir.json"
+  RESULT_VARIABLE EMIR_INSPECT_RESULT
+  OUTPUT_VARIABLE EMIR_INSPECT_OUTPUT
+)
+execute_process(
+  COMMAND "${EMC}" emit --target django "${WORK_DIR}/deferred.emir.json"
+          -o "${WORK_DIR}/deferred.django.html"
+  RESULT_VARIABLE EMIR_EMIT_RESULT
+)
+file(READ "${WORK_DIR}/deferred.django.html" EMIR_EMITTED)
+if(NOT EMIR_CHECK_RESULT EQUAL 0 OR NOT EMIR_INSPECT_RESULT EQUAL 0 OR
+   NOT EMIR_EMIT_RESULT EQUAL 0 OR
+   NOT EMIR_INSPECT_OUTPUT MATCHES "runtime_value" OR
+   NOT EMIR_EMITTED STREQUAL "<p>Hello {{ business.name }}</p>")
+  message(FATAL_ERROR "EMIR CLI inspect/check/emit contract failed")
+endif()
+
+file(WRITE "${WORK_DIR}/subject.em" "Hello @{business.name}\n")
+execute_process(
+  COMMAND "${EMC}" compile "${WORK_DIR}/subject.em" --subject
+          --data-json "{\"business\":{\"name\":\"R&D\"}}"
+          -o "${WORK_DIR}/subject.txt"
+  RESULT_VARIABLE SUBJECT_RESULT
+  ERROR_VARIABLE SUBJECT_ERROR
+)
+file(READ "${WORK_DIR}/subject.txt" SUBJECT_OUTPUT)
+if(NOT SUBJECT_RESULT EQUAL 0 OR NOT SUBJECT_OUTPUT STREQUAL "Hello R&D")
+  message(FATAL_ERROR "subject compile failed: ${SUBJECT_ERROR}\n${SUBJECT_OUTPUT}")
+endif()

@@ -209,11 +209,18 @@ unsubscribe behavior at the appropriate severity.
 
 ## CLI and exit behavior
 
-`emc compile`, `check`, `lint`, `fmt`, `build`, `schema`, and `--version` are the
-public commands. Exit code 0 is success, 1 is compilation failure, and 2 is usage
+`emc compile`, `check`, `lint`, `fmt`, `build`, `schema`, `check-ir`,
+`inspect-ir`, `emit`, and `--version` are the public commands. Exit code 0 is
+success, 1 is compilation failure, and 2 is usage
 or I/O failure. `--json` returns structured diagnostics with codes, severity,
 source ranges, related locations, and JSON paths while excluding recipient
 values. Diagnostic codes use the `EM` abbreviation, such as `EM0101`.
+
+Email Markup 1.2 adds explicit deferred-engine selection with `@Engine` or
+`--engine`, square-bracket deferred calls, and public canonical EMIR v1.
+`compile --emit-ir` writes the IR, while `emit --target django` is the only
+initial target emitter. See [templates.md](templates.md) for the complete
+versioned contract.
 
 `emc build` recursively compiles `.em` entry files, skipping output, Git,
 dependency, library, brand, and component-definition trees. It preserves

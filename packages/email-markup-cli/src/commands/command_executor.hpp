@@ -27,6 +27,9 @@ namespace email_markup::cli
         [[nodiscard]] int check_or_lint(const Options &options) const;
         [[nodiscard]] int format(const Options &options) const;
         [[nodiscard]] int build(const Options &options) const;
+        [[nodiscard]] int check_ir(const Options &options) const;
+        [[nodiscard]] int inspect_ir(const Options &options) const;
+        [[nodiscard]] int emit(const Options &options) const;
 
         const platform::System &system_;
         const runtime::Assets &assets_;

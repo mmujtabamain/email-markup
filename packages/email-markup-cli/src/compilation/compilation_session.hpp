@@ -24,6 +24,7 @@ namespace email_markup::cli
         std::vector<std::filesystem::path> imports;
         std::optional<std::filesystem::path> data;
         std::optional<std::filesystem::path> shell;
+        std::optional<std::filesystem::path> engine;
         std::filesystem::path output{"build"};
     };
 

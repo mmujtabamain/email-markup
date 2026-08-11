@@ -18,6 +18,7 @@
     },
     "data": { "type": "string", "description": "Development JSON fixture" },
     "shell": { "type": "string", "pattern": "\\.em$" },
+    "engine": { "type": "string", "pattern": "\\.emt$" },
     "out": { "type": "string" }
   }
 }

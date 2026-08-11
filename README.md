@@ -66,11 +66,25 @@ emc check message.em --json
 emc schema
 ```
 
+Email Markup 1.2 also supports explicit build-time deferred output through a
+packaged restricted Django target:
+
+```bash
+emc compile message.em --engine "$EMAIL_MARKUP_LIB/engines/django.emt" \
+  --emit-ir -o message.emir.json
+emc check-ir message.emir.json
+emc inspect-ir message.emir.json
+emc emit --target django message.emir.json -o message.django.html
+```
+
+Use `--subject` for a text-only, unescaped, header-safe subject artifact.
+
 `emc` finds the nearest `em.json`. The repository’s config demonstrates all
 supported keys: include roots, definition imports, a development JSON fixture,
-the final shell, and the build output directory. `${EMAIL_MARKUP_LIB}` resolves
-to the installed standard library. Explicit `-I`, `--import`, `--shell`, and
-data options override or extend project configuration.
+the final shell, a deferred engine, and the build output directory.
+`${EMAIL_MARKUP_LIB}` resolves to the installed standard library. Explicit
+`-I`, `--import`, `--shell`, `--engine`, and data options override or extend
+project configuration.
 
 Writes are atomic. A failed compile never replaces the previous HTML output.
 Diagnostics do not print JSON values.
