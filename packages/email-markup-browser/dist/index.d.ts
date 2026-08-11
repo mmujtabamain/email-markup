@@ -10,6 +10,7 @@ export type BrowserWorkspace = {
   shell?: VirtualFile;
   engine?: VirtualFile;
   data?: Record<string, unknown>;
+  context_schema?: Record<string, unknown>;
   output_context?: "html" | "subject";
 };
 

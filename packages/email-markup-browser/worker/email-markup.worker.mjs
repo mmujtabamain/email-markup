@@ -20,6 +20,14 @@ function failure(id, code, message) {
   };
 }
 
+function failureMessage(error) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "number") {
+    return `Email Markup WebAssembly threw exception ${error}. The packaged compiler may be out of date.`;
+  }
+  return `Email Markup worker failed: ${String(error)}`;
+}
+
 self.addEventListener("message", async (event) => {
   const id = event.data?.id ?? null;
   try {
@@ -43,7 +51,7 @@ self.addEventListener("message", async (event) => {
       failure(
         id,
         "worker_failure",
-        error instanceof Error ? error.message : "Email Markup worker failed",
+        failureMessage(error),
       ),
     );
   }

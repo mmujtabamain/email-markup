@@ -75,6 +75,81 @@ test("packaged WASM is loadable and serves the stable protocol", async () => {
   assert.equal(analysis.result.preview.kind, "final-html");
   assert.equal(analysis.result.preview.executes_target, false);
   assert.match(analysis.result.preview.html, /Hello Acme/);
+
+  const contextSchema = {
+    format: "email-markup-context",
+    version: 1,
+    name: "artifact-context",
+    fields: {
+      business: {
+        type: "object",
+        required: true,
+        fields: {
+          name: {
+            type: "string",
+            required: true,
+            example: "Schema example",
+          },
+        },
+      },
+    },
+  };
+  const schemaAnalysis = JSON.parse(
+    compiler.ccall(
+      "email_markup_browser_request",
+      "string",
+      ["string"],
+      [
+        JSON.stringify({
+          protocol: "email-markup.browser",
+          version: 1,
+          id: "schema-preview-test",
+          method: "analyze",
+          params: {
+            entry_path: "/project/message.em",
+            source: "<p>@{business.name}</p>",
+            files: [],
+            include_directories: [],
+            imports: [],
+            data: {},
+            context_schema: contextSchema,
+          },
+        }),
+      ],
+    ),
+  );
+  assert.equal(schemaAnalysis.ok, true);
+  assert.equal(schemaAnalysis.result.success, true);
+  assert.match(schemaAnalysis.result.preview.html, /Schema example/);
+
+  const diagnosticAnalysis = JSON.parse(
+    compiler.ccall(
+      "email_markup_browser_request",
+      "string",
+      ["string"],
+      [
+        JSON.stringify({
+          protocol: "email-markup.browser",
+          version: 1,
+          id: "schema-diagnostic-test",
+          method: "analyze",
+          params: {
+            entry_path: "/project/message.em",
+            source: "@Missing @/Missing",
+            files: [],
+            include_directories: [],
+            imports: [],
+            data: {},
+            context_schema: contextSchema,
+          },
+        }),
+      ],
+    ),
+  );
+  assert.equal(diagnosticAnalysis.ok, true);
+  assert.equal(diagnosticAnalysis.result.success, false);
+  assert.ok(diagnosticAnalysis.result.diagnostics.length > 0);
+  assert.ok(diagnosticAnalysis.result.diagnostics[0].range);
 });
 
 test("artifact manifest authenticates the packaged worker assets", () => {
