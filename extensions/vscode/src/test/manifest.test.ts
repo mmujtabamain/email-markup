@@ -77,6 +77,9 @@ test("browser compiler uses a classic worker compatible with web extension hosts
   assert.match(client, /new Worker\(workerUrl, \{ name: "email-markup-compiler" \}\)/);
   assert.doesNotMatch(client, /type:\s*"module"/);
   assert.match(worker, /import\("\.\/email-markup-browser\.mjs"\)/);
+  assert.match(worker, /let requestChain = Promise\.resolve\(\)/);
+  assert.match(worker, /modulePromise = undefined/);
+  assert.match(worker, /attempt < 2/);
   assert.doesNotMatch(worker, /^import\s/m);
 });
 

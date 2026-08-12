@@ -935,5 +935,13 @@ namespace email_markup::browser
         {
             return error_response(id, "invalid_request", error.what()).dump() + "\n";
         }
+        catch (...)
+        {
+            return error_response(
+                       id, "internal_error",
+                       "browser compiler hit an unexpected internal exception")
+                .dump() +
+                "\n";
+        }
     }
 } // namespace email_markup::browser

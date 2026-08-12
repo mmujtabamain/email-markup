@@ -12,6 +12,10 @@ test("worker uses the versioned protocol without target execution", () => {
   assert.match(worker, /email-markup\.browser/);
   assert.match(worker, /email_markup_browser_request/);
   assert.match(worker, /maximumRequestBytes = 1024 \* 1024/);
+  assert.match(worker, /let requestChain = Promise\.resolve\(\)/);
+  assert.match(worker, /modulePromise = undefined/);
+  assert.match(worker, /attempt < 2/);
+  assert.match(worker, /internal_error/);
   assert.doesNotMatch(worker, /eval\(|new Function|document\.|fetch\(/);
 });
 
