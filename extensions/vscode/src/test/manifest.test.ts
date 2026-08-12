@@ -68,6 +68,18 @@ test("browser extension derives projects from em.json without host-specific sche
   assert.doesNotMatch(source, /"\/components"|"\/shells"|"\/styles"|"\/templates"/);
 });
 
+test("browser compiler uses a classic worker compatible with web extension hosts", () => {
+  const client = readFileSync(path.join(root, "src/web/browserClient.ts"), "utf8");
+  const worker = readFileSync(
+    path.join(root, "../../packages/email-markup-browser/worker/email-markup.worker.mjs"),
+    "utf8",
+  );
+  assert.match(client, /new Worker\(workerUrl, \{ name: "email-markup-compiler" \}\)/);
+  assert.doesNotMatch(client, /type:\s*"module"/);
+  assert.match(worker, /import\("\.\/email-markup-browser\.mjs"\)/);
+  assert.doesNotMatch(worker, /^import\s/m);
+});
+
 test("every staged language server includes its runtime assets", () => {
   const serverRoot = path.join(root, "server");
   const platforms = readdirSync(serverRoot, { withFileTypes: true })

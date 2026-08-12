@@ -1,13 +1,8 @@
-import createEmailMarkup from "./email-markup-browser.mjs";
-
 const maximumRequestBytes = 1024 * 1024;
 const encoder = new TextEncoder();
 
-const modulePromise = createEmailMarkup({
-  locateFile(file) {
-    return new URL(file, import.meta.url).href;
-  },
-});
+const modulePromise = import("./email-markup-browser.mjs")
+  .then(({ default: createEmailMarkup }) => createEmailMarkup());
 
 function failure(id, code, message) {
   return {

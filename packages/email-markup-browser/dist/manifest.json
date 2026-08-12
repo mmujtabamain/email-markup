@@ -11,8 +11,8 @@
   },
   "assets": {
     "email-markup.worker.mjs": {
-      "bytes": 1469,
-      "sha256": "3311086828c6f92f372cea8ffccb78574637db7dccabddb0c5eb1055f23aeb3a"
+      "bytes": 1413,
+      "sha256": "84aecc2c59ca710d2d65bcb03916ba9fad11259f60105f9e27e9aed8f471d968"
     },
     "email-markup-browser.mjs": {
       "bytes": 19427,

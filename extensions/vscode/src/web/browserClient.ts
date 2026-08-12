@@ -74,10 +74,11 @@ interface Pending {
 export class BrowserCompiler {
   private readonly worker: Worker;
   private readonly pending = new Map<number, Pending>();
+  private failure: Error | undefined;
   private sequence = 0;
 
   constructor(workerUrl: string) {
-    this.worker = new Worker(workerUrl, { type: "module", name: "email-markup-compiler" });
+    this.worker = new Worker(workerUrl, { name: "email-markup-compiler" });
     this.worker.addEventListener("message", this.receive);
     this.worker.addEventListener("error", this.failWorker);
     this.worker.addEventListener("messageerror", this.failWorker);
@@ -116,6 +117,7 @@ export class BrowserCompiler {
   }
 
   private request<T>(method: string, params: object): Promise<T> {
+    if (this.failure) return Promise.reject(this.failure);
     const id = ++this.sequence;
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -149,7 +151,8 @@ export class BrowserCompiler {
   };
 
   private readonly failWorker = (): void => {
-    this.rejectAll(new Error("Email Markup browser compiler is unavailable."));
+    this.failure = new Error("Email Markup browser compiler is unavailable.");
+    this.rejectAll(this.failure);
   };
 
   private rejectAll(error: Error): void {
