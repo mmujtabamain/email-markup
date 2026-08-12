@@ -55,6 +55,19 @@ test("production bundle has no unresolved language-service module imports", () =
   assert.doesNotMatch(webBundle, /vscode-languageclient\/node/);
 });
 
+test("browser extension derives projects from em.json without host-specific schemes", () => {
+  const source = readFileSync(path.join(root, "src/web/extension.ts"), "utf8");
+  assert.match(source, /path\.endsWith\("\/em\.json"\)/);
+  assert.match(source, /config\.include/);
+  assert.match(source, /config\.imports/);
+  assert.match(source, /config\?\.shell/);
+  assert.match(source, /config\?\.engine/);
+  assert.match(source, /\$\{EMAIL_MARKUP_LIB\}/);
+  assert.match(source, /registerCompletionItemProvider\(\s*"email-markup"/);
+  assert.doesNotMatch(source, /scheme:\s*"email-content"/);
+  assert.doesNotMatch(source, /"\/components"|"\/shells"|"\/styles"|"\/templates"/);
+});
+
 test("every staged language server includes its runtime assets", () => {
   const serverRoot = path.join(root, "server");
   const platforms = readdirSync(serverRoot, { withFileTypes: true })

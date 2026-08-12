@@ -8,7 +8,46 @@ import {
 } from "./browserClient";
 
 const refreshDelayMs = 180;
-const supportedPath = /\.(em|emt)$/u;
+const maximumVirtualSources = 252;
+const supportedSourcePath = /\.(em|emt)$/u;
+const ignoredProjectDirectories = new Set(["generated", "node_modules"]);
+const libraryRoot = "/.email-markup/lib";
+
+interface ProjectConfig {
+  include?: unknown;
+  imports?: unknown;
+  data?: unknown;
+  context_schema?: unknown;
+  shell?: unknown;
+  engine?: unknown;
+}
+
+function virtualPath(base: string, value: string): string | undefined {
+  const expanded = value.replaceAll("${EMAIL_MARKUP_LIB}", libraryRoot);
+  const parts = expanded.startsWith("/")
+    ? []
+    : base.split("/").filter(Boolean);
+  for (const part of expanded.split("/")) {
+    if (!part || part === ".") continue;
+    if (part === "..") {
+      if (!parts.length) return undefined;
+      parts.pop();
+    } else {
+      parts.push(part);
+    }
+  }
+  return `/${parts.join("/")}`;
+}
+
+function parentPath(path: string): string {
+  return path.slice(0, path.lastIndexOf("/")) || "/";
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
 
 function compilerPath(document: vscode.TextDocument): string {
   const relative = vscode.workspace.asRelativePath(document.uri, false);
@@ -85,6 +124,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   ).toString(true);
   const compiler = new BrowserCompiler(workerUrl);
   const files = new Map<string, string>();
+  const jsonFiles = new Map<string, string>();
   const refreshTimers = new Map<string, ReturnType<typeof setTimeout>>();
   let previewPanel: vscode.WebviewPanel | undefined;
   let previewDocumentUri = "";
@@ -93,21 +133,55 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(output, diagnostics, compiler);
 
   async function loadProject(): Promise<void> {
-    const uris = await vscode.workspace.findFiles("**/*", "**/{generated,node_modules}/**", 2000);
+    const uris: vscode.Uri[] = [];
+
+    async function visit(directory: vscode.Uri, limit = maximumVirtualSources): Promise<void> {
+      if (uris.length >= limit) return;
+      let entries: [string, vscode.FileType][];
+      try {
+        entries = await vscode.workspace.fs.readDirectory(directory);
+      } catch (error) {
+        output.warn(`Skipped ${directory.toString(true)}: ${String(error)}`);
+        return;
+      }
+      for (const [name, type] of entries) {
+        if (uris.length >= limit) return;
+        const uri = vscode.Uri.joinPath(directory, name);
+        if ((type & vscode.FileType.Directory) !== 0) {
+          if (!ignoredProjectDirectories.has(name)) await visit(uri);
+        } else if (
+          (type & vscode.FileType.File) !== 0 &&
+          (supportedSourcePath.test(uri.path) || name === "em.json" || name.endsWith(".json"))
+        ) {
+          uris.push(uri);
+        }
+      }
+    }
+
+    await Promise.all((vscode.workspace.workspaceFolders ?? []).map(({ uri }) => visit(uri)));
     await Promise.all(
-      uris
-        .filter((uri) => /\.(em|emt|css|json)$/u.test(uri.path))
-        .map(async (uri) => {
-          try {
-            const source = new TextDecoder("utf-8", { fatal: true }).decode(
-              await vscode.workspace.fs.readFile(uri),
-            );
-            files.set(compilerPathForUri(uri), source);
-          } catch (error) {
-            output.warn(`Skipped ${uri.toString(true)}: ${String(error)}`);
-          }
-        }),
+      uris.map(async (uri) => {
+        try {
+          const source = new TextDecoder("utf-8", { fatal: true }).decode(
+            await vscode.workspace.fs.readFile(uri),
+          );
+          const path = compilerPathForUri(uri);
+          if (supportedSourcePath.test(uri.path)) files.set(path, source);
+          else jsonFiles.set(path, source);
+        } catch (error) {
+          output.warn(`Skipped ${uri.toString(true)}: ${String(error)}`);
+        }
+      }),
     );
+    await Promise.all([
+      "builtins.em",
+      "engines/django.emt",
+    ].map(async (relative) => {
+      const uri = vscode.Uri.joinPath(context.extensionUri, "browser", "lib", relative);
+      const response = await fetch(uri.toString(true));
+      if (!response.ok) throw new Error(`Could not load packaged library file ${relative}.`);
+      files.set(`${libraryRoot}/${relative}`, await response.text());
+    }));
     output.info(`Loaded ${files.size} bounded virtual project files.`);
   }
 
@@ -115,13 +189,74 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const entryPath = compilerPath(document);
     const source = document.getText();
     files.set(entryPath, source);
+    const configPath = [...jsonFiles.keys()]
+      .filter((path) => {
+        const root = parentPath(path);
+        return path.endsWith("/em.json") &&
+          (root === "/" ? entryPath.startsWith("/") : entryPath.startsWith(`${root}/`));
+      })
+      .sort((left, right) => right.length - left.length)[0];
+    let config: ProjectConfig | undefined;
+    if (configPath) {
+      try {
+        const parsed: unknown = JSON.parse(jsonFiles.get(configPath) ?? "");
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          config = parsed as ProjectConfig;
+        }
+      } catch (error) {
+        output.warn(`Ignored invalid ${configPath}: ${String(error)}`);
+      }
+    }
+    const projectRoot = configPath ? parentPath(configPath) : parentPath(entryPath);
+    const resolve = (value: unknown): string | undefined =>
+      typeof value === "string" ? virtualPath(projectRoot, value) : undefined;
+    const imports = config
+      ? stringArray(config.imports).map(resolve).filter((path): path is string => Boolean(path))
+      : [`${libraryRoot}/builtins.em`];
+    const includeDirectories = config
+      ? stringArray(config.include).map(resolve).filter((path): path is string => Boolean(path))
+      : [libraryRoot];
+    const shellPath = resolve(config?.shell);
+    const enginePath = resolve(config?.engine);
+    const dataPath = resolve(config?.data);
+    const schemaPath = resolve(config?.context_schema);
+    const excluded = new Set([entryPath, shellPath, enginePath].filter(Boolean));
+    const compilerFiles = new Map<string, string>();
+    for (const path of imports) {
+      const imported = files.get(path);
+      if (imported !== undefined && !excluded.has(path)) compilerFiles.set(path, imported);
+    }
+    for (const [path, fileSource] of files) {
+      if (!excluded.has(path)) compilerFiles.set(path, fileSource);
+    }
+    const parseObject = (path: string | undefined): Record<string, unknown> | undefined => {
+      if (!path) return undefined;
+      try {
+        const value: unknown = JSON.parse(jsonFiles.get(path) ?? "");
+        return value && typeof value === "object" && !Array.isArray(value)
+          ? value as Record<string, unknown>
+          : undefined;
+      } catch (error) {
+        output.warn(`Ignored invalid ${path}: ${String(error)}`);
+        return undefined;
+      }
+    };
     return {
       entry_path: entryPath,
       source,
-      files: [...files.entries()]
-        .filter(([path]) => path !== entryPath)
+      files: [...compilerFiles.entries()]
+        .slice(0, maximumVirtualSources)
         .map(([path, fileSource]) => ({ path, source: fileSource })),
-      include_directories: ["/components", "/shells", "/styles", "/templates"],
+      include_directories: includeDirectories,
+      imports,
+      shell: shellPath && files.has(shellPath)
+        ? { path: shellPath, source: files.get(shellPath) ?? "" }
+        : undefined,
+      engine: enginePath && files.has(enginePath)
+        ? { path: enginePath, source: files.get(enginePath) ?? "" }
+        : undefined,
+      data: parseObject(dataPath),
+      context_schema: parseObject(schemaPath),
     };
   }
 
@@ -160,13 +295,24 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   }
 
+  function analyzeOpenDocuments(): void {
+    for (const document of vscode.workspace.textDocuments) void analyze(document);
+  }
+
   await loadProject();
-  for (const document of vscode.workspace.textDocuments) void analyze(document);
+  analyzeOpenDocuments();
 
   context.subscriptions.push(
     vscode.workspace.onDidOpenTextDocument((document) => void analyze(document)),
     vscode.workspace.onDidChangeTextDocument((event) => {
-      if (event.document.languageId !== "email-markup") return;
+      if (event.document.languageId !== "email-markup") {
+        const path = compilerPath(event.document);
+        if (jsonFiles.has(path) || path.endsWith("/em.json")) {
+          jsonFiles.set(path, event.document.getText());
+          analyzeOpenDocuments();
+        }
+        return;
+      }
       const key = event.document.uri.toString();
       const active = refreshTimers.get(key);
       if (active) clearTimeout(active);
@@ -185,7 +331,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       refreshTimers.delete(document.uri.toString());
     }),
     vscode.languages.registerCompletionItemProvider(
-      [{ language: "email-markup", scheme: "email-content" }, { language: "email-markup", scheme: "file" }],
+      "email-markup",
       {
         async provideCompletionItems(document, position) {
           const version = document.version;

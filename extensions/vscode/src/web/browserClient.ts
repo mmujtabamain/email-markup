@@ -1,6 +1,7 @@
 export type Position = { line: number; character: number };
 export type Range = { start: Position; end: Position };
 export type VirtualFile = { path: string; source: string };
+export type VirtualSource = { path: string; source: string };
 
 export interface BrowserWorkspace {
   entry_path: string;
@@ -8,6 +9,8 @@ export interface BrowserWorkspace {
   files: VirtualFile[];
   include_directories?: string[];
   imports?: string[];
+  shell?: VirtualSource;
+  engine?: VirtualSource;
   data?: Record<string, unknown>;
   context_schema?: Record<string, unknown>;
   output_context?: "html" | "subject";
