@@ -21,9 +21,12 @@
     "onLanguage:email-markup",
     "onCommand:email-markup.preview"
   ],
-  "main": "./dist/extension.js",
+  "main": "./dist/node/extension.js",
+  "browser": "./dist/web/extension.js",
   "files": [
-    "dist/extension.js",
+    "dist/node/extension.js",
+    "dist/web/extension.js",
+    "browser",
     "icons",
     "syntaxes",
     "language-configuration.json",

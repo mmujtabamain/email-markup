@@ -1,0 +1,46 @@
+{
+  "schema": "email-markup.browser-artifacts",
+  "version": 1,
+  "compilerVersion": "1.2.0",
+  "browserProtocol": 1,
+  "toolchain": {
+    "emscriptenVersion": "4.0.23",
+    "emsdkCommit": "c0bb220cb6e6f4e0fabb6f6db9efd53390ef5e56",
+    "emscriptenCommit": "7a5d93b50f6a3a35e85a0d2fc9e667b8498e6aed",
+    "releasesHash": "aaa43392544d695232b70eda706d751f18980c2a"
+  },
+  "assets": {
+    "email-markup.worker.mjs": {
+      "bytes": 1469,
+      "sha256": "3311086828c6f92f372cea8ffccb78574637db7dccabddb0c5eb1055f23aeb3a"
+    },
+    "email-markup-browser.mjs": {
+      "bytes": 19427,
+      "sha256": "639a162f02a96c1d36f1fb3acfdf445daac60b27e81896141b27103f985434da"
+    },
+    "email-markup-browser.wasm": {
+      "bytes": 894125,
+      "sha256": "bf8c56973cfd78fc1cccb73e57825616fb12fc5f08c89fd199c862e650578dd4"
+    },
+    "browser-protocol-v1.schema.json": {
+      "bytes": 5059,
+      "sha256": "c01ca87b9cb286ab601dd80c5d3fb46b8ca3a5968125961374df0d1f86bec44f"
+    },
+    "index.d.ts": {
+      "bytes": 1186,
+      "sha256": "bd153e6267ed11f4a9db92537b0aeff130c465421763d1c0d9899aa7e8415a8a"
+    },
+    "lib/builtins.em": {
+      "bytes": 5279,
+      "sha256": "44926fa4daa1f3a64510ec2224c768456f408d8f00252eb039e101b19186421a"
+    },
+    "lib/engines/django.emt": {
+      "bytes": 679,
+      "sha256": "9510242775d0292f6af1518dec058990ddcd8a1370eab548b9f40636bddaab29"
+    },
+    "syntax/lexical.json": {
+      "bytes": 764,
+      "sha256": "d40857d97e7c734e3a630adafd787ad3fd8e455232e9f7cd9b913e025cf1e468"
+    }
+  }
+}

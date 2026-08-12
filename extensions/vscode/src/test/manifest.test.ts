@@ -19,7 +19,8 @@ test("manifest contributes only the current Email Markup language", () => {
     /email-markup-dark\.svg$/,
   );
   assert.equal(manifest.capabilities.untrustedWorkspaces.supported, "limited");
-  assert.equal(manifest.main, "./dist/extension.js");
+  assert.equal(manifest.main, "./dist/node/extension.js");
+  assert.equal(manifest.browser, "./dist/web/extension.js");
   assert.equal(manifest.contributes.commands[0].icon, "$(eye)");
   assert.equal(
     manifest.contributes.menus["editor/title"][0].group,
@@ -46,9 +47,12 @@ test("extension source enforces trust and a script-free preview", () => {
 });
 
 test("production bundle has no unresolved language-service module imports", () => {
-  const bundle = readFileSync(path.join(root, "dist/extension.js"), "utf8");
+  const bundle = readFileSync(path.join(root, "dist/node/extension.js"), "utf8");
   assert.doesNotMatch(bundle, /require\(["']\.\/parser\/cssParser["']\)/);
   assert.doesNotMatch(bundle, /require\(["']vscode-languageclient\/node["']\)/);
+  const webBundle = readFileSync(path.join(root, "dist/web/extension.js"), "utf8");
+  assert.doesNotMatch(webBundle, /node:(path|fs|process|child_process)/);
+  assert.doesNotMatch(webBundle, /vscode-languageclient\/node/);
 });
 
 test("every staged language server includes its runtime assets", () => {
