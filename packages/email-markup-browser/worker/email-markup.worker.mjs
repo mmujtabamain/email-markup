@@ -20,14 +20,14 @@ function resetModule() {
   modulePromise = undefined;
 }
 
-function failure(id, code, message) {
+function failure(id, code, message, stack) {
   return {
     protocol: "email-markup.browser",
     version: 1,
     compiler_version: null,
     id: id ?? null,
     ok: false,
-    error: { code, message },
+    error: { code, message, ...(stack ? { stack } : {}) },
   };
 }
 
@@ -37,6 +37,11 @@ function failureMessage(error) {
     return `Email Markup WebAssembly threw exception ${error}.`;
   }
   return `Email Markup worker failed: ${String(error)}`;
+}
+
+function errorStack(error, message) {
+  if (error instanceof Error && error.stack) return error.stack;
+  return new Error(message).stack;
 }
 
 function isRecoverableCompilerFailure(error) {
@@ -84,11 +89,13 @@ async function handleMessage(data) {
     }
     self.postMessage(await callCompiler(request));
   } catch (error) {
+    const message = failureMessage(error);
     self.postMessage(
       failure(
         id,
         "worker_failure",
-        failureMessage(error),
+        message,
+        errorStack(error, message),
       ),
     );
   }

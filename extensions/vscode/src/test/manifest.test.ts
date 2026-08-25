@@ -80,6 +80,8 @@ test("browser compiler uses a classic worker compatible with web extension hosts
   assert.match(worker, /let requestChain = Promise\.resolve\(\)/);
   assert.match(worker, /modulePromise = undefined/);
   assert.match(worker, /attempt < 2/);
+  assert.match(worker, /function errorStack\(error, message\)/);
+  assert.match(worker, /errorStack\(error, message\)/);
   assert.doesNotMatch(worker, /^import\s/m);
 });
 

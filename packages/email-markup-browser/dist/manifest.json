@@ -11,8 +11,8 @@
   },
   "assets": {
     "email-markup.worker.mjs": {
-      "bytes": 1413,
-      "sha256": "84aecc2c59ca710d2d65bcb03916ba9fad11259f60105f9e27e9aed8f471d968"
+      "bytes": 2918,
+      "sha256": "b49bae552efe2c51d3e239497b58f6100e6d31efd800a2daa68457c3eca846fe"
     },
     "email-markup-browser.mjs": {
       "bytes": 19427,
@@ -23,12 +23,12 @@
       "sha256": "bf8c56973cfd78fc1cccb73e57825616fb12fc5f08c89fd199c862e650578dd4"
     },
     "browser-protocol-v1.schema.json": {
-      "bytes": 5059,
-      "sha256": "c01ca87b9cb286ab601dd80c5d3fb46b8ca3a5968125961374df0d1f86bec44f"
+      "bytes": 5118,
+      "sha256": "dfb70f51cc94b3cbcc2e5e590db328d5df8420fb6a99159ae837150bcebfe272"
     },
     "index.d.ts": {
-      "bytes": 1186,
-      "sha256": "bd153e6267ed11f4a9db92537b0aeff130c465421763d1c0d9899aa7e8415a8a"
+      "bytes": 1202,
+      "sha256": "b21f91e050e5a744df85ebfa6c5de6f3a132f1101a2d04f4e0d2cea4bfb41cb6"
     },
     "lib/builtins.em": {
       "bytes": 5279,

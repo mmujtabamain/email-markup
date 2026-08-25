@@ -36,7 +36,7 @@ export type BrowserError = {
   compiler_version: string | null;
   id: string | number | null;
   ok: false;
-  error: { code: string; message: string };
+  error: { code: string; message: string; stack?: string };
 };
 
 export type BrowserSuccess<T = unknown> = {

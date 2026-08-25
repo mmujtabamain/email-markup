@@ -15,6 +15,8 @@ test("worker uses the versioned protocol without target execution", () => {
   assert.match(worker, /let requestChain = Promise\.resolve\(\)/);
   assert.match(worker, /modulePromise = undefined/);
   assert.match(worker, /attempt < 2/);
+  assert.match(worker, /function errorStack\(error, message\)/);
+  assert.match(worker, /errorStack\(error, message\)/);
   assert.match(worker, /internal_error/);
   assert.doesNotMatch(worker, /eval\(|new Function|document\.|fetch\(/);
 });

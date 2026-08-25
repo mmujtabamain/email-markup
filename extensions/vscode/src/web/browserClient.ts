@@ -62,7 +62,7 @@ interface Response<T> {
   id: number | null;
   ok: boolean;
   result?: T;
-  error?: { code: string; message: string };
+  error?: { code: string; message: string; stack?: string };
 }
 
 interface Pending {
@@ -146,12 +146,24 @@ export class BrowserCompiler {
     if (!pending) return;
     clearTimeout(pending.timer);
     this.pending.delete(response.id);
-    if (response.ok) pending.resolve(response.result);
-    else pending.reject(new Error(response.error?.message ?? "Browser compiler request failed."));
+    if (response.ok) {
+      pending.resolve(response.result);
+      return;
+    }
+    const error = new Error(response.error?.message ?? "Browser compiler request failed.");
+    if (response.error?.stack) error.stack = response.error.stack;
+    pending.reject(error);
   };
 
-  private readonly failWorker = (): void => {
-    this.failure = new Error("Email Markup browser compiler is unavailable.");
+  private readonly failWorker = (event?: Event): void => {
+    const reason = event instanceof ErrorEvent ? event.error : undefined;
+    this.failure = reason instanceof Error
+      ? reason
+      : new Error(
+        event instanceof ErrorEvent && event.message
+          ? event.message
+          : "Email Markup browser compiler is unavailable.",
+      );
     this.rejectAll(this.failure);
   };
 

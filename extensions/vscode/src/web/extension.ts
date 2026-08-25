@@ -132,6 +132,40 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(output, diagnostics, compiler);
 
+  function reportError(contextLabel: string, error: unknown, document?: vscode.TextDocument): void {
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error && error.stack ? error.stack : message;
+    output.error(`${contextLabel}: ${stack}`);
+    output.show(true);
+    if (document) {
+      const diagnostic = new vscode.Diagnostic(
+        new vscode.Range(0, 0, 0, 1),
+        `${message} — full call stack is in the Email Markup output.`,
+        vscode.DiagnosticSeverity.Error,
+      );
+      diagnostic.code = "browser_worker_failure";
+      diagnostic.source = "Email Markup browser compiler";
+      diagnostics.set(document.uri, [diagnostic]);
+    }
+    void vscode.window.showErrorMessage(`${contextLabel}: ${message}. Full call stack opened in Email Markup output.`);
+  }
+
+  const onGlobalError = (event: ErrorEvent): void => {
+    reportError("Email Markup extension error", event.error ?? new Error(event.message));
+  };
+  const onUnhandledRejection = (event: PromiseRejectionEvent): void => {
+    event.preventDefault();
+    reportError("Email Markup unhandled rejection", event.reason);
+  };
+  globalThis.addEventListener("error", onGlobalError);
+  globalThis.addEventListener("unhandledrejection", onUnhandledRejection);
+  context.subscriptions.push({
+    dispose: () => {
+      globalThis.removeEventListener("error", onGlobalError);
+      globalThis.removeEventListener("unhandledrejection", onUnhandledRejection);
+    },
+  });
+
   async function loadProject(): Promise<void> {
     const uris: vscode.Uri[] = [];
 
@@ -291,7 +325,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         }
       }
     } catch (error) {
-      output.error(`Analysis failed for ${document.uri.toString(true)}.`, error);
+      reportError(`Analysis failed for ${document.uri.toString(true)}`, error, document);
     }
   }
 
