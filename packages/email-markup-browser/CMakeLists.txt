@@ -49,7 +49,18 @@ if(EMSCRIPTEN)
             "-sMAXIMUM_MEMORY=268435456"
             "-sNO_EXIT_RUNTIME=1"
             "-sDISABLE_EXCEPTION_CATCHING=0"
+            # Without these an exception that escapes to JavaScript arrives as a
+            # bare pointer, and the editor can only report the number it was
+            # given. The helpers let the worker turn it back into a type and a
+            # message.
+            "-sEXPORT_EXCEPTION_HANDLING_HELPERS=1"
+            # The compiler is recursive, so a cyclic project reaches the stack
+            # limit before anything else. The default 64 KiB stack turns that
+            # into an unexplained abort; a larger stack with overflow checking
+            # turns it into a diagnosable error.
+            "-sSTACK_SIZE=4194304"
+            "-sSTACK_OVERFLOW_CHECK=1"
             "-sEXPORTED_FUNCTIONS=['_email_markup_browser_request','_email_markup_browser_protocol_version']"
-            "-sEXPORTED_RUNTIME_METHODS=['ccall']"
+            "-sEXPORTED_RUNTIME_METHODS=['ccall','getExceptionMessage']"
     )
 endif()

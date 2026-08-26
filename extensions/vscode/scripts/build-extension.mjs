@@ -37,3 +37,12 @@ const browserTarget = path.join(extensionRoot, "browser");
 rmSync(browserTarget, { recursive: true, force: true });
 mkdirSync(browserTarget, { recursive: true });
 cpSync(browserPackage, browserTarget, { recursive: true });
+
+// The project's own JSON schemas travel with the extension so `em.json`, context
+// contracts and EMIR artifacts validate offline. The files declare their schema
+// by URL, and a workbench under `connect-src 'self'` can never fetch one.
+const schemaSource = path.resolve(extensionRoot, "../../schema");
+const schemaTarget = path.join(extensionRoot, "schemas");
+rmSync(schemaTarget, { recursive: true, force: true });
+mkdirSync(schemaTarget, { recursive: true });
+cpSync(schemaSource, schemaTarget, { recursive: true });

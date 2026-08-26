@@ -56,15 +56,27 @@ test("production bundle has no unresolved language-service module imports", () =
 });
 
 test("browser extension derives projects from em.json without host-specific schemes", () => {
+  // The project model lives beside the extension so it can be exercised without
+  // an editor; the guarantees it has to keep are unchanged.
+  const model = readFileSync(path.join(root, "src/web/workspaceModel.ts"), "utf8");
+  assert.match(model, /path\.endsWith\("\/em\.json"\)/);
+  assert.match(model, /config\.include/);
+  assert.match(model, /config\.imports/);
+  assert.match(model, /config\?\.shell/);
+  assert.match(model, /config\?\.engine/);
+  assert.match(model, /\$\{EMAIL_MARKUP_LIB\}/);
+  assert.doesNotMatch(model, /scheme:\s*"email-content"/);
+  assert.doesNotMatch(model, /"\/components"|"\/shells"|"\/styles"|"\/templates"/);
+
   const source = readFileSync(path.join(root, "src/web/extension.ts"), "utf8");
-  assert.match(source, /path\.endsWith\("\/em\.json"\)/);
-  assert.match(source, /config\.include/);
-  assert.match(source, /config\.imports/);
-  assert.match(source, /config\?\.shell/);
-  assert.match(source, /config\?\.engine/);
-  assert.match(source, /\$\{EMAIL_MARKUP_LIB\}/);
-  assert.match(source, /registerCompletionItemProvider\(\s*"email-markup"/);
+  // Selectors carry no scheme at all: a provider pinned to `file` never fires
+  // over the virtual file system the hosted editor serves documents from.
+  assert.match(
+    source,
+    /registerCompletionItemProvider\(\s*\{ language: "email-markup" \}/,
+  );
   assert.doesNotMatch(source, /scheme:\s*"email-content"/);
+  assert.doesNotMatch(source, /scheme:\s*"file"/);
   assert.doesNotMatch(source, /"\/components"|"\/shells"|"\/styles"|"\/templates"/);
 });
 
@@ -74,8 +86,15 @@ test("browser compiler uses a classic worker compatible with web extension hosts
     path.join(root, "../../packages/email-markup-browser/worker/email-markup.worker.mjs"),
     "utf8",
   );
-  assert.match(client, /new Worker\(workerUrl, \{ name: "email-markup-compiler" \}\)/);
+  assert.match(
+    client,
+    /new Worker\(this\.workerUrl, \{ name: "email-markup-compiler" \}\)/,
+  );
   assert.doesNotMatch(client, /type:\s*"module"/);
+  // A failed worker is retired and replaced rather than latching the client dead
+  // for the rest of the session.
+  assert.match(client, /private ensureWorker\(\): Worker/);
+  assert.match(client, /worker\.terminate\(\)/);
   assert.match(worker, /import\("\.\/email-markup-browser\.mjs"\)/);
   assert.match(worker, /let requestChain = Promise\.resolve\(\)/);
   assert.match(worker, /modulePromise = undefined/);

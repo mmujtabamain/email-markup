@@ -9,9 +9,10 @@ import {
   webCompletionLanguage,
 } from "./webProjection";
 
-const selector: vscode.DocumentSelector = [
-  { language: "email-markup", scheme: "file" },
-];
+// No scheme filter: the hosted editor serves every document over a virtual file
+// system (`email-content:` in Growth Console), and a provider pinned to `file`
+// is silently dead there — it never fires and never reports why.
+const selector: vscode.DocumentSelector = [{ language: "email-markup" }];
 const embeddedScheme = "email-markup-embedded";
 
 class EmbeddedDocuments implements vscode.TextDocumentContentProvider {

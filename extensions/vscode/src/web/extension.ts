@@ -1,61 +1,38 @@
 import * as vscode from "vscode";
 
+import { registerWebFeatures } from "../webFeatures";
+import { BrowserCompiler, type AnalyzeResult, type Position, type Range } from "./browserClient";
+import { readDefinitions } from "./definitions";
+import { registerJsonEditors } from "./jsonEditors";
 import {
-  BrowserCompiler,
-  type BrowserWorkspace,
-  type Position,
-  type Range,
-} from "./browserClient";
+  EmailMarkupProject,
+  compilerPathForUri,
+  outputContextFor,
+  parentPath,
+  type BuiltWorkspace,
+} from "./project";
+import {
+  galleryEntry,
+  planPreview,
+  renderBlocked,
+  renderHtmlPreview,
+  renderNothingToRender,
+  renderSubjectPreview,
+  renderTargetSource,
+  shellBodyEntry,
+  syntheticEntryName,
+  tokenEntry,
+} from "./preview";
+import {
+  EmailMarkupSemanticTokensProvider,
+  semanticTokenLegend,
+  type ProjectVocabulary,
+} from "./semanticTokens";
 
 const refreshDelayMs = 180;
-const maximumVirtualSources = 252;
-const supportedSourcePath = /\.(em|emt)$/u;
-const ignoredProjectDirectories = new Set(["generated", "node_modules"]);
-const libraryRoot = "/.email-markup/lib";
-
-interface ProjectConfig {
-  include?: unknown;
-  imports?: unknown;
-  data?: unknown;
-  context_schema?: unknown;
-  shell?: unknown;
-  engine?: unknown;
-}
-
-function virtualPath(base: string, value: string): string | undefined {
-  const expanded = value.replaceAll("${EMAIL_MARKUP_LIB}", libraryRoot);
-  const parts = expanded.startsWith("/")
-    ? []
-    : base.split("/").filter(Boolean);
-  for (const part of expanded.split("/")) {
-    if (!part || part === ".") continue;
-    if (part === "..") {
-      if (!parts.length) return undefined;
-      parts.pop();
-    } else {
-      parts.push(part);
-    }
-  }
-  return `/${parts.join("/")}`;
-}
-
-function parentPath(path: string): string {
-  return path.slice(0, path.lastIndexOf("/")) || "/";
-}
-
-function stringArray(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string")
-    : [];
-}
 
 function compilerPath(document: vscode.TextDocument): string {
-  const relative = vscode.workspace.asRelativePath(document.uri, false);
-  return `/${relative.replace(/^\/+/, "")}`;
-}
-
-function compilerPathForUri(uri: vscode.Uri): string {
-  return `/${vscode.workspace.asRelativePath(uri, false).replace(/^\/+/, "")}`;
+  return compilerPathForUri(document.uri);
 }
 
 function compilerPosition(position: vscode.Position): Position {
@@ -96,22 +73,9 @@ function symbolKind(value: string): vscode.SymbolKind {
   return vscode.SymbolKind.Variable;
 }
 
-function previewHtml(result: Awaited<ReturnType<BrowserCompiler["analyze"]>>): string | null {
-  const preview = result.preview;
-  if (!preview) return null;
-  if (preview.kind === "target-source") {
-    const escaped = preview.source
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;");
-    return `<main style="font:14px/1.5 ui-monospace,monospace;padding:24px;color:#1a1523"><h1 style="font:600 18px/1.4 system-ui,sans-serif">Live preview cannot execute deferred target source</h1><p style="font-family:system-ui,sans-serif">Use Verified preview for Django rendering and publication evidence.</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere">${escaped}</pre></main>`;
-  }
-  return preview.html;
-}
-
-function previewDocument(body: string): string {
-  const escaped = body.replaceAll("&", "&amp;").replaceAll('"', "&quot;");
-  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'"><style>body{margin:0;background:#fff}.state{padding:8px 12px;background:#f5f3f9;color:#322b3f;font:600 12px/1.4 system-ui,sans-serif;border-bottom:1px solid #e7e3ef}iframe{border:0;width:100%;height:calc(100vh - 34px)}</style></head><body><div class="state">Live · browser compiler · not publication proof</div><iframe sandbox srcdoc="${escaped}"></iframe></body></html>`;
+interface Lexical {
+  keywords?: string[];
+  propTypes?: string[];
 }
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -122,15 +86,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     "browser",
     "email-markup.worker.mjs",
   ).toString(true);
-  const compiler = new BrowserCompiler(workerUrl);
-  const files = new Map<string, string>();
-  const jsonFiles = new Map<string, string>();
+  const compiler = new BrowserCompiler(workerUrl, (message) => output.warn(message));
+  const project = new EmailMarkupProject(context.extensionUri, output);
   const refreshTimers = new Map<string, ReturnType<typeof setTimeout>>();
   let previewPanel: vscode.WebviewPanel | undefined;
   let previewDocumentUri = "";
   let previewRequest = 0;
 
-  context.subscriptions.push(output, diagnostics, compiler);
+  context.subscriptions.push(output, diagnostics, compiler, project);
 
   function reportError(contextLabel: string, error: unknown, document?: vscode.TextDocument): void {
     const message = error instanceof Error ? error.message : String(error);
@@ -140,14 +103,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     if (document) {
       const diagnostic = new vscode.Diagnostic(
         new vscode.Range(0, 0, 0, 1),
-        `${message} — full call stack is in the Email Markup output.`,
+        `${message} — the full call stack is in the Email Markup output.`,
         vscode.DiagnosticSeverity.Error,
       );
       diagnostic.code = "browser_worker_failure";
       diagnostic.source = "Email Markup browser compiler";
       diagnostics.set(document.uri, [diagnostic]);
     }
-    void vscode.window.showErrorMessage(`${contextLabel}: ${message}. Full call stack opened in Email Markup output.`);
+    void vscode.window.showErrorMessage(
+      `${contextLabel}: ${message}. The full call stack is in the Email Markup output.`,
+    );
   }
 
   const onGlobalError = (event: ErrorEvent): void => {
@@ -166,144 +131,64 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     },
   });
 
-  async function loadProject(): Promise<void> {
-    const uris: vscode.Uri[] = [];
+  // ---------------------------------------------------------------- vocabulary
 
-    async function visit(directory: vscode.Uri, limit = maximumVirtualSources): Promise<void> {
-      if (uris.length >= limit) return;
-      let entries: [string, vscode.FileType][];
-      try {
-        entries = await vscode.workspace.fs.readDirectory(directory);
-      } catch (error) {
-        output.warn(`Skipped ${directory.toString(true)}: ${String(error)}`);
-        return;
-      }
-      for (const [name, type] of entries) {
-        if (uris.length >= limit) return;
-        const uri = vscode.Uri.joinPath(directory, name);
-        if ((type & vscode.FileType.Directory) !== 0) {
-          if (!ignoredProjectDirectories.has(name)) await visit(uri);
-        } else if (
-          (type & vscode.FileType.File) !== 0 &&
-          (supportedSourcePath.test(uri.path) || name === "em.json" || name.endsWith(".json"))
-        ) {
-          uris.push(uri);
-        }
-      }
-    }
-
-    await Promise.all((vscode.workspace.workspaceFolders ?? []).map(({ uri }) => visit(uri)));
-    await Promise.all(
-      uris.map(async (uri) => {
-        try {
-          const source = new TextDecoder("utf-8", { fatal: true }).decode(
-            await vscode.workspace.fs.readFile(uri),
-          );
-          const path = compilerPathForUri(uri);
-          if (supportedSourcePath.test(uri.path)) files.set(path, source);
-          else jsonFiles.set(path, source);
-        } catch (error) {
-          output.warn(`Skipped ${uri.toString(true)}: ${String(error)}`);
-        }
-      }),
+  let lexical: Lexical = {};
+  try {
+    const response = await fetch(
+      vscode.Uri.joinPath(context.extensionUri, "browser", "syntax", "lexical.json").toString(true),
     );
-    await Promise.all([
-      "builtins.em",
-      "engines/django.emt",
-    ].map(async (relative) => {
-      const uri = vscode.Uri.joinPath(context.extensionUri, "browser", "lib", relative);
-      const response = await fetch(uri.toString(true));
-      if (!response.ok) throw new Error(`Could not load packaged library file ${relative}.`);
-      files.set(`${libraryRoot}/${relative}`, await response.text());
-    }));
-    output.info(`Loaded ${files.size} bounded virtual project files.`);
+    if (response.ok) lexical = (await response.json()) as Lexical;
+  } catch (error) {
+    output.warn(`Lexical description unavailable, semantic highlighting reduced: ${String(error)}`);
   }
 
-  function workspaceFor(document: vscode.TextDocument): BrowserWorkspace {
-    const entryPath = compilerPath(document);
-    const source = document.getText();
-    files.set(entryPath, source);
-    const configPath = [...jsonFiles.keys()]
-      .filter((path) => {
-        const root = parentPath(path);
-        return path.endsWith("/em.json") &&
-          (root === "/" ? entryPath.startsWith("/") : entryPath.startsWith(`${root}/`));
-      })
-      .sort((left, right) => right.length - left.length)[0];
-    let config: ProjectConfig | undefined;
-    if (configPath) {
-      try {
-        const parsed: unknown = JSON.parse(jsonFiles.get(configPath) ?? "");
-        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-          config = parsed as ProjectConfig;
-        }
-      } catch (error) {
-        output.warn(`Ignored invalid ${configPath}: ${String(error)}`);
-      }
+  let vocabularyRevision = -1;
+  let vocabularyValue: ProjectVocabulary = {
+    keywords: new Set(lexical.keywords ?? []),
+    propTypes: new Set(lexical.propTypes ?? []),
+    components: new Set<string>(),
+    tokens: new Set<string>(),
+  };
+
+  /** Component and token names across the whole project, recomputed only when it changes. */
+  function vocabulary(): ProjectVocabulary {
+    if (project.revision === vocabularyRevision) return vocabularyValue;
+    const components = new Set<string>();
+    const tokens = new Set<string>();
+    for (const source of project.sources().values()) {
+      const definitions = readDefinitions(source);
+      for (const component of definitions.components) components.add(component.name);
+      for (const token of definitions.tokens) tokens.add(token.name);
     }
-    const projectRoot = configPath ? parentPath(configPath) : parentPath(entryPath);
-    const resolve = (value: unknown): string | undefined =>
-      typeof value === "string" ? virtualPath(projectRoot, value) : undefined;
-    const imports = config
-      ? stringArray(config.imports).map(resolve).filter((path): path is string => Boolean(path))
-      : [`${libraryRoot}/builtins.em`];
-    const includeDirectories = config
-      ? stringArray(config.include).map(resolve).filter((path): path is string => Boolean(path))
-      : [libraryRoot];
-    const shellPath = resolve(config?.shell);
-    const enginePath = resolve(config?.engine);
-    const dataPath = resolve(config?.data);
-    const schemaPath = resolve(config?.context_schema);
-    const excluded = new Set([entryPath, shellPath, enginePath].filter(Boolean));
-    const compilerFiles = new Map<string, string>();
-    for (const path of imports) {
-      const imported = files.get(path);
-      if (imported !== undefined && !excluded.has(path)) compilerFiles.set(path, imported);
-    }
-    for (const [path, fileSource] of files) {
-      if (!excluded.has(path)) compilerFiles.set(path, fileSource);
-    }
-    const parseObject = (path: string | undefined): Record<string, unknown> | undefined => {
-      if (!path) return undefined;
-      try {
-        const value: unknown = JSON.parse(jsonFiles.get(path) ?? "");
-        return value && typeof value === "object" && !Array.isArray(value)
-          ? value as Record<string, unknown>
-          : undefined;
-      } catch (error) {
-        output.warn(`Ignored invalid ${path}: ${String(error)}`);
-        return undefined;
-      }
+    vocabularyRevision = project.revision;
+    vocabularyValue = {
+      keywords: new Set(lexical.keywords ?? []),
+      propTypes: new Set(lexical.propTypes ?? []),
+      components,
+      tokens,
     };
-    return {
-      entry_path: entryPath,
-      source,
-      files: [...compilerFiles.entries()]
-        .slice(0, maximumVirtualSources)
-        .map(([path, fileSource]) => ({ path, source: fileSource })),
-      include_directories: includeDirectories,
-      imports,
-      shell: shellPath && files.has(shellPath)
-        ? { path: shellPath, source: files.get(shellPath) ?? "" }
-        : undefined,
-      engine: enginePath && files.has(enginePath)
-        ? { path: enginePath, source: files.get(enginePath) ?? "" }
-        : undefined,
-      data: parseObject(dataPath),
-      context_schema: parseObject(schemaPath),
-    };
+    return vocabularyValue;
+  }
+
+  // ---------------------------------------------------------------- analysis
+
+  function build(document: vscode.TextDocument): BuiltWorkspace {
+    return project.build(compilerPath(document), document.getText());
   }
 
   async function analyze(document: vscode.TextDocument): Promise<void> {
     if (document.languageId !== "email-markup") return;
     const version = document.version;
+    const path = compilerPath(document);
     try {
-      const result = await compiler.analyze(workspaceFor(document));
+      const built = build(document);
+      const result = await compiler.analyze(built.workspace);
       if (document.isClosed || document.version !== version) return;
       diagnostics.set(
         document.uri,
         result.diagnostics
-          .filter((item) => !item.path || item.path === compilerPath(document))
+          .filter((item) => !item.path || item.path === path)
           .map((item) => {
             const diagnostic = new vscode.Diagnostic(
               item.range ? vscodeRange(item.range) : new vscode.Range(0, 0, 0, 1),
@@ -316,13 +201,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           }),
       );
       if (previewPanel && previewDocumentUri === document.uri.toString()) {
-        const request = ++previewRequest;
-        const body = previewHtml(result);
-        if (request === previewRequest && body !== null) {
-          previewPanel.webview.html = previewDocument(body);
-        } else if (request === previewRequest) {
-          previewPanel.title = "Email Markup Live preview · stale";
-        }
+        await showPreview(document, built, result);
       }
     } catch (error) {
       reportError(`Analysis failed for ${document.uri.toString(true)}`, error, document);
@@ -333,16 +212,158 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     for (const document of vscode.workspace.textDocuments) void analyze(document);
   }
 
-  await loadProject();
+  // ---------------------------------------------------------------- preview
+
+  /**
+   * Render whatever this document's preview should be.
+   *
+   * A component library, a token sheet and a shell all compile to nothing on
+   * their own, so each is previewed by compiling a small synthetic document that
+   * exercises what the open file defines. The synthetic entry lives beside the
+   * real one and pulls it in through `imports`, so it sees the live buffer rather
+   * than what is on disk.
+   */
+  async function showPreview(
+    document: vscode.TextDocument,
+    built: BuiltWorkspace,
+    result: AnalyzeResult,
+  ): Promise<void> {
+    if (!previewPanel) return;
+    const request = ++previewRequest;
+    const path = compilerPath(document);
+    const definitions = readDefinitions(document.getText());
+    const plan = planPreview(path, result, definitions, built.roles, outputContextFor(path));
+
+    const syntheticPath = `${parentPath(path)}/${syntheticEntryName}`;
+    const compileSynthetic = async (
+      source: string,
+      options: Parameters<typeof project.build>[2],
+    ): Promise<AnalyzeResult> =>
+      compiler.analyze(project.build(syntheticPath, source, options).workspace);
+
+    let html: string;
+    try {
+      switch (plan.kind) {
+        case "document": {
+          const preview = result.preview;
+          if (!preview) return;
+          if (preview.kind === "target-source") {
+            html = renderTargetSource(preview.source);
+          } else if (plan.outputContext === "subject") {
+            html = renderSubjectPreview(preview.html);
+          } else {
+            html = renderHtmlPreview("Message preview", preview.html);
+          }
+          break;
+        }
+        case "shell": {
+          const synthetic = await compileSynthetic(shellBodyEntry(), { shellPath: path });
+          html =
+            synthetic.preview && synthetic.preview.kind !== "target-source"
+              ? renderHtmlPreview("Shell · with placeholder content", synthetic.preview.html)
+              : renderNothingToRender(
+                  "The shell could not be previewed",
+                  "A placeholder body was compiled against this shell and produced no output. The Problems panel lists anything the compiler reported.",
+                );
+          break;
+        }
+        case "gallery": {
+          const synthetic = await compileSynthetic(galleryEntry(plan.components), {
+            extraImports: [path],
+          });
+          html =
+            synthetic.preview && synthetic.preview.kind !== "target-source"
+              ? renderHtmlPreview(
+                  `Component gallery · ${plan.components.length} component${
+                    plan.components.length === 1 ? "" : "s"
+                  }`,
+                  synthetic.preview.html,
+                )
+              : renderNothingToRender(
+                  "The components could not be rendered",
+                  "Each component was instantiated with placeholder props and slots, and the compiler produced no output. The Problems panel lists anything it reported.",
+                );
+          break;
+        }
+        case "tokens": {
+          const synthetic = await compileSynthetic(tokenEntry(plan.tokens), {
+            extraImports: [path],
+          });
+          html =
+            synthetic.preview && synthetic.preview.kind !== "target-source"
+              ? renderHtmlPreview(
+                  `Design tokens · ${plan.tokens.length} token${
+                    plan.tokens.length === 1 ? "" : "s"
+                  }`,
+                  synthetic.preview.html,
+                )
+              : renderNothingToRender(
+                  "The tokens could not be rendered",
+                  "A swatch sheet was compiled from this file and produced no output. The Problems panel lists anything the compiler reported.",
+                );
+          break;
+        }
+        case "blocked":
+          html = renderBlocked(plan.errors);
+          break;
+        default:
+          html = renderNothingToRender(plan.headline, plan.detail);
+      }
+    } catch (error) {
+      output.error(`Preview failed for ${path}: ${String(error)}`);
+      html = renderNothingToRender(
+        "The preview could not be produced",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+
+    if (request !== previewRequest || !previewPanel) return;
+    previewPanel.webview.html = html;
+  }
+
+  async function openPreview(): Promise<void> {
+    const document = vscode.window.activeTextEditor?.document;
+    if (!document || document.languageId !== "email-markup") return;
+    if (!previewPanel) {
+      previewPanel = vscode.window.createWebviewPanel(
+        "emailMarkupLivePreview",
+        "Email Markup Live preview",
+        vscode.ViewColumn.Beside,
+        { enableScripts: false, localResourceRoots: [] },
+      );
+      previewPanel.onDidDispose(() => {
+        previewPanel = undefined;
+        previewDocumentUri = "";
+        ++previewRequest;
+      });
+    }
+    previewDocumentUri = document.uri.toString();
+    previewPanel.reveal(vscode.ViewColumn.Beside, true);
+    try {
+      const built = build(document);
+      await showPreview(document, built, await compiler.analyze(built.workspace));
+    } catch (error) {
+      reportError(`Preview failed for ${document.uri.toString(true)}`, error, document);
+    }
+  }
+
+  // ---------------------------------------------------------------- wiring
+
+  await project.load();
+  project.watch();
   analyzeOpenDocuments();
 
+  registerWebFeatures(context);
+
   context.subscriptions.push(
+    ...registerJsonEditors(),
+    project.onDidChange(() => analyzeOpenDocuments()),
     vscode.workspace.onDidOpenTextDocument((document) => void analyze(document)),
     vscode.workspace.onDidChangeTextDocument((event) => {
       if (event.document.languageId !== "email-markup") {
         const path = compilerPath(event.document);
-        if (jsonFiles.has(path) || path.endsWith("/em.json")) {
-          jsonFiles.set(path, event.document.getText());
+        if (project.hasJson(path) || path.endsWith(".json")) {
+          project.setJson(path, event.document.getText());
           analyzeOpenDocuments();
         }
         return;
@@ -364,12 +385,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (timer) clearTimeout(timer);
       refreshTimers.delete(document.uri.toString());
     }),
+    vscode.languages.registerDocumentSemanticTokensProvider(
+      { language: "email-markup" },
+      new EmailMarkupSemanticTokensProvider(vocabulary),
+      semanticTokenLegend,
+    ),
     vscode.languages.registerCompletionItemProvider(
-      "email-markup",
+      { language: "email-markup" },
       {
         async provideCompletionItems(document, position) {
           const version = document.version;
-          const result = await compiler.complete(workspaceFor(document), compilerPosition(position));
+          const result = await compiler.complete(
+            build(document).workspace,
+            compilerPosition(position),
+          );
           if (document.version !== version) return [];
           return result.items.map((item) => {
             const completion = new vscode.CompletionItem(item.label, completionKind(item.kind));
@@ -383,20 +412,29 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       },
       "@", "{", ".", ":", ",",
     ),
-    vscode.languages.registerHoverProvider("email-markup", {
-      async provideHover(document, position) {
-        const version = document.version;
-        const result = await compiler.hover(workspaceFor(document), compilerPosition(position));
-        if (!result || document.version !== version) return null;
-        return new vscode.Hover(new vscode.MarkdownString(result.markdown));
+    vscode.languages.registerHoverProvider(
+      { language: "email-markup" },
+      {
+        async provideHover(document, position) {
+          const version = document.version;
+          const result = await compiler.hover(
+            build(document).workspace,
+            compilerPosition(position),
+          );
+          if (!result || document.version !== version) return null;
+          return new vscode.Hover(new vscode.MarkdownString(result.markdown));
+        },
       },
-    }),
+    ),
     vscode.languages.registerSignatureHelpProvider(
-      "email-markup",
+      { language: "email-markup" },
       {
         async provideSignatureHelp(document, position) {
           const version = document.version;
-          const result = await compiler.signature(workspaceFor(document), compilerPosition(position));
+          const result = await compiler.signature(
+            build(document).workspace,
+            compilerPosition(position),
+          );
           if (!result || document.version !== version) return null;
           const help = new vscode.SignatureHelp();
           const signature = new vscode.SignatureInformation(result.label);
@@ -411,57 +449,44 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       },
       { triggerCharacters: ["(", ","], retriggerCharacters: [","] },
     ),
-    vscode.languages.registerDocumentFormattingEditProvider("email-markup", {
-      async provideDocumentFormattingEdits(document) {
-        const version = document.version;
-        const result = await compiler.format(compilerPath(document), document.getText());
-        if (!result.changed || document.version !== version) return [];
-        const last = document.lineAt(document.lineCount - 1);
-        return [vscode.TextEdit.replace(new vscode.Range(0, 0, last.lineNumber, last.text.length), result.text)];
+    vscode.languages.registerDocumentFormattingEditProvider(
+      { language: "email-markup" },
+      {
+        async provideDocumentFormattingEdits(document) {
+          const version = document.version;
+          const result = await compiler.format(compilerPath(document), document.getText());
+          if (!result.changed || document.version !== version) return [];
+          const last = document.lineAt(document.lineCount - 1);
+          return [
+            vscode.TextEdit.replace(
+              new vscode.Range(0, 0, last.lineNumber, last.text.length),
+              result.text,
+            ),
+          ];
+        },
       },
-    }),
-    vscode.languages.registerDocumentSymbolProvider("email-markup", {
-      async provideDocumentSymbols(document) {
-        const version = document.version;
-        const result = await compiler.analyze(workspaceFor(document));
-        if (document.version !== version) return [];
-        return result.symbols.map(
-          (symbol) => new vscode.DocumentSymbol(
-            symbol.name,
-            symbol.kind,
-            symbolKind(symbol.kind),
-            vscodeRange(symbol.range),
-            vscodeRange(symbol.range),
-          ),
-        );
+    ),
+    vscode.languages.registerDocumentSymbolProvider(
+      { language: "email-markup" },
+      {
+        async provideDocumentSymbols(document) {
+          const version = document.version;
+          const result = await compiler.analyze(build(document).workspace);
+          if (document.version !== version) return [];
+          return result.symbols.map(
+            (symbol) =>
+              new vscode.DocumentSymbol(
+                symbol.name,
+                symbol.kind,
+                symbolKind(symbol.kind),
+                vscodeRange(symbol.range),
+                vscodeRange(symbol.range),
+              ),
+          );
+        },
       },
-    }),
-    vscode.commands.registerCommand("email-markup.preview", async () => {
-      const document = vscode.window.activeTextEditor?.document;
-      if (!document || document.languageId !== "email-markup") return;
-      const result = await compiler.analyze(workspaceFor(document));
-      const body = previewHtml(result);
-      if (body === null) {
-        void vscode.window.showWarningMessage("Live preview is unavailable because the document has compiler errors.");
-        return;
-      }
-      if (!previewPanel) {
-        previewPanel = vscode.window.createWebviewPanel(
-          "emailMarkupLivePreview",
-          "Email Markup Live preview",
-          vscode.ViewColumn.Beside,
-          { enableScripts: false, localResourceRoots: [] },
-        );
-        previewPanel.onDidDispose(() => {
-          previewPanel = undefined;
-          previewDocumentUri = "";
-          ++previewRequest;
-        });
-      }
-      previewDocumentUri = document.uri.toString();
-      previewPanel.webview.html = previewDocument(body);
-      previewPanel.reveal(vscode.ViewColumn.Beside, true);
-    }),
+    ),
+    vscode.commands.registerCommand("email-markup.preview", () => void openPreview()),
   );
 }
 

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://email-markup.dev/schema/em.schema.json",
+  "title": "Email Markup project configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "include": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "imports": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "\\.em$" },
+      "uniqueItems": true
+    },
+    "data": { "type": "string", "description": "Development JSON fixture" },
+    "context_schema": {
+      "type": "string",
+      "pattern": "\\.em\\.schema\\.json$",
+      "description": "Optional authoritative Email Markup context schema"
+    },
+    "shell": { "type": "string", "pattern": "\\.em$" },
+    "engine": { "type": "string", "pattern": "\\.emt$" },
+    "out": { "type": "string" }
+  }
+}
