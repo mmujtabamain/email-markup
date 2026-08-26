@@ -115,21 +115,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     );
   }
 
-  const onGlobalError = (event: ErrorEvent): void => {
-    reportError("Email Markup extension error", event.error ?? new Error(event.message));
-  };
-  const onUnhandledRejection = (event: PromiseRejectionEvent): void => {
-    event.preventDefault();
-    reportError("Email Markup unhandled rejection", event.reason);
-  };
-  globalThis.addEventListener("error", onGlobalError);
-  globalThis.addEventListener("unhandledrejection", onUnhandledRejection);
-  context.subscriptions.push({
-    dispose: () => {
-      globalThis.removeEventListener("error", onGlobalError);
-      globalThis.removeEventListener("unhandledrejection", onUnhandledRejection);
-    },
-  });
+  /*
+   * There were global `error` and `unhandledrejection` handlers here. The web
+   * extension host runs in a worker that refuses them — every activation logged
+   * "'addEventListener' has been blocked", several times over, and the handlers
+   * never ran. Errors from this extension already reach the Email Markup output
+   * channel through `reportError`, and anything that escapes reaches the
+   * extension host's own reporting; the listeners added noise and nothing else.
+   */
 
   // ---------------------------------------------------------------- vocabulary
 
@@ -172,6 +165,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   }
 
   // ---------------------------------------------------------------- analysis
+
+  const semanticTokens = new EmailMarkupSemanticTokensProvider(vocabulary);
+  context.subscriptions.push(semanticTokens);
 
   function build(document: vscode.TextDocument): BuiltWorkspace {
     return project.build(compilerPath(document), document.getText());
@@ -349,15 +345,24 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // ---------------------------------------------------------------- wiring
 
-  await project.load();
-  project.watch();
-  analyzeOpenDocuments();
-
+  /*
+   * Everything is registered before the project is read.
+   *
+   * Activation used to await `project.load()` first, which walks the workspace
+   * and reads every source over the network. Any surface that activates this
+   * extension — opening `em.json`, opening a template — therefore waited for the
+   * whole repository before its provider existed, so a custom editor appeared to
+   * hang on a document that was already in memory. The providers work against an
+   * empty project and simply get better once it arrives.
+   */
   registerWebFeatures(context);
 
   context.subscriptions.push(
     ...registerJsonEditors(),
-    project.onDidChange(() => analyzeOpenDocuments()),
+    project.onDidChange(() => {
+      semanticTokens.refresh();
+      analyzeOpenDocuments();
+    }),
     vscode.workspace.onDidOpenTextDocument((document) => void analyze(document)),
     vscode.workspace.onDidChangeTextDocument((event) => {
       if (event.document.languageId !== "email-markup") {
@@ -387,7 +392,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
     vscode.languages.registerDocumentSemanticTokensProvider(
       { language: "email-markup" },
-      new EmailMarkupSemanticTokensProvider(vocabulary),
+      semanticTokens,
       semanticTokenLegend,
     ),
     vscode.languages.registerCompletionItemProvider(
@@ -488,6 +493,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     ),
     vscode.commands.registerCommand("email-markup.preview", () => void openPreview()),
   );
+
+  // Reading the project is what takes time, so it happens after everything is
+  // registered rather than in front of it.
+  try {
+    await project.load();
+    project.watch();
+    semanticTokens.refresh();
+    analyzeOpenDocuments();
+  } catch (error) {
+    reportError("The Email Markup project could not be read", error);
+  }
 }
 
 export function deactivate(): void {}

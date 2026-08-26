@@ -220,3 +220,29 @@ test("generated grammar records the shared lexical source", () => {
   );
   assert.ok(configuration.onEnterRules.length > 0);
 });
+
+test("the browser extension registers before it reads the project", () => {
+  const source = readFileSync(path.join(root, "src/web/extension.ts"), "utf8");
+
+  // Activation used to await the whole project walk before registering
+  // anything, so opening `em.json` waited on every file in the repository
+  // before the editor that renders it existed.
+  const registration = source.indexOf("registerJsonEditors()");
+  const load = source.indexOf("await project.load()");
+  assert.ok(registration > 0 && load > 0);
+  assert.ok(registration < load, "providers must be registered before the project is read");
+
+  // The web extension host worker refuses these and says so, repeatedly.
+  assert.doesNotMatch(source, /globalThis\.addEventListener/);
+  assert.doesNotMatch(source, /addEventListener\("unhandledrejection"/);
+});
+
+test("the browser extension never stats a file to ask whether it exists", () => {
+  // Growth Console's provider acquires a file lease inside `stat` for anything
+  // writable, so probing a dozen configured paths that way locked a dozen files
+  // for an author who was only looking at `em.json`.
+  for (const file of ["src/web/jsonEditors.ts", "src/web/extension.ts", "src/web/project.ts"]) {
+    const source = readFileSync(path.join(root, file), "utf8");
+    assert.doesNotMatch(source, /workspace\.fs\.stat/, file);
+  }
+});

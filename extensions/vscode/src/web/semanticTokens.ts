@@ -153,9 +153,28 @@ export function buildSemanticTokens(
 }
 
 export class EmailMarkupSemanticTokensProvider
-  implements vscode.DocumentSemanticTokensProvider
+  implements vscode.DocumentSemanticTokensProvider, vscode.Disposable
 {
+  private readonly changed = new vscode.EventEmitter<void>();
+
+  /**
+   * Highlighting depends on the whole project — whether a name is a component
+   * this project defines, whether an interpolation resolves to one of its
+   * tokens. Providers are registered before the project has been read, so the
+   * first pass is necessarily thin; this asks the editor for another one once
+   * there is something better to say.
+   */
+  readonly onDidChangeSemanticTokens = this.changed.event;
+
   constructor(private readonly vocabulary: () => ProjectVocabulary) {}
+
+  refresh(): void {
+    this.changed.fire();
+  }
+
+  dispose(): void {
+    this.changed.dispose();
+  }
 
   provideDocumentSemanticTokens(document: vscode.TextDocument): vscode.SemanticTokens {
     return buildSemanticTokens(document, this.vocabulary());

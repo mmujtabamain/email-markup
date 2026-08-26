@@ -225,13 +225,46 @@ const projectFields: Array<[string, string]> = [
   ["out", "Where compiled output is written"],
 ];
 
-async function resolves(document: vscode.TextDocument, value: string): Promise<boolean> {
-  if (value.includes("${EMAIL_MARKUP_LIB}")) return true;
-  try {
-    await vscode.workspace.fs.stat(vscode.Uri.joinPath(document.uri, "..", value));
-    return true;
-  } catch {
-    return false;
+/**
+ * Whether a configured path resolves, asked without `stat`.
+ *
+ * Growth Console's file system provider acquires a *file lease* inside `stat`
+ * for anything writable, so checking a dozen paths that way meant a dozen
+ * network round trips and a dozen files locked for an author who was only
+ * looking at `em.json`. Listing the parent directory answers the same question
+ * from the provider's cached tree, takes no lease, and is one request per
+ * directory rather than one per file.
+ */
+class DirectoryIndex {
+  private readonly listings = new Map<string, Promise<Set<string>>>();
+
+  constructor(private readonly base: vscode.Uri) {}
+
+  private entries(directory: string): Promise<Set<string>> {
+    let listing = this.listings.get(directory);
+    if (!listing) {
+      listing = (async () => {
+        try {
+          const read = await vscode.workspace.fs.readDirectory(
+            directory ? vscode.Uri.joinPath(this.base, directory) : this.base,
+          );
+          return new Set(read.map(([name]) => name));
+        } catch {
+          return new Set<string>();
+        }
+      })();
+      this.listings.set(directory, listing);
+    }
+    return listing;
+  }
+
+  async resolves(value: string): Promise<boolean> {
+    // The packaged library is not part of the repository and always resolves.
+    if (value.includes("${EMAIL_MARKUP_LIB}")) return true;
+    const parts = value.split("/").filter((part) => part && part !== ".");
+    if (!parts.length) return false;
+    const name = parts.pop() as string;
+    return (await this.entries(parts.join("/"))).has(name);
   }
 }
 
@@ -248,6 +281,7 @@ function reference(value: string, exists: boolean): string {
 
 async function renderProject(document: vscode.TextDocument): Promise<string> {
   const name = document.uri.path.split("/").pop() ?? "em.json";
+  const index = new DirectoryIndex(vscode.Uri.joinPath(document.uri, ".."));
   let parsed: Record<string, unknown>;
   try {
     parsed = JSON.parse(document.getText()) as Record<string, unknown>;
@@ -261,7 +295,7 @@ async function renderProject(document: vscode.TextDocument): Promise<string> {
       : [];
     if (!items.length) return `<p class="empty">No ${label}.</p>`;
     const rendered = await Promise.all(
-      items.map(async (item) => `<li>${reference(item, await resolves(document, item))}</li>`),
+      items.map(async (item) => `<li>${reference(item, await index.resolves(item))}</li>`),
     );
     return `<ul style="margin:0;padding-left:18px">${rendered.join("")}</ul>`;
   };
@@ -273,7 +307,7 @@ async function renderProject(document: vscode.TextDocument): Promise<string> {
       const rendered =
         key === "out"
           ? `<span class="ref plain">${escapeText(value)}</span>`
-          : reference(value, await resolves(document, value));
+          : reference(value, await index.resolves(value));
       return `<dt>${escapeText(key)}</dt><dd>${rendered}<div class="desc">${escapeText(
         description,
       )}</div></dd>`;
@@ -333,19 +367,12 @@ function provider(
   return {
     async resolveCustomTextEditor(document, panel) {
       panel.webview.options = { enableScripts: true };
-      const refresh = async (): Promise<void> => {
-        panel.webview.html = await render(document);
-      };
-      const subscriptions = [
-        connect(panel, document),
-        vscode.workspace.onDidChangeTextDocument((event) => {
-          if (event.document.uri.toString() === document.uri.toString()) void refresh();
-        }),
-      ];
-      panel.onDidDispose(() => {
-        for (const subscription of subscriptions) subscription.dispose();
-      });
-      await refresh();
+      const messages = connect(panel, document);
+      panel.onDidDispose(() => messages.dispose());
+      // Rendered once, when the document is opened. These views describe a
+      // project rather than watching one, and re-rendering the whole webview on
+      // every keystroke bought nothing — reopen the tab to see a change.
+      panel.webview.html = await render(document);
     },
   };
 }
