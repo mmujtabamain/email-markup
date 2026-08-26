@@ -151,22 +151,82 @@ test("a caller-supplied shell overrides the configured one", () => {
   assert.equal(workspace.shell?.path, "/shells/default.em");
 });
 
-test("files beyond the protocol cap are reported rather than dropped silently", () => {
+test("documents the entry could never refer to are not sent at all", () => {
+  // The compiler parses on a 64 KiB WebAssembly stack, and exhausting it faults
+  // rather than erroring. Parsing every sibling template to analyze one of them
+  // is what exhausted it: `@Include` resolves only against the include
+  // directories, so a template can never name another template.
+  const base = snapshot();
+  const { workspace, dropped } = buildWorkspace(
+    base,
+    "/templates/welcome/body.em",
+    "<p>Hello</p>",
+  );
+  const paths = workspace.files.map((file) => file.path);
+
+  // Reachable: imported, or inside an include directory.
+  assert.ok(paths.includes("/components/notice.em"));
+  assert.ok(paths.includes("/styles/project.em"));
+  assert.ok(paths.includes(`${libraryRoot}/builtins.em`));
+
+  // Unreachable: a sibling template, which nothing can name.
+  assert.equal(dropped.length, 0, "nothing here is large enough to hit a limit");
+  const files = new Map(base.files);
+  files.set("/templates/other/body.em", "<p>Other</p>");
+  const second = buildWorkspace({ files, json: base.json }, "/templates/welcome/body.em", "<p>Hello</p>");
+  assert.ok(
+    !second.workspace.files.some((file) => file.path === "/templates/other/body.em"),
+    "a template in another directory is not reachable and must not be sent",
+  );
+  // Reported separately from `dropped`: nothing is lost by leaving it out, so
+  // it is not something to warn the author about. If it really was meant to be
+  // reachable, the compiler's own "cannot resolve" says so precisely.
+  assert.ok(second.unreachable.includes("/templates/other/body.em"));
+  assert.ok(!second.dropped.includes("/templates/other/body.em"));
+});
+
+test("the file cap still applies, and reports what it dropped", () => {
   const base = snapshot();
   const files = new Map(base.files);
+  // Filler inside an include directory, so it is reachable and only the cap
+  // can remove it.
   for (let index = 0; index < maximumVirtualSources + 10; index += 1) {
-    files.set(`/filler/file-${index}.em`, "@// filler");
+    files.set(`/components/file-${index}.em`, "@// filler");
   }
   const { workspace, dropped } = buildWorkspace(
     { files, json: base.json },
     "/templates/welcome/body.em",
     "<p>Hello</p>",
   );
-  assert.equal(workspace.files.length, maximumVirtualSources);
+  assert.ok(workspace.files.length <= maximumVirtualSources);
   assert.ok(dropped.length > 0, "truncation has to be visible to the caller");
-  // What the entry depends on is kept; filler is what goes.
-  assert.ok(workspace.files.some((file) => file.path === "/components/notice.em"));
-  assert.ok(dropped.every((path) => path.startsWith("/filler/")));
+});
+
+test("a shell frames a message, and only a message", () => {
+  // Wrapping a subject line in an HTML shell produced a subject that failed its
+  // own one-line rule; wrapping a component library faulted the compiler, and
+  // wrapping the token sheet made the shell's own `@Include` unresolvable
+  // because the entry is held out of the file set.
+  const body = buildWorkspace(snapshot(), "/templates/welcome/body.em", "<p>Hello</p>");
+  assert.equal(body.workspace.shell?.path, "/shells/default.em", "a message is framed");
+
+  const subject = buildWorkspace(snapshot(), "/templates/welcome/subject.em", "A note for you");
+  assert.equal(subject.workspace.shell, undefined, "a subject line is not a document");
+  assert.equal(subject.workspace.output_context, "subject");
+
+  const component = buildWorkspace(
+    snapshot(),
+    "/components/notice.em",
+    '@DefineComponent(name: "Notice")\n  @Template\n    <p>x</p>\n  @/Template\n@/DefineComponent',
+  );
+  assert.equal(component.workspace.shell, undefined, "a component library renders nothing to frame");
+
+  const tokens = buildWorkspace(
+    snapshot(),
+    "/styles/project.em",
+    '@DefineToken(name: "accent", value: "#8E51D0");',
+  );
+  assert.equal(tokens.workspace.shell, undefined, "nor does a token sheet");
 });
 
 test("a project with no em.json still gets the packaged library", () => {

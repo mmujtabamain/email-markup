@@ -1,4 +1,5 @@
 import type { BrowserWorkspace } from "./browserClient";
+import { readDefinitions } from "./definitions";
 
 /**
  * Assembling the virtual workspace the browser compiler is given.
@@ -10,6 +11,22 @@ import type { BrowserWorkspace } from "./browserClient";
  */
 
 export const maximumVirtualSources = 252;
+
+/**
+ * A ceiling on the project handed to the compiler, in bytes.
+ *
+ * This is a backstop rather than the real control. The browser compiler parses
+ * on WebAssembly's stack, 64 KiB by default, and exhausting it does not produce
+ * an error — it faults, and the fault reaches the author as "WebAssembly
+ * exception 225832" with no file, no line and no cause. What exhausts it is
+ * parsing depth rather than volume: forty kilobytes of comments compile
+ * happily, while a dozen real templates with nested markup do not.
+ *
+ * So the real control is `isReachableFrom` below — not sending documents the
+ * entry could not refer to even in principle. This limit only catches a project
+ * that is large in the reachable part too.
+ */
+export const maximumWorkspaceBytes = 96 * 1024;
 export const libraryRoot = "/.email-markup/lib";
 
 export interface ProjectConfig {
@@ -46,8 +63,17 @@ export interface BuiltWorkspace {
   workspace: BrowserWorkspace &
     Required<Pick<BrowserWorkspace, "files" | "imports" | "include_directories">>;
   roles: EntryRoles;
-  /** Files left out to stay inside the protocol's file cap, if any. */
+  /** Files left out to stay inside a limit — worth telling the author about. */
   dropped: string[];
+  /**
+   * Files the entry could not refer to even in principle, so not sent.
+   *
+   * Distinct from `dropped` on purpose: nothing is lost by leaving these out,
+   * and warning about them would be noise. If one of them really was meant to
+   * be reachable, the compiler says so precisely — "cannot resolve" — which is
+   * a better message than anything this could invent.
+   */
+  unreachable: string[];
 }
 
 export interface ProjectSnapshot {
@@ -84,6 +110,11 @@ export function parentPath(path: string): string {
  */
 export function outputContextFor(path: string): "html" | "subject" {
   return /(^|\/)subject\.em$/u.test(path) ? "subject" : "html";
+}
+
+/** UTF-8 size, because the limit is bytes on the wire, not characters. */
+function byteLength(value: string): number {
+  return new TextEncoder().encode(value).length;
 }
 
 function stringArray(value: unknown): string[] {
@@ -183,9 +214,26 @@ export function buildWorkspace(
     isImported: declaredImports.includes(entryPath),
   };
 
-  // A document cannot be wrapped in itself. When the entry *is* the shell or the
-  // engine, it is compiled standalone unless the caller supplied another.
-  const shellPath = options.shellPath ?? (roles.isShell ? undefined : configuredShell);
+  const outputContext = options.outputContext ?? outputContextFor(entryPath);
+  // A shell frames a *message*. Three kinds of document are not one, and
+  // wrapping them in it produces nonsense or worse:
+  //
+  //  - the shell itself, which would be asked to embed itself;
+  //  - a subject line, which must stay one header-safe line and instead came
+  //    back wrapped in a complete HTML document, failing its own length rule;
+  //  - a component or token library, which renders nothing to frame. Wrapping
+  //    `components/notice.em` faulted the compiler outright, and wrapping
+  //    `styles/project.em` made the shell's own `@Include("project.em")`
+  //    unresolvable, because the entry is held out of the file set.
+  const definitions = readDefinitions(entrySource);
+  const definitionsOnly =
+    !definitions.hasRenderableBody &&
+    (definitions.components.length > 0 || definitions.tokens.length > 0);
+  const wantsShell = outputContext !== "subject" && !definitionsOnly;
+
+  // And a document cannot be wrapped in itself. When the entry *is* the shell or
+  // the engine, it is compiled standalone unless the caller supplied another.
+  const shellPath = options.shellPath ?? (roles.isShell || !wantsShell ? undefined : configuredShell);
   const enginePath = roles.isEngine ? undefined : configuredEngine;
 
   const shell =
@@ -206,37 +254,79 @@ export function buildWorkspace(
     (path, index, all) => !suppliedSeparately.has(path) && all.indexOf(path) === index,
   );
 
-  // Ordered by how likely the entry is to need them, so that if the protocol's
-  // file cap does bite, it bites the least relevant files.
+  /**
+   * Whether the entry could refer to a document at all.
+   *
+   * `@Include` resolves against the include directories and nothing else, so a
+   * file that is neither imported, nor inside one of those directories, nor
+   * beside the entry itself, cannot be named by it. Sending one anyway costs
+   * the compiler a full parse for something that can never be referenced — and
+   * that parse is what exhausts the stack. In this project it meant every
+   * template was parsed to analyze any other template.
+   */
+  const entryDirectory = parentPath(entryPath);
+  const isReachableFrom = (path: string): boolean =>
+    imports.includes(path) ||
+    path === shell?.path ||
+    path === engine?.path ||
+    parentPath(path) === entryDirectory ||
+    includeDirectories.some(
+      (directory) => path.startsWith(`${directory}/`) || parentPath(path) === directory,
+    );
+
+  // Ordered by how likely the entry is to need them, so that if a limit does
+  // bite, it bites the least relevant files first.
   const ordered = new Map<string, string>();
+  const unreachable: string[] = [];
   const offer = (path: string): void => {
     if (suppliedSeparately.has(path) || ordered.has(path)) return;
     const source = files.get(path);
-    if (source !== undefined) ordered.set(path, source);
+    if (source === undefined) return;
+    if (!isReachableFrom(path)) {
+      if (!unreachable.includes(path)) unreachable.push(path);
+      return;
+    }
+    ordered.set(path, source);
   };
   for (const path of imports) offer(path);
   for (const path of files.keys()) if (path.startsWith(`${libraryRoot}/`)) offer(path);
   for (const path of files.keys()) if (path.startsWith(`${root}/`)) offer(path);
   for (const path of files.keys()) offer(path);
 
-  const entries = [...ordered.entries()];
+  // Take files in priority order until either limit is reached. The entry's own
+  // source is already spoken for, so it is charged against the budget first.
+  const kept: Array<[string, string]> = [];
+  const dropped: string[] = [];
+  let budget =
+    maximumWorkspaceBytes -
+    byteLength(entrySource) -
+    byteLength(shell?.source ?? "") -
+    byteLength(engine?.source ?? "");
+  for (const [path, source] of ordered) {
+    const cost = byteLength(path) + byteLength(source);
+    if (kept.length >= maximumVirtualSources || cost > budget) {
+      dropped.push(path);
+      continue;
+    }
+    budget -= cost;
+    kept.push([path, source]);
+  }
 
   return {
     roles,
-    dropped: entries.slice(maximumVirtualSources).map(([path]) => path),
+    dropped,
+    unreachable,
     workspace: {
       entry_path: entryPath,
       source: entrySource,
-      files: entries
-        .slice(0, maximumVirtualSources)
-        .map(([path, source]) => ({ path, source })),
+      files: kept.map(([path, source]) => ({ path, source })),
       include_directories: includeDirectories,
       imports,
       shell,
       engine,
       data: parseObject(snapshot.json, resolve(config?.data), onWarning),
       context_schema: parseObject(snapshot.json, resolve(config?.context_schema), onWarning),
-      output_context: options.outputContext ?? outputContextFor(entryPath),
+      output_context: outputContext,
     },
   };
 }
