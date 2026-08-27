@@ -19,7 +19,10 @@
   },
   "activationEvents": [
     "onLanguage:email-markup",
-    "onCommand:email-markup.preview"
+    "onCommand:email-markup.preview",
+    "onCustomEditor:email-markup.projectConfig",
+    "onCustomEditor:email-markup.contextContract",
+    "onCustomEditor:email-markup.compiledArtifact"
   ],
   "main": "./dist/node/extension.js",
   "browser": "./dist/web/extension.js",
@@ -28,6 +31,7 @@
     "dist/web/extension.js",
     "browser",
     "icons",
+    "schemas",
     "syntaxes",
     "language-configuration.json",
     "server",
@@ -123,7 +127,96 @@
           "description": "Separate remote-image audit warning threshold before Base64 expansion. Ordinary language-server diagnostics never wait on network requests."
         }
       }
-    }
+    },
+    "jsonValidation": [
+      {
+        "fileMatch": [
+          "em.json"
+        ],
+        "url": "./schemas/em.schema.json"
+      },
+      {
+        "fileMatch": [
+          "*.em.schema.json"
+        ],
+        "url": "./schemas/context-v1.schema.json"
+      },
+      {
+        "fileMatch": [
+          "*.emir.json"
+        ],
+        "url": "./schemas/emir-v1.schema.json"
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "email-markup.contextContract",
+        "displayName": "Email Markup context contract",
+        "selector": [
+          {
+            "filenamePattern": "*.em.schema.json"
+          }
+        ],
+        "priority": "default"
+      },
+      {
+        "viewType": "email-markup.projectConfig",
+        "displayName": "Email Markup project",
+        "selector": [
+          {
+            "filenamePattern": "em.json"
+          }
+        ],
+        "priority": "default"
+      },
+      {
+        "viewType": "email-markup.compiledArtifact",
+        "displayName": "Email Markup compiled artifact",
+        "selector": [
+          {
+            "filenamePattern": "**/*.emir.json"
+          },
+          {
+            "filenamePattern": "**/source-map.json"
+          },
+          {
+            "filenamePattern": "**/context-requirements.schema.json"
+          },
+          {
+            "filenamePattern": "**/generated/**/*.json"
+          },
+          {
+            "filenamePattern": "**/.build/**/*.json"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
+    "semanticTokenScopes": [
+      {
+        "language": "email-markup",
+        "scopes": {
+          "keyword": [
+            "keyword.control.email-markup"
+          ],
+          "class": [
+            "entity.name.tag.email-markup"
+          ],
+          "property": [
+            "support.type.property-name.email-markup"
+          ],
+          "variable": [
+            "variable.other.email-markup"
+          ],
+          "parameter": [
+            "variable.parameter.email-markup"
+          ],
+          "type": [
+            "storage.type.email-markup"
+          ]
+        }
+      }
+    ]
   },
   "dependencies": {
     "vscode-languageclient": "^9.0.1"

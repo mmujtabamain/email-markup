@@ -11,16 +11,16 @@
   },
   "assets": {
     "email-markup.worker.mjs": {
-      "bytes": 2918,
-      "sha256": "b49bae552efe2c51d3e239497b58f6100e6d31efd800a2daa68457c3eca846fe"
+      "bytes": 6751,
+      "sha256": "875eafa2732f78887acd5ce4e4ffd303f227e73751a02860314bf62eebfabcdd"
     },
     "email-markup-browser.mjs": {
-      "bytes": 19427,
-      "sha256": "639a162f02a96c1d36f1fb3acfdf445daac60b27e81896141b27103f985434da"
+      "bytes": 21636,
+      "sha256": "113816548b75f44fe5e2770df3e2bbfca5e43e3204e8498fd40d0245b40a8cb1"
     },
     "email-markup-browser.wasm": {
-      "bytes": 894125,
-      "sha256": "bf8c56973cfd78fc1cccb73e57825616fb12fc5f08c89fd199c862e650578dd4"
+      "bytes": 962361,
+      "sha256": "443a818ce92b320344378453102f19c6ccccfce2e5da93cd44deb9386b480929"
     },
     "browser-protocol-v1.schema.json": {
       "bytes": 5118,

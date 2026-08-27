@@ -1,0 +1,224 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://email-markup.dev/schema/emir-v1.schema.json",
+  "title": "Email Markup Intermediate Representation v1",
+  "description": "Canonical deferred email template artifact emitted by Email Markup 1.2.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "version", "output_kind", "target", "document", "requirements", "source_map"],
+  "properties": {
+    "format": { "const": "email-markup-ir" },
+    "version": { "const": 1 },
+    "output_kind": { "const": "engine-template" },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "engine"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "engine": { "type": "string", "minLength": 1 }
+      }
+    },
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "children"],
+      "properties": {
+        "kind": { "const": "document" },
+        "children": { "$ref": "#/$defs/nodes" }
+      }
+    },
+    "requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["recipient"],
+      "properties": {
+        "recipient": {
+          "type": "object",
+          "propertyNames": { "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$" },
+          "additionalProperties": { "$ref": "#/$defs/requirement" }
+        }
+      }
+    },
+    "source_map": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "sources", "mappings"],
+      "properties": {
+        "version": { "const": 1 },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "path"],
+            "properties": {
+              "id": { "type": "integer", "minimum": 0 },
+              "path": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "mappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["output_start", "output_end", "source"],
+            "properties": {
+              "output_start": { "type": "integer", "minimum": 0 },
+              "output_end": { "type": "integer", "minimum": 0 },
+              "source": { "$ref": "#/$defs/source_range" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "identifier": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+    "path": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/identifier" }
+    },
+    "source_range": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "start", "end"],
+      "properties": {
+        "id": { "type": "integer", "minimum": 0 },
+        "start": { "type": "integer", "minimum": 0 },
+        "end": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "required"],
+      "properties": {
+        "type": { "enum": ["string", "url", "scalar", "array"] },
+        "required": { "type": "boolean" },
+        "header_safe": { "type": "boolean" }
+      }
+    },
+    "condition": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "segments"],
+          "properties": {
+            "kind": { "const": "path" },
+            "segments": { "$ref": "#/$defs/path" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": { "const": "literal" },
+            "value": {
+              "anyOf": [
+                { "type": "string" },
+                { "type": "number" },
+                { "type": "boolean" },
+                { "type": "null" }
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "operand"],
+          "properties": {
+            "kind": { "const": "not" },
+            "operand": { "$ref": "#/$defs/condition" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "operands"],
+          "properties": {
+            "kind": { "enum": ["and", "or"] },
+            "operands": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": { "$ref": "#/$defs/condition" }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "operator", "left", "right"],
+          "properties": {
+            "kind": { "const": "comparison" },
+            "operator": { "enum": ["==", "!=", "<", "<=", ">", ">="] },
+            "left": { "$ref": "#/$defs/condition" },
+            "right": { "$ref": "#/$defs/condition" }
+          }
+        }
+      ]
+    },
+    "literal_node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "value"],
+      "properties": {
+        "kind": { "const": "literal" },
+        "value": { "type": "string" },
+        "source": { "$ref": "#/$defs/source_range" }
+      }
+    },
+    "runtime_value_node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "path", "value_type", "escape", "source"],
+      "properties": {
+        "kind": { "const": "runtime_value" },
+        "path": { "$ref": "#/$defs/path" },
+        "value_type": { "const": "string" },
+        "escape": { "enum": ["html_text", "html_attribute", "url", "subject"] },
+        "source": { "$ref": "#/$defs/source_range" }
+      }
+    },
+    "runtime_if_node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "condition", "children", "else_children", "source"],
+      "properties": {
+        "kind": { "const": "runtime_if" },
+        "condition": { "$ref": "#/$defs/condition" },
+        "children": { "$ref": "#/$defs/nodes" },
+        "else_children": { "$ref": "#/$defs/nodes" },
+        "source": { "$ref": "#/$defs/source_range" }
+      }
+    },
+    "runtime_for_node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "collection", "binding", "limit", "children", "source"],
+      "properties": {
+        "kind": { "const": "runtime_for" },
+        "collection": { "$ref": "#/$defs/path" },
+        "binding": { "$ref": "#/$defs/identifier" },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "children": { "$ref": "#/$defs/nodes" },
+        "source": { "$ref": "#/$defs/source_range" }
+      }
+    },
+    "node": {
+      "oneOf": [
+        { "$ref": "#/$defs/literal_node" },
+        { "$ref": "#/$defs/runtime_value_node" },
+        { "$ref": "#/$defs/runtime_if_node" },
+        { "$ref": "#/$defs/runtime_for_node" }
+      ]
+    },
+    "nodes": { "type": "array", "items": { "$ref": "#/$defs/node" } }
+  }
+}

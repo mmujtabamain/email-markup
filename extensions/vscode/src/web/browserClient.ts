@@ -71,18 +71,31 @@ interface Pending {
   timer: ReturnType<typeof setTimeout>;
 }
 
+/**
+ * The compiler runs in a worker, and a worker can die — a malformed project, a
+ * Wasm abort, a memory limit. Treating that as terminal used to end the session:
+ * one failure latched a flag that every later request checked, so completions,
+ * hover, formatting and analysis all stayed broken until the page was reloaded,
+ * and reloading the hosted editor drops the author out of it entirely.
+ *
+ * So a failure retires the worker rather than the client. The next request
+ * starts a fresh one, and a short backoff — growing only while failures keep
+ * arriving close together — stops a reproducibly-crashing document from
+ * spinning the worker in a loop.
+ */
 export class BrowserCompiler {
-  private readonly worker: Worker;
+  private worker: Worker | undefined;
   private readonly pending = new Map<number, Pending>();
-  private failure: Error | undefined;
   private sequence = 0;
+  private disposed = false;
+  private failureCount = 0;
+  private lastFailureAt = 0;
+  private retryAt = 0;
 
-  constructor(workerUrl: string) {
-    this.worker = new Worker(workerUrl, { name: "email-markup-compiler" });
-    this.worker.addEventListener("message", this.receive);
-    this.worker.addEventListener("error", this.failWorker);
-    this.worker.addEventListener("messageerror", this.failWorker);
-  }
+  constructor(
+    private readonly workerUrl: string,
+    private readonly warn: (message: string) => void = () => {},
+  ) {}
 
   analyze(workspace: BrowserWorkspace): Promise<AnalyzeResult> {
     return this.request("analyze", workspace);
@@ -112,33 +125,108 @@ export class BrowserCompiler {
   }
 
   dispose(): void {
-    this.worker.terminate();
-    this.rejectAll(new Error("Email Markup browser compiler stopped."));
+    this.disposed = true;
+    this.retire(new Error("Email Markup browser compiler stopped."));
+  }
+
+  private ensureWorker(): Worker {
+    if (this.worker) return this.worker;
+    const worker = new Worker(this.workerUrl, { name: "email-markup-compiler" });
+    worker.addEventListener("message", this.receive);
+    worker.addEventListener("error", this.onWorkerError);
+    worker.addEventListener("messageerror", this.onWorkerError);
+    this.worker = worker;
+    return worker;
+  }
+
+  /** Stop the current worker and fail everything still waiting on it. */
+  private retire(reason: Error): void {
+    const worker = this.worker;
+    this.worker = undefined;
+    if (worker) {
+      worker.removeEventListener("message", this.receive);
+      worker.removeEventListener("error", this.onWorkerError);
+      worker.removeEventListener("messageerror", this.onWorkerError);
+      worker.terminate();
+    }
+    for (const pending of this.pending.values()) {
+      clearTimeout(pending.timer);
+      pending.reject(reason);
+    }
+    this.pending.clear();
+  }
+
+  private readonly onWorkerError = (event?: Event): void => {
+    const reason =
+      event instanceof ErrorEvent && event.error instanceof Error
+        ? event.error
+        : new Error(
+            event instanceof ErrorEvent && event.message
+              ? event.message
+              : "Email Markup browser compiler stopped responding.",
+          );
+    this.failed(reason);
+  };
+
+  private failed(reason: Error): void {
+    const now = Date.now();
+    // Only treat failures as consecutive while they keep arriving close together;
+    // an isolated crash an hour later should not inherit an old backoff.
+    this.failureCount = now - this.lastFailureAt < 10_000 ? this.failureCount + 1 : 1;
+    this.lastFailureAt = now;
+    const backoff = Math.min(5_000, [0, 0, 500, 2_000][this.failureCount] ?? 5_000);
+    this.retryAt = now + backoff;
+    this.retire(reason);
+    this.warn(
+      `Email Markup browser compiler restarted after a failure (${reason.message}). ` +
+        (backoff ? `Waiting ${backoff}ms before the next attempt.` : "Retrying on the next request."),
+    );
   }
 
   private request<T>(method: string, params: object): Promise<T> {
-    if (this.failure) return Promise.reject(this.failure);
+    if (this.disposed) {
+      return Promise.reject(new Error("Email Markup browser compiler stopped."));
+    }
+    const wait = this.retryAt - Date.now();
+    if (wait > 0) {
+      return Promise.reject(
+        new Error(
+          `Email Markup browser compiler is restarting after a failure; retrying in ${wait}ms.`,
+        ),
+      );
+    }
     const id = ++this.sequence;
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
         reject(new Error("Email Markup browser compiler timed out."));
+        // The worker is still busy with the request that timed out and will stay
+        // behind for every later one, so it is retired rather than reused.
+        this.failed(new Error("Email Markup browser compiler timed out."));
       }, 10_000);
       this.pending.set(id, { resolve: (value) => resolve(value as T), reject, timer });
-      this.worker.postMessage({
-        protocol: "email-markup.browser",
-        version: 1,
-        id,
-        method,
-        params,
-      });
+      try {
+        this.ensureWorker().postMessage({
+          protocol: "email-markup.browser",
+          version: 1,
+          id,
+          method,
+          params,
+        });
+      } catch (error) {
+        clearTimeout(timer);
+        this.pending.delete(id);
+        const reason = error instanceof Error ? error : new Error(String(error));
+        this.failed(reason);
+        reject(reason);
+      }
     });
   }
 
   private readonly receive = (event: MessageEvent<Response<unknown>>): void => {
     const response = event.data;
     if (!response || response.protocol !== "email-markup.browser" || response.version !== 1) {
-      this.failWorker();
+      this.failed(new Error("Email Markup browser compiler sent an unrecognized response."));
       return;
     }
     if (typeof response.id !== "number") return;
@@ -146,6 +234,8 @@ export class BrowserCompiler {
     if (!pending) return;
     clearTimeout(pending.timer);
     this.pending.delete(response.id);
+    // A response of any shape means the worker is alive and serving requests.
+    this.failureCount = 0;
     if (response.ok) {
       pending.resolve(response.result);
       return;
@@ -154,24 +244,4 @@ export class BrowserCompiler {
     if (response.error?.stack) error.stack = response.error.stack;
     pending.reject(error);
   };
-
-  private readonly failWorker = (event?: Event): void => {
-    const reason = event instanceof ErrorEvent ? event.error : undefined;
-    this.failure = reason instanceof Error
-      ? reason
-      : new Error(
-        event instanceof ErrorEvent && event.message
-          ? event.message
-          : "Email Markup browser compiler is unavailable.",
-      );
-    this.rejectAll(this.failure);
-  };
-
-  private rejectAll(error: Error): void {
-    for (const pending of this.pending.values()) {
-      clearTimeout(pending.timer);
-      pending.reject(error);
-    }
-    this.pending.clear();
-  }
 }
