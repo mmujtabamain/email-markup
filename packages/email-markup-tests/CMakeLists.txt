@@ -3,8 +3,13 @@ include(Catch)
 add_executable(
     email-markup-tests
     src/expression_tests.cpp
+    src/image_tests.cpp
     src/conformance_tests.cpp
+    src/context_schema_tests.cpp
     src/css_lint_tests.cpp
+    src/declaration_tests.cpp
+    src/deferred_tests.cpp
+    src/browser_protocol_tests.cpp
     src/lexer_parser_tests.cpp
     src/lsp_support_tests.cpp
     src/platform_tests.cpp
@@ -17,13 +22,19 @@ target_link_libraries(
     email-markup-tests
     PRIVATE
         email_markup::core
+        email_markup::browser
         email_markup::platform
         email-markup-lsp-support
         Catch2::Catch2WithMain
 )
 
 target_compile_features(email-markup-tests PRIVATE cxx_std_23)
-target_compile_definitions(email-markup-tests PRIVATE EMAIL_MARKUP_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+target_compile_definitions(
+    email-markup-tests
+    PRIVATE
+        EMAIL_MARKUP_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+        EMAIL_MARKUP_VERSION="${PROJECT_VERSION}"
+)
 
 catch_discover_tests(email-markup-tests)
 

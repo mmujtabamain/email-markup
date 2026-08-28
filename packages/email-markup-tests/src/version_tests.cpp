@@ -2,6 +2,7 @@
 
 #include "email-markup/core/version.hpp"
 
-TEST_CASE("the release version is available") {
-    CHECK(email_markup::version() == "1.1.0");
+TEST_CASE("the release version is available")
+{
+    CHECK(email_markup::version() == EMAIL_MARKUP_VERSION);
 }

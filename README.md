@@ -66,11 +66,29 @@ emc check message.em --json
 emc schema
 ```
 
+Email Markup 1.2 also supports explicit build-time deferred output through a
+packaged restricted Django target:
+
+```bash
+emc compile message.em --engine "$EMAIL_MARKUP_LIB/engines/django.emt" \
+  --emit-ir -o message.emir.json
+emc check-ir message.emir.json
+emc inspect-ir message.emir.json
+emc emit --target django message.emir.json -o message.django.html
+```
+
+The normative, separately versioned EMIR v1 contract is published as
+`schema/emir-v1.schema.json`. Canonical artifacts include portable source names
+and output-to-source mappings; they never serialize machine-specific project paths.
+
+Use `--subject` for a text-only, unescaped, header-safe subject artifact.
+
 `emc` finds the nearest `em.json`. The repository’s config demonstrates all
 supported keys: include roots, definition imports, a development JSON fixture,
-the final shell, and the build output directory. `${EMAIL_MARKUP_LIB}` resolves
-to the installed standard library. Explicit `-I`, `--import`, `--shell`, and
-data options override or extend project configuration.
+the final shell, a deferred engine, and the build output directory.
+`${EMAIL_MARKUP_LIB}` resolves to the installed standard library. Explicit
+`-I`, `--import`, `--shell`, `--engine`, and data options override or extend
+project configuration.
 
 Writes are atomic. A failed compile never replaces the previous HTML output.
 Diagnostics do not print JSON values.
@@ -84,6 +102,9 @@ protocol. See [docs/COMPILE_PROTOCOL.md](docs/COMPILE_PROTOCOL.md).
 `lib/builtins.em` defines `Paragraph`, `Heading`, `Bullets`, `Numbered`, `Item`,
 `Callout`, `Quote`, `Button`, `Image`, `Divider`, `Spacer`, `Panel`, `Columns`,
 `Unsubscribe`, and `Shell` in Email Markup itself. Raw HTML remains valid source.
+`Image` embeds public HTTP(S) image URLs as Base64 data URIs during compile/build;
+set `embed: false` to retain a remote URL. Large-image size checks run separately
+from normal editor/compiler linting.
 
 Ordinary class selectors declared in `<style>` blocks are inlined into matching
 HTML elements during compilation. Existing inline declarations take precedence.
@@ -115,6 +136,13 @@ In untrusted workspaces only grammar highlighting is enabled. Preview scripts an
 local resource roots are disabled, and remote images stay inert until the user
 explicitly enables them for the current preview.
 
+For custom Monaco hosts, `email_markup::browser` and the packaged Web Worker
+provide deterministic diagnostics, formatting, completion, hover, signature,
+symbols, and safe live preview through the versioned `email-markup.browser`
+JSON protocol. Browser output is explicitly non-authoritative and never
+executes Django; the native server-side `emc` revalidates every verified
+preview, test send, and publication. See `docs/BROWSER_PROTOCOL.md`.
+
 ## Reference and release evidence
 
 - `EMAIL-MARKUP.md` — implemented Email Markup 1 language and tooling reference
@@ -123,6 +151,7 @@ explicitly enables them for the current preview.
 - `docs/PERFORMANCE.md` — latency, memory, and limits
 - `docs/LANGUAGE_REVIEW.md` — recorded Email Markup 1 syntax and optimization decisions
 - `docs/RELEASE.md` — release contents and verification
+- `docs/BROWSER_PROTOCOL.md` — custom Monaco worker protocol and trust boundary
 - `templates.md` — future deferred-templating proposal, not Email Markup 1
 
 Email Markup is licensed under the MIT License.

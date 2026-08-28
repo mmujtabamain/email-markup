@@ -13,6 +13,9 @@
       "include": "#props"
     },
     {
+      "include": "#params"
+    },
+    {
       "include": "#slots"
     },
     {
@@ -23,6 +26,9 @@
     },
     {
       "include": "#close"
+    },
+    {
+      "include": "#deferred"
     },
     {
       "include": "#invocation"
@@ -118,7 +124,7 @@
           "include": "#interpolation"
         },
         {
-          "match": "\\b([A-Za-z_][A-Za-z0-9_]*)(\\??)(\\s*)(:)(\\s*)([A-Za-z_][A-Za-z0-9_]*(?:\\([^)]*\\))?)",
+          "match": "\\b([A-Za-z_][A-Za-z0-9_]*)(\\??)(\\s*)(:)(\\s*)(string|int|decimal|number|bool|name|url|email|color|raw|path|condition)\\b",
           "captures": {
             "1": {
               "name": "support.type.property-name.email-markup"
@@ -133,6 +139,10 @@
               "name": "storage.type.email-markup"
             }
           }
+        },
+        {
+          "name": "keyword.operator.comparison.email-markup",
+          "match": "(?:\\.\\.|>=|<=|>|<)"
         },
         {
           "name": "keyword.operator.assignment.email-markup",
@@ -401,6 +411,52 @@
         }
       ]
     },
+    "deferred": {
+      "name": "meta.deferred-call.email-markup",
+      "begin": "(@)([A-Z][A-Za-z0-9_]*)?(\\[)",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.email-markup"
+        },
+        "2": {
+          "name": "entity.name.function.deferred.email-markup"
+        },
+        "3": {
+          "name": "punctuation.section.deferred.begin.email-markup"
+        }
+      },
+      "end": "(?<!\\\\)(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.section.deferred.end.email-markup"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#interpolation"
+        },
+        {
+          "name": "constant.character.escape.email-markup",
+          "match": "\\\\[\\],\\\\]"
+        },
+        {
+          "name": "keyword.operator.word.email-markup",
+          "match": "\\b(?:and|or|not)\\b"
+        },
+        {
+          "name": "keyword.operator.email-markup",
+          "match": "(?:==|!=|<=|>=|[<>])"
+        },
+        {
+          "name": "support.type.property-name.email-markup",
+          "match": "\\b[A-Za-z_][A-Za-z0-9_]*(?=\\s*:)"
+        },
+        {
+          "name": "variable.other.deferred.email-markup",
+          "match": "[A-Za-z_][A-Za-z0-9_.]*"
+        }
+      ]
+    },
     "construct": {
       "match": "@([A-Z][A-Za-z0-9_]*)",
       "captures": {
@@ -415,10 +471,81 @@
     "escaped": {
       "name": "constant.character.escape.email-markup",
       "match": "@@"
+    },
+    "params": {
+      "name": "meta.block.params.email-markup",
+      "begin": "(@)(Params)\\b",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.email-markup"
+        },
+        "2": {
+          "name": "keyword.control.email-markup"
+        }
+      },
+      "end": "(@/)(Params)\\b",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.email-markup"
+        },
+        "2": {
+          "name": "keyword.control.email-markup"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#comments"
+        },
+        {
+          "include": "#interpolation"
+        },
+        {
+          "match": "\\b([A-Za-z_][A-Za-z0-9_]*)(\\??)(\\s*)(:)(\\s*)(string|int|decimal|number|bool|name|url|email|color|raw|path|condition)\\b",
+          "captures": {
+            "1": {
+              "name": "support.type.property-name.email-markup"
+            },
+            "2": {
+              "name": "keyword.operator.optional.email-markup"
+            },
+            "4": {
+              "name": "punctuation.separator.key-value.email-markup"
+            },
+            "6": {
+              "name": "storage.type.email-markup"
+            }
+          }
+        },
+        {
+          "name": "keyword.operator.comparison.email-markup",
+          "match": "(?:\\.\\.|>=|<=|>|<)"
+        },
+        {
+          "name": "keyword.operator.assignment.email-markup",
+          "match": "="
+        },
+        {
+          "name": "constant.language.email-markup",
+          "match": "\\b(?:true|false|null)\\b"
+        },
+        {
+          "name": "constant.numeric.email-markup",
+          "match": "-?\\b\\d+(?:\\.\\d+)?\\b"
+        },
+        {
+          "name": "string.quoted.double.email-markup",
+          "begin": "\"",
+          "end": "\""
+        },
+        {
+          "name": "variable.other.email-markup",
+          "match": "[A-Za-z_][A-Za-z0-9_.]*"
+        }
+      ]
     }
   },
   "metadata": {
     "generatedFrom": "syntax/lexical.json",
-    "version": 1
+    "version": 2
   }
 }

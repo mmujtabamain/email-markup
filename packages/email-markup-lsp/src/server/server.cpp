@@ -5,6 +5,8 @@
 #include <utility>
 #include <vector>
 
+#include "email-markup/core/parser.hpp"
+#include "email-markup/core/sample_preview.hpp"
 #include "email-markup/core/version.hpp"
 
 namespace email_markup::lsp
@@ -234,14 +236,37 @@ namespace email_markup::lsp
         }
         const Json *data = params.contains("data") ? &params.at("data") : nullptr;
         const auto version = document->version;
-        auto result = workspace_.compile(*document, data);
+        auto preview_document = *document;
+        if (preview_document.path.extension() == ".em")
+        {
+            const auto parsed = email_markup::parse(0, preview_document.text);
+            preview_document.text = definition_preview_source(parsed, preview_document.text);
+        }
+        const auto request = workspace_.compilation_request(preview_document, data);
+        auto result = workspace_.compile(preview_document, data);
         if (!documents_.has_version(uri, version))
         {
             error(id, -32801, "Preview became stale");
             return;
         }
+        auto output_kind = document->path.extension() == ".emt"
+                               ? std::string{"engine-definition"}
+                           : result.output_kind == email_markup::OutputKind::engine_template
+                               ? std::string{"engine-template"}
+                               : std::string{"final-html"};
+        auto preview_source = document->path.extension() == ".emt"
+                                  ? document->text
+                                  : result.generated.html;
+        if (result.ok() && result.output_kind == email_markup::OutputKind::engine_template &&
+            result.emir)
+        {
+            preview_source = render_emir_sample(
+                *result.emir, request.data, request.limits.maximum_html_bytes);
+            output_kind = "sample-html";
+        }
         respond(id, {{"version", version},
-                     {"html", result.ok() ? Json(result.generated.html) : Json{}},
+                     {"html", result.ok() ? Json(preview_source) : Json(nullptr)},
+                     {"output_kind", output_kind},
                      {"diagnostics", workspace_.diagnostics(result, *document)}});
     }
 } // namespace email_markup::lsp

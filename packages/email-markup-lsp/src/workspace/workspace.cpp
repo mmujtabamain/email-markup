@@ -5,6 +5,8 @@
 #include <utility>
 
 #include "email-markup/core/parser.hpp"
+#include "email-markup/core/engine.hpp"
+#include "email-markup/core/context_schema.hpp"
 #include "email-markup/platform/system.hpp"
 #include "text/positions.hpp"
 
@@ -100,12 +102,27 @@ namespace email_markup::lsp
                 request.allowed_roots.push_back(root);
                 if (config.contains("shell"))
                     request.shell = expand(config.at("shell").get<std::string>(), root);
+                if (config.contains("engine"))
+                    request.engine = expand(config.at("engine").get<std::string>(), root);
                 if (!preview_data && config.contains("data"))
                 {
                     const auto data_path = expand(config.at("data").get<std::string>(), root);
                     const auto raw = read_optional(data_path);
                     if (!raw.empty())
                         request.data = Json::parse(raw);
+                }
+                if (config.contains("context_schema"))
+                {
+                    const auto schema_path = expand(
+                        config.at("context_schema").get<std::string>(), root);
+                    const auto raw = read_optional(schema_path);
+                    if (!raw.empty())
+                    {
+                        request.context_schema = Json::parse(raw);
+                        if (!preview_data && request.data.empty())
+                            request.data = context_schema_example(
+                                parse_context_schema(request.context_schema));
+                    }
                 }
             }
             catch (...)
@@ -118,6 +135,20 @@ namespace email_markup::lsp
     email_markup::CompilationResult Workspace::compile(const OpenDocument &document,
                                                        const Json *preview_data) const
     {
+        if (document.path.extension() == ".emt")
+        {
+            email_markup::CompilationResult result;
+            auto sources = std::make_shared<email_markup::SourceManager>();
+            const auto source = sources->add(document.path, document.text);
+            auto parsed = email_markup::parse_engine_definition(
+                document.path, source, document.text);
+            result.diagnostics = std::move(parsed.diagnostics);
+            auto snapshot = std::make_shared<email_markup::DocumentSnapshot>();
+            snapshot->sources = std::move(sources);
+            snapshot->entry = source;
+            result.snapshot = std::move(snapshot);
+            return result;
+        }
         auto request = compilation_request(document, preview_data);
         email_markup::DiskFileResolver resolver{request.limits.maximum_source_bytes};
         return email_markup::compile(request, resolver);
@@ -141,7 +172,8 @@ namespace email_markup::lsp
                    {"end", text::position_at(source.text, diagnostic.range.end)}}},
                  {"severity", diagnostic.severity == email_markup::Severity::error
                                   ? 1
-                                  : diagnostic.severity == email_markup::Severity::warning ? 2 : 3},
+                              : diagnostic.severity == email_markup::Severity::warning ? 2
+                                                                                       : 3},
                  {"code", diagnostic.code},
                  {"source", "email-markup"},
                  {"message", diagnostic.message}});

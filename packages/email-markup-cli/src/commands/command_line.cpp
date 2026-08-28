@@ -27,6 +27,12 @@ namespace email_markup::cli
                 return Command::format;
             if (command == "build")
                 return Command::build;
+            if (command == "check-ir")
+                return Command::check_ir;
+            if (command == "inspect-ir")
+                return Command::inspect_ir;
+            if (command == "emit")
+                return Command::emit;
             throw std::invalid_argument("unknown command " + std::string{command});
         }
 
@@ -63,7 +69,9 @@ namespace email_markup::cli
                 return argv[index++];
             };
 
-            if (argument == "-o")
+            if (!argument.starts_with('-') && options.input.empty())
+                options.input = argument;
+            else if (argument == "-o")
                 options.output = value();
             else if (argument == "-I")
                 options.includes.emplace_back(value());
@@ -71,6 +79,14 @@ namespace email_markup::cli
                 options.imports.emplace_back(value());
             else if (argument == "--shell")
                 options.shell = value();
+            else if (argument == "--engine")
+                options.engine = value();
+            else if (argument == "--target")
+                options.target = value();
+            else if (argument == "--emit-ir")
+                options.emit_ir = true;
+            else if (argument == "--subject")
+                options.subject = true;
             else if (argument == "--data-json")
                 options.data_json = value();
             else if (argument == "--data-file")
@@ -113,6 +129,10 @@ namespace email_markup::cli
             throw std::invalid_argument("command requires an input file");
         if (options.command == Command::compile && !options.output && !options.request_stdin)
             throw std::invalid_argument("compile requires -o <file>");
+        if (options.emit_ir && options.command != Command::compile)
+            throw std::invalid_argument("--emit-ir is valid only with compile");
+        if (options.command == Command::emit && !options.target)
+            throw std::invalid_argument("emit requires --target <name>");
         return options;
     }
 
@@ -127,6 +147,9 @@ namespace email_markup::cli
                    "  emc check <file> [options]\n"
                    "  emc lint <file> [--role content|shell] [options]\n"
                    "  emc fmt <file> [--write]\n"
+                   "  emc check-ir <file>\n"
+                   "  emc inspect-ir <file>\n"
+                   "  emc emit --target django <file> [-o <file>]\n"
                    "  emc schema\n"
                    "  emc --version\n\n"
                    "Options:\n"
@@ -137,6 +160,10 @@ namespace email_markup::cli
                    "  --data-file <file>  Read the JSON object from a file\n"
                    "  --request-stdin      Compile a versioned virtual-source JSON request\n"
                    "  --shell <file>      Select the final HTML shell\n"
+                   "  --engine <file>     Select a deferred .emt engine\n"
+                   "  --emit-ir           Write canonical EMIR v1 instead of target output\n"
+                   "  --subject           Compile a text-only header-safe subject\n"
+                   "  --target <name>     Select the target for `emc emit`\n"
                    "  --json              Emit machine-readable diagnostics\n",
                    email_markup::version());
     }

@@ -6,16 +6,22 @@ export interface CSSProjection {
 }
 
 function blank(source: string): string[] {
-  return source.split("").map((character) => character === "\n" ? "\n" : " ");
+  return source.split("").map((character) => (character === "\n" ? "\n" : " "));
 }
 
-function copy(characters: string[], source: string, start: number, end: number): void {
-  for (let index = start; index < end; ++index) characters[index] = source[index];
+function copy(
+  characters: string[],
+  source: string,
+  start: number,
+  end: number,
+): void {
+  for (let index = start; index < end; ++index)
+    characters[index] = source[index];
 }
 
 function commentMask(source: string): boolean[] {
   const active = source.split("").map(() => true);
-  for (let index = 0; index < source.length;) {
+  for (let index = 0; index < source.length; ) {
     if (source.startsWith("@*", index)) {
       const close = source.indexOf("*@", index + 2);
       const end = close === -1 ? source.length : close + 2;
@@ -44,7 +50,7 @@ function directiveHeadEnd(source: string, start: number, name: string): number {
     if (quote) {
       if (character === "\\") ++index;
       else if (character === quote) quote = "";
-    } else if (character === "\"" || character === "'") {
+    } else if (character === '"' || character === "'") {
       quote = character;
     } else if (character === "(") {
       ++depth;
@@ -106,10 +112,11 @@ export function cssProjection(source: string): CSSProjection {
   const characters = blank(source);
   const stylesheets = stylesheetRanges(source);
   const declarations = declarationRanges(source);
-  for (const [start, end] of [...stylesheets, ...declarations]) copy(characters, source, start, end);
+  for (const [start, end] of [...stylesheets, ...declarations])
+    copy(characters, source, start, end);
 
   for (const [start, end] of [...stylesheets, ...declarations]) {
-    for (let index = start; index < end;) {
+    for (let index = start; index < end; ) {
       if (!source.startsWith("@{", index)) {
         ++index;
         continue;
@@ -131,9 +138,13 @@ export function cssProjection(source: string): CSSProjection {
       characters[open + 1] = "x";
       characters[open + 2] = "{";
     }
-    if (end < characters.length && characters[end] !== "\n") characters[end] = "}";
+    if (end < characters.length && characters[end] !== "\n")
+      characters[end] = "}";
   }
-  return { text: characters.join(""), ranges: [...stylesheets, ...declarations] };
+  return {
+    text: characters.join(""),
+    ranges: [...stylesheets, ...declarations],
+  };
 }
 
 function directiveEnd(source: string, start: number): number {
@@ -145,14 +156,17 @@ function directiveEnd(source: string, start: number): number {
     if (quote) {
       if (character === "\\") ++index;
       else if (character === quote) quote = "";
-    } else if (character === "\"" || character === "'") {
+    } else if (character === '"' || character === "'") {
       quote = character;
     } else if (character === "(") {
       ++depth;
     } else if (character === ")") {
       if (depth === 0) return index;
       --depth;
-    } else if (depth === 0 && (character === ";" || character === "\n" || character === "<")) {
+    } else if (
+      depth === 0 &&
+      (character === ";" || character === "\n" || character === "<")
+    ) {
       return index;
     } else if (depth === 0 && /\s/.test(character)) {
       return index;
@@ -176,11 +190,12 @@ export function htmlProjection(source: string): string {
       const closePattern = new RegExp(`@/${name}\\b`, "g");
       closePattern.lastIndex = (match.index ?? 0) + match[0].length;
       const close = closePattern.exec(source);
-      if (close) maskRange(characters, match.index ?? 0, close.index + close[0].length);
+      if (close)
+        maskRange(characters, match.index ?? 0, close.index + close[0].length);
     }
   }
 
-  for (let index = 0; index < source.length;) {
+  for (let index = 0; index < source.length; ) {
     if (source.startsWith("@*", index)) {
       const end = source.indexOf("*@", index + 2);
       const limit = end === -1 ? source.length : end + 2;
@@ -211,7 +226,10 @@ export function htmlProjection(source: string): string {
   return characters.join("");
 }
 
-export function inRanges(offset: number, ranges: readonly OffsetRange[]): boolean {
+export function inRanges(
+  offset: number,
+  ranges: readonly OffsetRange[],
+): boolean {
   return ranges.some(([start, end]) => offset >= start && offset <= end);
 }
 
@@ -224,7 +242,10 @@ export function localClasses(source: string): string[] {
   return [...names].sort();
 }
 
-export function isClassAttributeContext(source: string, offset: number): boolean {
+export function isClassAttributeContext(
+  source: string,
+  offset: number,
+): boolean {
   const tagStart = source.lastIndexOf("<", Math.max(0, offset - 1));
   const tagEnd = source.lastIndexOf(">", Math.max(0, offset - 1));
   if (tagStart <= tagEnd) return false;
@@ -234,27 +255,47 @@ export function isClassAttributeContext(source: string, offset: number): boolean
 function isHtmlTagContext(source: string, offset: number): boolean {
   const before = source.slice(0, offset);
   const tagStart = before.lastIndexOf("<");
-  return tagStart > before.lastIndexOf(">") && !/^<style\b[^>]*>[\s\S]*$/i.test(before.slice(tagStart));
+  return (
+    tagStart > before.lastIndexOf(">") &&
+    !/^<style\b[^>]*>[\s\S]*$/i.test(before.slice(tagStart))
+  );
 }
 
 export function isEmmetContext(source: string, offset: number): boolean {
   const lineStart = source.lastIndexOf("\n", Math.max(0, offset - 1)) + 1;
   const abbreviation = source.slice(lineStart, offset).trim();
   if (!abbreviation || /\s/.test(abbreviation)) return false;
-  return /^(?:[A-Za-z][\w-]*)?(?:[.#][\w-]*)+(?:[>+][A-Za-z.#][\w.#-]*)*$/.test(abbreviation)
-    || /^[A-Za-z][\w-]*(?:[>+][A-Za-z.#][\w.#-]*)+$/.test(abbreviation);
+  return (
+    /^(?:[A-Za-z][\w-]*)?(?:[.#][\w-]*)+(?:[>+][A-Za-z.#][\w.#-]*)*$/.test(
+      abbreviation,
+    ) || /^[A-Za-z][\w-]*(?:[>+][A-Za-z.#][\w.#-]*)+$/.test(abbreviation)
+  );
 }
 
-export function webCompletionLanguage(source: string, offset: number): "html" | "css" | undefined {
+export function webCompletionLanguage(
+  source: string,
+  offset: number,
+): "html" | "css" | undefined {
   if (inRanges(offset, cssProjection(source).ranges)) return "css";
-  if (isHtmlTagContext(source, offset) || isEmmetContext(source, offset)) return "html";
+  if (isHtmlTagContext(source, offset) || isEmmetContext(source, offset))
+    return "html";
   return undefined;
 }
 
-export function htmlLinkedRanges(source: string, offset: number): OffsetRange[] {
+export function htmlLinkedRanges(
+  source: string,
+  offset: number,
+): OffsetRange[] {
   const projected = htmlProjection(source);
-  const tags: Array<{ name: string; range: OffsetRange; closing: boolean; selfClosing: boolean }> = [];
-  for (const match of projected.matchAll(/<\s*(\/?)\s*([A-Za-z][\w:-]*)\b[^>]*>/g)) {
+  const tags: Array<{
+    name: string;
+    range: OffsetRange;
+    closing: boolean;
+    selfClosing: boolean;
+  }> = [];
+  for (const match of projected.matchAll(
+    /<\s*(\/?)\s*([A-Za-z][\w:-]*)\b[^>]*>/g,
+  )) {
     const wholeStart = match.index ?? 0;
     const nameStart = wholeStart + match[0].indexOf(match[2]);
     tags.push({
@@ -264,12 +305,18 @@ export function htmlLinkedRanges(source: string, offset: number): OffsetRange[] 
       selfClosing: /\/\s*>$/.test(match[0]),
     });
   }
-  const selected = tags.findIndex(({ range: [start, end] }) => offset >= start && offset <= end);
+  const selected = tags.findIndex(
+    ({ range: [start, end] }) => offset >= start && offset <= end,
+  );
   if (selected === -1) return [];
   const target = tags[selected];
   let depth = 0;
   const direction = target.closing ? -1 : 1;
-  for (let index = selected + direction; index >= 0 && index < tags.length; index += direction) {
+  for (
+    let index = selected + direction;
+    index >= 0 && index < tags.length;
+    index += direction
+  ) {
     const candidate = tags[index];
     if (candidate.name !== target.name || candidate.selfClosing) continue;
     if (candidate.closing === target.closing) ++depth;

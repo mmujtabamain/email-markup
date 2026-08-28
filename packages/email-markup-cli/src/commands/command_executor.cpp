@@ -13,6 +13,9 @@
 #include "compilation/compilation_session.hpp"
 #include "diagnostics/diagnostic_reporter.hpp"
 #include "email-markup/core/format.hpp"
+#include "email-markup/core/emir.hpp"
+#include "email-markup/core/images.hpp"
+#include "email-markup/core/include.hpp"
 #include "email-markup/core/lint.hpp"
 #include "email-markup/core/version.hpp"
 #include "email-markup/platform/system.hpp"
@@ -39,23 +42,24 @@ namespace email_markup::cli
                     {"html", ""},
                     {"dependencies", Json::array()},
                     {"diagnostics", Json::array({{{"code", "EMPROTO"},
-                                                   {"severity", "error"},
-                                                   {"message", message}}})}};
+                                                  {"severity", "error"},
+                                                  {"message", message}}})}};
         }
 
         std::filesystem::path required_virtual_path(const Json &value,
-                                                    const std::string_view field)
+                                                    const std::string_view field,
+                                                    const std::string_view extension = ".em")
         {
             if (!value.is_string())
                 throw std::invalid_argument(std::string{field} + " must be a string");
             const auto raw = value.get<std::string>();
             if (!raw.starts_with('/'))
                 throw std::invalid_argument(std::string{field} +
-                                            " must be an absolute virtual .em path");
+                                            " must be an absolute virtual source path");
             const auto path = email_markup::normalize_virtual_path(raw);
-            if (!path || path->extension() != ".em")
+            if (!path || path->extension() != extension)
                 throw std::invalid_argument(std::string{field} +
-                                            " must be an absolute virtual .em path");
+                                            " has an invalid virtual source extension");
             return *path;
         }
 
@@ -113,6 +117,12 @@ namespace email_markup::cli
             return format(options);
         case Command::build:
             return build(options);
+        case Command::check_ir:
+            return check_ir(options);
+        case Command::inspect_ir:
+            return inspect_ir(options);
+        case Command::emit:
+            return emit(options);
         }
         throw std::invalid_argument("unknown command");
     }
@@ -126,7 +136,19 @@ namespace email_markup::cli
         DiagnosticReporter{options.json}.print(result);
         if (!result.ok())
             return compilation_failed;
-        system_.write_text_file_atomically(*options.output, result.generated.html);
+        if (options.emit_ir)
+        {
+            if (!result.emir)
+            {
+                fmt::print(stderr,
+                           "emc: --emit-ir requires an engine-template compilation\n");
+                return compilation_failed;
+            }
+            system_.write_text_file_atomically(
+                *options.output, email_markup::canonical_emir_json(*result.emir));
+        }
+        else
+            system_.write_text_file_atomically(*options.output, result.generated.html);
         return success;
     }
 
@@ -156,6 +178,11 @@ namespace email_markup::cli
             request.data = envelope.value("recipient", Json::object());
             if (!request.data.is_object())
                 throw std::invalid_argument("recipient must be a JSON object");
+            request.context_schema = envelope.value("context_schema", Json(nullptr));
+            const auto output_context = envelope.value("output_context", std::string{"html"});
+            if (output_context != "html" && output_context != "subject")
+                throw std::invalid_argument("output_context must be html or subject");
+            request.subject = output_context == "subject";
 
             std::vector<email_markup::ResolvedFile> files;
             const auto file_values = envelope.value("files", Json::array());
@@ -177,21 +204,46 @@ namespace email_markup::cli
                 request.shell = required_virtual_path(shell->at("path"), "shell.path");
                 files.push_back({*request.shell, shell->at("source").get<std::string>()});
             }
+            if (const auto engine = envelope.find("engine"); engine != envelope.end())
+            {
+                if (!engine->is_object())
+                    throw std::invalid_argument("engine must be an object");
+                request.engine = required_virtual_path(engine->at("path"), "engine.path",
+                                                       ".emt");
+                files.push_back({*request.engine,
+                                 engine->at("source").get<std::string>()});
+            }
 
             email_markup::MemoryFileResolver resolver{std::move(files),
-                                                       request.limits.maximum_source_bytes};
+                                                      request.limits.maximum_source_bytes};
+            request.image_fetcher =
+                [this](const std::string_view url, const std::size_t maximum_bytes)
+            {
+                auto resource = system_.fetch_http(url, maximum_bytes);
+                return email_markup::ImageResource{std::move(resource.media_type),
+                                                   std::move(resource.bytes)};
+            };
             const auto result = email_markup::compile(request, resolver);
             Json dependencies = Json::array();
             for (const auto &dependency : result.dependencies)
                 dependencies.push_back(email_markup::portable_path_string(dependency));
-            fmt::print("{}\n",
-                       Json{{"protocol", protocol},
+            Json response{{"protocol", protocol},
                             {"version", protocol_version},
                             {"compiler_version", email_markup::version()},
                             {"success", result.ok()},
                             {"html", result.ok() ? result.generated.html : ""},
+                            {"output_kind", result.output_kind == email_markup::OutputKind::engine_template
+                                                ? "engine-template"
+                                                : "final-html"},
                             {"dependencies", dependencies},
-                            {"diagnostics", DiagnosticReporter::serialize(result)}}.dump());
+                            {"diagnostics", DiagnosticReporter::serialize(result)}};
+            if (result.target)
+                response["target"] = {{"name", result.target->name},
+                                      {"engine", email_markup::portable_path_string(
+                                                     result.target->engine)}};
+            if (result.emir)
+                response["emir"] = result.emir->value;
+            fmt::print("{}\n", response.dump());
             return result.ok() ? success : compilation_failed;
         }
         catch (const std::exception &error)
@@ -210,8 +262,8 @@ namespace email_markup::cli
         if (lint_shell && result.ok())
         {
             auto findings = email_markup::lint_html(result.generated.html,
-                                                     email_markup::LintRole::shell,
-                                                     {result.snapshot->entry, 0, 0});
+                                                    email_markup::LintRole::shell,
+                                                    {result.snapshot->entry, 0, 0});
             result.diagnostics.insert(result.diagnostics.end(), findings.begin(), findings.end());
         }
         DiagnosticReporter{options.json}.print(result);
@@ -295,5 +347,43 @@ namespace email_markup::cli
         if (options.json)
             fmt::print("{}\n", Json{{"ok", !failed}, {"files", machine}}.dump());
         return failed ? compilation_failed : success;
+    }
+
+    int CommandExecutor::check_ir(const Options &options) const
+    {
+        const auto parsed = email_markup::parse_emir(system_.read_text_file(options.input));
+        for (const auto &diagnostic : parsed.diagnostics)
+            fmt::print(stderr, "{}: {}\n", diagnostic.code, diagnostic.message);
+        return parsed.ok() ? success : compilation_failed;
+    }
+
+    int CommandExecutor::inspect_ir(const Options &options) const
+    {
+        const auto parsed = email_markup::parse_emir(system_.read_text_file(options.input));
+        for (const auto &diagnostic : parsed.diagnostics)
+            fmt::print(stderr, "{}: {}\n", diagnostic.code, diagnostic.message);
+        if (!parsed.ok())
+            return compilation_failed;
+        fmt::print("{}\n", email_markup::inspect_emir(*parsed.artifact).dump(2));
+        return success;
+    }
+
+    int CommandExecutor::emit(const Options &options) const
+    {
+        const auto parsed = email_markup::parse_emir(system_.read_text_file(options.input));
+        for (const auto &diagnostic : parsed.diagnostics)
+            fmt::print(stderr, "{}: {}\n", diagnostic.code, diagnostic.message);
+        if (!parsed.ok())
+            return compilation_failed;
+        const auto emitted = email_markup::emit_emir(*parsed.artifact, *options.target);
+        for (const auto &diagnostic : emitted.diagnostics)
+            fmt::print(stderr, "{}: {}\n", diagnostic.code, diagnostic.message);
+        if (!emitted.ok())
+            return compilation_failed;
+        if (options.output)
+            system_.write_text_file_atomically(*options.output, emitted.output);
+        else
+            fmt::print("{}", emitted.output);
+        return success;
     }
 } // namespace email_markup::cli

@@ -24,13 +24,20 @@ namespace email_markup::lsp::analysis
     }
 
     PropsCompletionContext props_context_at(const std::string_view text,
-                                             const std::size_t offset)
+                                            const std::size_t offset)
     {
         const auto cursor = std::min(offset, text.size());
-        const auto open = text.rfind("@Props", cursor);
+        const auto props = text.rfind("@Props", cursor);
+        const auto params = text.rfind("@Params", cursor);
+        const auto open = props == std::string_view::npos
+                              ? params
+                          : params == std::string_view::npos
+                              ? props
+                              : std::max(props, params);
         if (open == std::string_view::npos)
             return PropsCompletionContext::none;
-        const auto close = text.rfind("@/Props", cursor);
+        const auto params_block = open == params;
+        const auto close = text.rfind(params_block ? "@/Params" : "@/Props", cursor);
         if (close != std::string_view::npos && close > open)
             return PropsCompletionContext::none;
 
@@ -40,9 +47,16 @@ namespace email_markup::lsp::analysis
         const auto colon = line.find(':');
         if (colon == std::string_view::npos)
             return PropsCompletionContext::none;
-        return line.find('=', colon + 1) == std::string_view::npos
+        if (line.find('=', colon + 1) != std::string_view::npos)
+            return PropsCompletionContext::default_value;
+        auto annotation = line.substr(colon + 1);
+        while (!annotation.empty() &&
+               std::isspace(static_cast<unsigned char>(annotation.front())))
+            annotation.remove_prefix(1);
+        return std::all_of(annotation.begin(), annotation.end(), [](const unsigned char ch)
+                           { return std::isalnum(ch) || ch == '_'; })
                    ? PropsCompletionContext::type
-                   : PropsCompletionContext::default_value;
+                   : PropsCompletionContext::none;
     }
 
     bool slot_requirement_context_at(const std::string_view text, const std::size_t offset)
@@ -86,8 +100,8 @@ namespace email_markup::lsp::analysis
     }
 
     email_markup::SourceRange identifier_range(const std::string_view text,
-                                                const email_markup::SourceRange declaration,
-                                                const std::string_view name)
+                                               const email_markup::SourceRange declaration,
+                                               const std::string_view name)
     {
         const auto start = text.find(name, declaration.start);
         if (start == std::string_view::npos || start >= declaration.end)
@@ -116,7 +130,7 @@ namespace email_markup::lsp::analysis
     }
 
     std::optional<InvocationContext> invocation_at(const std::string_view text,
-                                                    const std::size_t offset)
+                                                   const std::size_t offset)
     {
         std::optional<InvocationContext> result;
         for (std::size_t at = 0; at < offset; ++at)

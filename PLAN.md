@@ -72,15 +72,15 @@ and its own implementation and migration plan.
 
 ### Compiler-owned forms
 
-| Form | Meaning |
-| --- | --- |
-| `@{ expr }` | Evaluate a compile-time expression and emit its scalar text |
-| `@Name( … ) … @/Name` | Component or compiler construct with a body |
-| `@Name( … );` | Component or compiler construct without a body |
-| `@/Name` | Close tag |
-| `@* … *@` | Block comment |
-| `@// …` | Line comment |
-| `@@` | Literal `@` |
+| Form                  | Meaning                                                     |
+| --------------------- | ----------------------------------------------------------- |
+| `@{ expr }`           | Evaluate a compile-time expression and emit its scalar text |
+| `@Name( … ) … @/Name` | Component or compiler construct with a body                 |
+| `@Name( … );`         | Component or compiler construct without a body              |
+| `@/Name`              | Close tag                                                   |
+| `@* … *@`             | Block comment                                               |
+| `@// …`               | Line comment                                                |
+| `@@`                  | Literal `@`                                                 |
 
 `@Component(p1: v1, …);` needs no separate syntax. The trailing semicolon makes
 it void; without one it takes a body and closes with `@/Component`.
@@ -279,23 +279,23 @@ Provenance rules are explicit:
 
 ### Modules
 
-| C++ header | Responsibility |
-| --- | --- |
-| `source.hpp` | snapshots, canonical paths, UTF-8 buffers, line indexes, position conversion |
-| `diagnostic.hpp` | stable codes, ranges, severity, related locations |
-| `provenance.hpp` | `GeneratedHtml` source-map segments and expansion stacks |
-| `lexer.hpp` | Email Markup sigils, comments, strings, source ranges |
-| `ast.hpp` | `std::variant` node model |
-| `expr.hpp` | expression parsing and evaluation |
-| `types.hpp` | component prop parsing and validation |
-| `parser.hpp` | error-recovering recursive descent |
-| `include.hpp` | allowed-root resolution, include-once, cycles, dependency graph |
-| `data.hpp` | JSON object ownership, path resolution, deterministic scalar emission |
-| `css.hpp` | declaration parsing, merge, root styles, class inlining |
-| `styles.hpp` | bundles, tokens, cascade, media validation |
-| `registry.hpp` | component, style, and token definitions |
-| `render.hpp` | bounded component expansion and final HTML generation |
-| `lint.hpp` | mapped email-HTML findings and compliance rules |
+| C++ header       | Responsibility                                                               |
+| ---------------- | ---------------------------------------------------------------------------- |
+| `source.hpp`     | snapshots, canonical paths, UTF-8 buffers, line indexes, position conversion |
+| `diagnostic.hpp` | stable codes, ranges, severity, related locations                            |
+| `provenance.hpp` | `GeneratedHtml` source-map segments and expansion stacks                     |
+| `lexer.hpp`      | Email Markup sigils, comments, strings, source ranges                        |
+| `ast.hpp`        | `std::variant` node model                                                    |
+| `expr.hpp`       | expression parsing and evaluation                                            |
+| `types.hpp`      | component prop parsing and validation                                        |
+| `parser.hpp`     | error-recovering recursive descent                                           |
+| `include.hpp`    | allowed-root resolution, include-once, cycles, dependency graph              |
+| `data.hpp`       | JSON object ownership, path resolution, deterministic scalar emission        |
+| `css.hpp`        | declaration parsing, merge, root styles, class inlining                      |
+| `styles.hpp`     | bundles, tokens, cascade, media validation                                   |
+| `registry.hpp`   | component, style, and token definitions                                      |
+| `render.hpp`     | bounded component expansion and final HTML generation                        |
+| `lint.hpp`       | mapped email-HTML findings and compliance rules                              |
 
 The public boundary is small and re-entrant:
 

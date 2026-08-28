@@ -1,0 +1,35 @@
+@DefineBareTemplate
+  @Params
+    value: path
+  @/Params
+  @Template
+    {{ @{value} }}
+  @/Template
+@/DefineBareTemplate
+
+@DefineTemplate(name: "If")
+  @Params
+    condition: condition
+  @/Params
+  @Slots
+    default: required
+    else: optional
+  @/Slots
+  @Template
+    {% if @{condition} %}@Slot(default);@If(slot.else){% else %}@Slot(else);@/If{% endif %}
+  @/Template
+@/DefineTemplate
+
+@DefineTemplate(name: "For")
+  @Params
+    collection: path
+    binding: name
+    limit: int(1..100) = 20
+  @/Params
+  @Slots
+    default: required
+  @/Slots
+  @Template
+    {% for @{binding} in @{collection}|slice:":@{limit}" %}@Slot(default);{% endfor %}
+  @/Template
+@/DefineTemplate

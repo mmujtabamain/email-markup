@@ -81,6 +81,12 @@ Calls use named props and either a body or a semicolon:
 @Image(src: image_url, alt: "Preview");
 ```
 
+`@Image` embeds an HTTP(S) source as a Base64 data URI during `emc compile`
+and `emc build`. Set `embed: false` to retain the remote URL instead. Downloads
+are limited to public-network image responses of at most 1 MiB. Images larger
+than 100 KiB produce a warning because Base64 expands their size by roughly one
+third and large data URIs have uneven email-client support.
+
 Definitions are Email Markup source:
 
 ```email-markup
@@ -101,10 +107,16 @@ Definitions are Email Markup source:
 @/DefineComponent
 ```
 
-Supported prop types are `string`, `int`, `number`, `bool`, `url`, `email`, and
-`color`. A declaration may be optional with `?`, carry a default with `=`, and
-use a range such as `int(4..120)`. Calls reject missing required props, unknown
-props, invalid values, undeclared slots, and the wrong body form.
+Supported prop types are `string`, `int`, `decimal`, `number`, `bool`, `name`,
+`url`, `email`, and `color`. A declaration may be optional with `?`, carry a
+default with `=`, use an inclusive range such as `int(4..120)`, and add a numeric
+comparison such as `int(1..100) >= 20`. String ranges count Unicode scalar
+values. Integer bounds remain exact integers, while `decimal` requires a JSON
+non-integer number and `number` accepts either numeric form. `name` accepts
+`[A-Za-z_][A-Za-z0-9_]*`. The reserved `raw`, `path`, and `condition` declaration
+types are rejected for ordinary component props. Calls and defaults reject
+missing required props, unknown props, invalid values, undeclared slots, and the
+wrong body form.
 
 Slots are declared as `required` or `optional`. A plain call body fills the
 `default` slot. Named fills use `@Slot(name) ... @/Slot`; templates emit them with
@@ -180,7 +192,10 @@ Compilation performs lexing and recovery, include/import loading, definition and
 type validation, JSON expression evaluation, component/control-flow expansion,
 shell application, style cascade, class CSS inlining, media insertion,
 deliverability lint, and provenance collection. Output and diagnostic writes are
-deterministic. CLI output replacement is atomic.
+deterministic except for explicitly embedded remote image resources. CLI output
+replacement is atomic. `check`, `lint`, and routine language-server diagnostics
+never fetch images; VS Code checks literal remote image sizes in a separate,
+cancellable cached pass.
 
 Default safety limits are 1 MiB per source, 1 MiB JSON, 128 includes, include
 depth 32, expansion depth 64, 10,000 loop iterations, 200,000 AST nodes, 2 MiB
@@ -194,11 +209,18 @@ unsubscribe behavior at the appropriate severity.
 
 ## CLI and exit behavior
 
-`emc compile`, `check`, `lint`, `fmt`, `build`, `schema`, and `--version` are the
-public commands. Exit code 0 is success, 1 is compilation failure, and 2 is usage
+`emc compile`, `check`, `lint`, `fmt`, `build`, `schema`, `check-ir`,
+`inspect-ir`, `emit`, and `--version` are the public commands. Exit code 0 is
+success, 1 is compilation failure, and 2 is usage
 or I/O failure. `--json` returns structured diagnostics with codes, severity,
 source ranges, related locations, and JSON paths while excluding recipient
 values. Diagnostic codes use the `EM` abbreviation, such as `EM0101`.
+
+Email Markup 1.2 adds explicit deferred-engine selection with `@Engine` or
+`--engine`, square-bracket deferred calls, and public canonical EMIR v1.
+`compile --emit-ir` writes the IR, while `emit --target django` is the only
+initial target emitter. See [templates.md](templates.md) for the complete
+versioned contract.
 
 `emc build` recursively compiles `.em` entry files, skipping output, Git,
 dependency, library, brand, and component-definition trees. It preserves

@@ -2,7 +2,7 @@
   "name": "email-markup-language",
   "displayName": "Email Markup Language Support",
   "description": "Language support and secure final-HTML preview for Email Markup documents.",
-  "version": "1.1.0",
+  "version": "0.0.0",
   "publisher": "email-markup-lang",
   "license": "MIT",
   "engines": {
@@ -19,12 +19,19 @@
   },
   "activationEvents": [
     "onLanguage:email-markup",
-    "onCommand:email-markup.preview"
+    "onCommand:email-markup.preview",
+    "onCustomEditor:email-markup.projectConfig",
+    "onCustomEditor:email-markup.contextContract",
+    "onCustomEditor:email-markup.compiledArtifact"
   ],
-  "main": "./dist/extension.js",
+  "main": "./dist/node/extension.js",
+  "browser": "./dist/web/extension.js",
   "files": [
-    "dist/extension.js",
+    "dist/node/extension.js",
+    "dist/web/extension.js",
+    "browser",
     "icons",
+    "schemas",
     "syntaxes",
     "language-configuration.json",
     "server",
@@ -36,7 +43,7 @@
     "compile": "npm run generate && tsc -p . && node scripts/build-extension.mjs",
     "test": "npm run compile && node --test dist/test/*.test.js",
     "test:host": "npm run compile && node dist/test/runTest.js",
-    "package": "npm run compile && npx @vscode/vsce package --allow-missing-repository"
+    "package": "npm run compile && node scripts/package-extension.mjs"
   },
   "contributes": {
     "languages": [
@@ -47,7 +54,8 @@
           "email-markup"
         ],
         "extensions": [
-          ".em"
+          ".em",
+          ".emt"
         ],
         "icon": {
           "light": "./icons/email-markup-light.svg",
@@ -111,9 +119,104 @@
           "type": "string",
           "default": "",
           "description": "Trusted-workspace override for the email-markup-lsp executable."
+        },
+        "email-markup.images.base64WarningBytes": {
+          "type": "number",
+          "default": 102400,
+          "minimum": 1,
+          "description": "Separate remote-image audit warning threshold before Base64 expansion. Ordinary language-server diagnostics never wait on network requests."
         }
       }
-    }
+    },
+    "jsonValidation": [
+      {
+        "fileMatch": [
+          "em.json"
+        ],
+        "url": "./schemas/em.schema.json"
+      },
+      {
+        "fileMatch": [
+          "*.em.schema.json"
+        ],
+        "url": "./schemas/context-v1.schema.json"
+      },
+      {
+        "fileMatch": [
+          "*.emir.json"
+        ],
+        "url": "./schemas/emir-v1.schema.json"
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "email-markup.contextContract",
+        "displayName": "Email Markup context contract",
+        "selector": [
+          {
+            "filenamePattern": "*.em.schema.json"
+          }
+        ],
+        "priority": "default"
+      },
+      {
+        "viewType": "email-markup.projectConfig",
+        "displayName": "Email Markup project",
+        "selector": [
+          {
+            "filenamePattern": "em.json"
+          }
+        ],
+        "priority": "default"
+      },
+      {
+        "viewType": "email-markup.compiledArtifact",
+        "displayName": "Email Markup compiled artifact",
+        "selector": [
+          {
+            "filenamePattern": "**/*.emir.json"
+          },
+          {
+            "filenamePattern": "**/source-map.json"
+          },
+          {
+            "filenamePattern": "**/context-requirements.schema.json"
+          },
+          {
+            "filenamePattern": "**/generated/**/*.json"
+          },
+          {
+            "filenamePattern": "**/.build/**/*.json"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
+    "semanticTokenScopes": [
+      {
+        "language": "email-markup",
+        "scopes": {
+          "keyword": [
+            "keyword.control.email-markup"
+          ],
+          "class": [
+            "entity.name.tag.email-markup"
+          ],
+          "property": [
+            "support.type.property-name.email-markup"
+          ],
+          "variable": [
+            "variable.other.email-markup"
+          ],
+          "parameter": [
+            "variable.parameter.email-markup"
+          ],
+          "type": [
+            "storage.type.email-markup"
+          ]
+        }
+      }
+    ]
   },
   "dependencies": {
     "vscode-languageclient": "^9.0.1"

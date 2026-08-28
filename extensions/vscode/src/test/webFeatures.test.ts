@@ -19,18 +19,19 @@ test("CSS projection preserves style content and source offsets", () => {
 });
 
 test("local CSS classes are available to HTML class attributes", () => {
-  const source = "<style>.card{} .card-title{} .card{}</style><div class=\"\"></div>";
+  const source =
+    '<style>.card{} .card-title{} .card{}</style><div class=""></div>';
   assert.deepEqual(localClasses(source), ["card", "card-title"]);
 });
 
 test("CSS projection covers style tags, inline declarations, styles, and media", () => {
   const source = [
     "<style>.from-tag { color: red; }</style>",
-    "<div style=\"display: block; color: blue\"></div>",
-    "@DefineStyle(name: \"card\")",
+    '<div style="display: block; color: blue"></div>',
+    '@DefineStyle(name: "card")',
     "  padding: 12px;",
     "@/DefineStyle",
-    "@Media(\"(max-width: 600px)\")",
+    '@Media("(max-width: 600px)")',
     "  .from-media { display: block; }",
     "@/Media",
   ].join("\n");
@@ -46,11 +47,11 @@ test("CSS projection covers style tags, inline declarations, styles, and media",
 test("CSS projection ignores commented blocks and masks Email Markup expressions", () => {
   const source = [
     "@*",
-    "@Media(\"(max-width: 600px)\") .ignored { display: block; } @/Media",
-    "<span style=\"color: red\">ignored too</span>",
+    '@Media("(max-width: 600px)") .ignored { display: block; } @/Media',
+    '<span style="color: red">ignored too</span>',
     "*@",
     "@DefineStyle(",
-    "  name: \"card\") color: @{token.accent}; @/DefineStyle",
+    '  name: "card") color: @{token.accent}; @/DefineStyle',
   ].join("\n");
   const projection = cssProjection(source);
   assert.equal(projection.text.length, source.length);
@@ -61,7 +62,8 @@ test("CSS projection ignores commented blocks and masks Email Markup expressions
 });
 
 test("projections preserve UTF-16 offsets and hide Email Markup from HTML", () => {
-  const source = "😀 @Heading Hello @/Heading <p title=\"@{account.name}\">Zażółć</p>";
+  const source =
+    '😀 @Heading Hello @/Heading <p title="@{account.name}">Zażółć</p>';
   const projection = htmlProjection(source);
   assert.equal(projection.length, source.length);
   assert.equal(projection.indexOf("<p"), source.indexOf("<p"));
@@ -76,7 +78,7 @@ test("strict completion contexts separate prose, HTML, CSS, and Emmet", () => {
   assert.equal(webCompletionLanguage("  .card", 7), "html");
   assert.equal(webCompletionLanguage("ordinary sentence.", 18), undefined);
 
-  const css = "@DefineStyle(name: \"card\")\n  color: red;\n@/DefineStyle";
+  const css = '@DefineStyle(name: "card")\n  color: red;\n@/DefineStyle';
   assert.equal(webCompletionLanguage(css, css.indexOf("red")), "css");
   assert.equal(isEmmetContext("ul>li.item", 10), true);
 });
@@ -87,6 +89,9 @@ test("HTML linked ranges pair nested opening and closing tags", () => {
   const ranges = htmlLinkedRanges(source, inner);
   assert.deepEqual(ranges, [
     [inner, inner + "section".length],
-    [source.indexOf("section", inner + 1), source.indexOf("section", inner + 1) + "section".length],
+    [
+      source.indexOf("section", inner + 1),
+      source.indexOf("section", inner + 1) + "section".length,
+    ],
   ]);
 });

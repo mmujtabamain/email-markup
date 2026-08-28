@@ -1,9 +1,14 @@
 # Email Markup Language Support
 
 This extension provides syntax highlighting and an LSP-backed editing
-experience for `.em` files. In a trusted workspace it launches the bundled
+experience for `.em` and `.emt` files. In a trusted workspace it launches the bundled
 `email-markup-lsp` binary for diagnostics, completion, navigation, formatting, and a
 secure final-HTML preview.
+
+Deferred templates receive distinct square-call and parameter highlighting,
+packaged-engine diagnostics, symbols, completion, and hover. The editor and
+language server never execute Django; engine-template preview remains visibly
+unrendered target source until a trusted host renders it.
 
 Completions are context-sensitive: `@` enters Email Markup constructs, `<` enters HTML,
 and CSS features activate in `<style>`, inline `style` attributes,
@@ -17,3 +22,8 @@ Untrusted workspaces receive grammar-only highlighting. Preview HTML runs with
 scripts disabled and no local resource roots. Remote images are replaced with
 inert placeholders unless **Email Markup: Load Remote Preview Images** is invoked for the
 current panel.
+
+Literal `@Image` URLs are size-checked in a separate cancellable background pass,
+so compiler diagnostics never wait on network requests. The warning threshold is
+configured with `email-markup.images.base64WarningBytes`; use `embed: false` when
+an image should remain remote.

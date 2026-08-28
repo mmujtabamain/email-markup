@@ -4,45 +4,73 @@ import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const extension = resolve(here, "..");
-const lexical = JSON.parse(await readFile(resolve(extension, "../../syntax/lexical.json"), "utf8"));
+const lexical = JSON.parse(
+  await readFile(resolve(extension, "../../syntax/lexical.json"), "utf8"),
+);
+const declarationTypes = [
+  ...new Set([...lexical.propTypes, ...lexical.deferredParameterTypes]),
+].join("|");
 
 const grammar = {
-  $schema: "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  $schema:
+    "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
   name: "Email Markup",
   scopeName: "source.email-markup",
   patterns: [
     { include: "#comments" },
     { include: "#interpolation" },
     { include: "#props" },
+    { include: "#params" },
     { include: "#slots" },
     { include: "#defineStyle" },
     { include: "#media" },
     { include: "#close" },
+    { include: "#deferred" },
     { include: "#invocation" },
     { include: "#construct" },
     { include: "#escaped" },
-    { include: "text.html.basic" }
+    { include: "text.html.basic" },
   ],
   repository: {
     comments: {
       patterns: [
         { name: "comment.block.email-markup", begin: "@\\*", end: "\\*@" },
-        { name: "comment.line.double-slash.email-markup", begin: "@//", end: "$" }
-      ]
+        {
+          name: "comment.line.double-slash.email-markup",
+          begin: "@//",
+          end: "$",
+        },
+      ],
     },
     interpolation: {
       name: "meta.interpolation.email-markup",
       begin: "@\\{",
-      beginCaptures: { 0: { name: "punctuation.section.interpolation.begin.email-markup" } },
+      beginCaptures: {
+        0: { name: "punctuation.section.interpolation.begin.email-markup" },
+      },
       end: "\\}",
-      endCaptures: { 0: { name: "punctuation.section.interpolation.end.email-markup" } },
+      endCaptures: {
+        0: { name: "punctuation.section.interpolation.end.email-markup" },
+      },
       patterns: [
-        { name: "keyword.operator.word.email-markup", match: "\\b(?:and|or|not|in)\\b" },
-        { name: "constant.language.email-markup", match: "\\b(?:true|false|null)\\b" },
-        { name: "constant.numeric.email-markup", match: "-?\\b\\d+(?:\\.\\d+)?\\b" },
-        { name: "string.quoted.double.email-markup", begin: "\"", end: "\"" },
-        { name: "variable.other.email-markup", match: "[A-Za-z_][A-Za-z0-9_.]*" }
-      ]
+        {
+          name: "keyword.operator.word.email-markup",
+          match: "\\b(?:and|or|not|in)\\b",
+        },
+        {
+          name: "constant.language.email-markup",
+          match: "\\b(?:true|false|null)\\b",
+        },
+        {
+          name: "constant.numeric.email-markup",
+          match: "-?\\b\\d+(?:\\.\\d+)?\\b",
+        },
+        { name: "string.quoted.double.email-markup", begin: '"', end: '"' },
+        {
+          name: "variable.other.email-markup",
+          match: "[A-Za-z_][A-Za-z0-9_.]*",
+        },
+      ],
     },
     props: {
       name: "meta.block.props.email-markup",
@@ -60,7 +88,8 @@ const grammar = {
         { include: "#comments" },
         { include: "#interpolation" },
         {
-          match: "\\b([A-Za-z_][A-Za-z0-9_]*)(\\??)(\\s*)(:)(\\s*)([A-Za-z_][A-Za-z0-9_]*(?:\\([^)]*\\))?)",
+          match:
+            `\\b([A-Za-z_][A-Za-z0-9_]*)(\\??)(\\s*)(:)(\\s*)(${declarationTypes})\\b`,
           captures: {
             1: { name: "support.type.property-name.email-markup" },
             2: { name: "keyword.operator.optional.email-markup" },
@@ -68,11 +97,24 @@ const grammar = {
             6: { name: "storage.type.email-markup" },
           },
         },
+        {
+          name: "keyword.operator.comparison.email-markup",
+          match: "(?:\\.\\.|>=|<=|>|<)",
+        },
         { name: "keyword.operator.assignment.email-markup", match: "=" },
-        { name: "constant.language.email-markup", match: "\\b(?:true|false|null)\\b" },
-        { name: "constant.numeric.email-markup", match: "-?\\b\\d+(?:\\.\\d+)?\\b" },
-        { name: "string.quoted.double.email-markup", begin: "\"", end: "\"" },
-        { name: "variable.other.email-markup", match: "[A-Za-z_][A-Za-z0-9_.]*" },
+        {
+          name: "constant.language.email-markup",
+          match: "\\b(?:true|false|null)\\b",
+        },
+        {
+          name: "constant.numeric.email-markup",
+          match: "-?\\b\\d+(?:\\.\\d+)?\\b",
+        },
+        { name: "string.quoted.double.email-markup", begin: '"', end: '"' },
+        {
+          name: "variable.other.email-markup",
+          match: "[A-Za-z_][A-Za-z0-9_.]*",
+        },
       ],
     },
     slots: {
@@ -87,14 +129,17 @@ const grammar = {
         1: { name: "punctuation.definition.tag.email-markup" },
         2: { name: "keyword.control.email-markup" },
       },
-      patterns: [{
-        match: "\\b([A-Za-z_][A-Za-z0-9_]*)(\\s*)(:)(\\s*)(required|optional)\\b",
-        captures: {
-          1: { name: "variable.parameter.email-markup" },
-          3: { name: "punctuation.separator.key-value.email-markup" },
-          5: { name: "storage.modifier.email-markup" },
+      patterns: [
+        {
+          match:
+            "\\b([A-Za-z_][A-Za-z0-9_]*)(\\s*)(:)(\\s*)(required|optional)\\b",
+          captures: {
+            1: { name: "variable.parameter.email-markup" },
+            3: { name: "punctuation.separator.key-value.email-markup" },
+            5: { name: "storage.modifier.email-markup" },
+          },
         },
-      }],
+      ],
     },
     defineStyle: {
       name: "meta.embedded.block.css.email-markup",
@@ -135,9 +180,13 @@ const grammar = {
     namedDefinitionArguments: {
       name: "meta.arguments.email-markup",
       begin: "\\G(\\s*)(\\()",
-      beginCaptures: { 2: { name: "punctuation.section.arguments.begin.email-markup" } },
+      beginCaptures: {
+        2: { name: "punctuation.section.arguments.begin.email-markup" },
+      },
       end: "\\)",
-      endCaptures: { 0: { name: "punctuation.section.arguments.end.email-markup" } },
+      endCaptures: {
+        0: { name: "punctuation.section.arguments.end.email-markup" },
+      },
       patterns: [
         {
           match: "\\b(name)(\\s*)(:)",
@@ -146,23 +195,29 @@ const grammar = {
             3: { name: "punctuation.separator.key-value.email-markup" },
           },
         },
-        { name: "string.quoted.double.email-markup", begin: "\"", end: "\"" },
+        { name: "string.quoted.double.email-markup", begin: '"', end: '"' },
       ],
     },
     positionalStringArguments: {
       name: "meta.arguments.email-markup",
       begin: "\\G(\\s*)(\\()",
-      beginCaptures: { 2: { name: "punctuation.section.arguments.begin.email-markup" } },
+      beginCaptures: {
+        2: { name: "punctuation.section.arguments.begin.email-markup" },
+      },
       end: "\\)",
-      endCaptures: { 0: { name: "punctuation.section.arguments.end.email-markup" } },
-      patterns: [{ name: "string.quoted.double.email-markup", begin: "\"", end: "\"" }],
+      endCaptures: {
+        0: { name: "punctuation.section.arguments.end.email-markup" },
+      },
+      patterns: [
+        { name: "string.quoted.double.email-markup", begin: '"', end: '"' },
+      ],
     },
     close: {
       match: "@/([A-Z][A-Za-z0-9_]*)",
       captures: {
         0: { name: "punctuation.definition.tag.email-markup" },
-        1: { name: "entity.name.tag.email-markup" }
-      }
+        1: { name: "entity.name.tag.email-markup" },
+      },
     },
     invocation: {
       name: "meta.function-call.email-markup",
@@ -173,7 +228,9 @@ const grammar = {
         4: { name: "punctuation.section.arguments.begin.email-markup" },
       },
       end: "\\)",
-      endCaptures: { 0: { name: "punctuation.section.arguments.end.email-markup" } },
+      endCaptures: {
+        0: { name: "punctuation.section.arguments.end.email-markup" },
+      },
       patterns: [
         { include: "#comments" },
         { include: "#interpolation" },
@@ -185,50 +242,112 @@ const grammar = {
           },
         },
         { name: "punctuation.separator.arguments.email-markup", match: "," },
-        { name: "keyword.operator.word.email-markup", match: "\\b(?:and|or|not|in)\\b" },
-        { name: "keyword.operator.email-markup", match: "(?:==|!=|<=|>=|[+\\-*/%<>])" },
-        { name: "constant.language.email-markup", match: "\\b(?:true|false|null)\\b" },
-        { name: "constant.numeric.email-markup", match: "-?\\b\\d+(?:\\.\\d+)?\\b" },
+        {
+          name: "keyword.operator.word.email-markup",
+          match: "\\b(?:and|or|not|in)\\b",
+        },
+        {
+          name: "keyword.operator.email-markup",
+          match: "(?:==|!=|<=|>=|[+\\-*/%<>])",
+        },
+        {
+          name: "constant.language.email-markup",
+          match: "\\b(?:true|false|null)\\b",
+        },
+        {
+          name: "constant.numeric.email-markup",
+          match: "-?\\b\\d+(?:\\.\\d+)?\\b",
+        },
         {
           name: "string.quoted.double.email-markup",
-          begin: "\"",
-          end: "\"",
+          begin: '"',
+          end: '"',
           patterns: [{ include: "#interpolation" }, { include: "#escaped" }],
         },
-        { name: "variable.other.readwrite.email-markup", match: "[A-Za-z_][A-Za-z0-9_.]*" },
+        {
+          name: "variable.other.readwrite.email-markup",
+          match: "[A-Za-z_][A-Za-z0-9_.]*",
+        },
+      ],
+    },
+    deferred: {
+      name: "meta.deferred-call.email-markup",
+      begin: "(@)([A-Z][A-Za-z0-9_]*)?(\\[)",
+      beginCaptures: {
+        1: { name: "punctuation.definition.tag.email-markup" },
+        2: { name: "entity.name.function.deferred.email-markup" },
+        3: { name: "punctuation.section.deferred.begin.email-markup" },
+      },
+      end: "(?<!\\\\)(\\])",
+      endCaptures: {
+        1: { name: "punctuation.section.deferred.end.email-markup" },
+      },
+      patterns: [
+        { include: "#interpolation" },
+        { name: "constant.character.escape.email-markup", match: "\\\\[\\],\\\\]" },
+        { name: "keyword.operator.word.email-markup", match: "\\b(?:and|or|not)\\b" },
+        { name: "keyword.operator.email-markup", match: "(?:==|!=|<=|>=|[<>])" },
+        { name: "support.type.property-name.email-markup", match: "\\b[A-Za-z_][A-Za-z0-9_]*(?=\\s*:)" },
+        { name: "variable.other.deferred.email-markup", match: "[A-Za-z_][A-Za-z0-9_.]*" },
       ],
     },
     construct: {
       match: "@([A-Z][A-Za-z0-9_]*)",
       captures: {
         0: { name: "punctuation.definition.tag.email-markup" },
-        1: { name: "entity.name.tag.email-markup" }
-      }
+        1: { name: "entity.name.tag.email-markup" },
+      },
     },
-    escaped: { name: "constant.character.escape.email-markup", match: "@@" }
+    escaped: { name: "constant.character.escape.email-markup", match: "@@" },
   },
-  metadata: { generatedFrom: "syntax/lexical.json", version: lexical.version }
+  metadata: { generatedFrom: "syntax/lexical.json", version: lexical.version },
 };
 
+grammar.repository.params = structuredClone(grammar.repository.props);
+grammar.repository.params.name = "meta.block.params.email-markup";
+grammar.repository.params.begin = "(@)(Params)\\b";
+grammar.repository.params.end = "(@/)(Params)\\b";
+
 const languageConfiguration = {
-  comments: { lineComment: lexical.lineComment, blockComment: lexical.blockComment },
+  comments: {
+    lineComment: lexical.lineComment,
+    blockComment: lexical.blockComment,
+  },
   wordPattern: "@/?[A-Z][A-Za-z0-9_]*|[A-Za-z_][A-Za-z0-9_.-]*",
-  brackets: [["(", ")"], ["{", "}"]],
+  brackets: [
+    ["(", ")"],
+    ["{", "}"],
+    ["[", "]"],
+  ],
   autoClosingPairs: [
     { open: "(", close: ")" },
     { open: "{", close: "}" },
-    { open: "\"", close: "\"", notIn: ["string", "comment"] }
+    { open: "[", close: "]" },
+    { open: '"', close: '"', notIn: ["string", "comment"] },
   ],
-  surroundingPairs: [["(", ")"], ["{", "}"], ["\"", "\""]],
-  folding: { markers: { start: "^\\s*@(?!Else\\b)[A-Z][A-Za-z0-9_]*(?:\\([^)]*\\))?\\s*$", end: "^\\s*@/[A-Z][A-Za-z0-9_]*\\s*$" } },
-  indentationRules: {
-    increaseIndentPattern: "^.*@(?!Else\\b)[A-Z][A-Za-z0-9_]*(?:\\([^)]*\\))?\\s*$",
-    decreaseIndentPattern: "^\\s*@/[A-Z][A-Za-z0-9_]*"
+  surroundingPairs: [
+    ["(", ")"],
+    ["{", "}"],
+    ["[", "]"],
+    ['"', '"'],
+  ],
+  folding: {
+    markers: {
+      start: "^\\s*@(?!Else\\b)[A-Z][A-Za-z0-9_]*(?:\\([^)]*\\))?\\s*$",
+      end: "^\\s*@/[A-Z][A-Za-z0-9_]*\\s*$",
+    },
   },
-  onEnterRules: [{
-    beforeText: "^\\s*@[A-Z][A-Za-z0-9_]*\\([^)]*$",
-    action: { indent: "indent" },
-  }],
+  indentationRules: {
+    increaseIndentPattern:
+      "^.*@(?!Else\\b)[A-Z][A-Za-z0-9_]*(?:\\([^)]*\\))?\\s*$",
+    decreaseIndentPattern: "^\\s*@/[A-Z][A-Za-z0-9_]*",
+  },
+  onEnterRules: [
+    {
+      beforeText: "^\\s*@[A-Z][A-Za-z0-9_]*\\([^)]*$",
+      action: { indent: "indent" },
+    },
+  ],
 };
 
 const injectionGrammar = {
@@ -240,10 +359,12 @@ const injectionGrammar = {
     { include: "source.email-markup#comments" },
     { include: "source.email-markup#interpolation" },
     { include: "source.email-markup#props" },
+    { include: "source.email-markup#params" },
     { include: "source.email-markup#slots" },
     { include: "source.email-markup#defineStyle" },
     { include: "source.email-markup#media" },
     { include: "source.email-markup#close" },
+    { include: "source.email-markup#deferred" },
     { include: "source.email-markup#invocation" },
     { include: "source.email-markup#construct" },
     { include: "source.email-markup#escaped" },
@@ -252,6 +373,15 @@ const injectionGrammar = {
 };
 
 await mkdir(resolve(extension, "syntaxes"), { recursive: true });
-await writeFile(resolve(extension, "syntaxes/email-markup.tmLanguage.json"), `${JSON.stringify(grammar, null, 2)}\n`);
-await writeFile(resolve(extension, "syntaxes/email-markup.injection.tmLanguage.json"), `${JSON.stringify(injectionGrammar, null, 2)}\n`);
-await writeFile(resolve(extension, "language-configuration.json"), `${JSON.stringify(languageConfiguration, null, 2)}\n`);
+await writeFile(
+  resolve(extension, "syntaxes/email-markup.tmLanguage.json"),
+  `${JSON.stringify(grammar, null, 2)}\n`,
+);
+await writeFile(
+  resolve(extension, "syntaxes/email-markup.injection.tmLanguage.json"),
+  `${JSON.stringify(injectionGrammar, null, 2)}\n`,
+);
+await writeFile(
+  resolve(extension, "language-configuration.json"),
+  `${JSON.stringify(languageConfiguration, null, 2)}\n`,
+);

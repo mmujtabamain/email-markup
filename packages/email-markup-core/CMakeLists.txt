@@ -4,11 +4,16 @@ add_library(
     src/compilation/compiler.cpp
     src/compilation/loader.cpp
     src/compilation/tokens.cpp
+    src/context_schema.cpp
+    src/sample_preview.cpp
     src/data.cpp
     src/diagnostic.cpp
+    src/engine.cpp
+    src/emir.cpp
     src/expr.cpp
     src/format.cpp
     src/include.cpp
+    src/images.cpp
     src/lexer.cpp
     src/lint.cpp
     src/parser.cpp
@@ -35,6 +40,10 @@ target_include_directories(
 target_link_libraries(email-markup-core PUBLIC nlohmann_json::nlohmann_json)
 
 target_compile_features(email-markup-core PUBLIC cxx_std_23)
+target_compile_definitions(
+    email-markup-core
+    PRIVATE EMAIL_MARKUP_VERSION="${PROJECT_VERSION}"
+)
 
 set_target_properties(email-markup-core PROPERTIES OUTPUT_NAME email-markup-core)
 

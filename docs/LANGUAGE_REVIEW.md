@@ -19,8 +19,10 @@ work.
 - Missing data, wrong types, invalid values, unknown props/slots, and unsupported
   deferred syntax remain errors. There is no implicit string or empty-value
   coercion.
-- Formatting remains conservative and idempotent. It normalizes line endings and
-  directive indentation without rewriting raw HTML, CSS, or author prose.
+- Formatting has one implementation in `emc`: it normalizes line endings,
+  separates includes, and lays out structural HTML while preserving inline
+  phrasing and raw CSS or preformatted content. The language server delegates to
+  the same implementation.
 - Diagnostic codes remain grouped by compiler area and machine output retains
   source ranges, related locations, and JSON paths without recipient values.
 

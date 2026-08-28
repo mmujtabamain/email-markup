@@ -10,56 +10,82 @@
 #include "email-markup/core/ast.hpp"
 #include "email-markup/core/diagnostic.hpp"
 #include "email-markup/core/expr.hpp"
+#include "email-markup/core/emir.hpp"
 #include "email-markup/core/include.hpp"
+#include "email-markup/core/images.hpp"
 #include "email-markup/core/provenance.hpp"
 #include "email-markup/core/registry.hpp"
 
-namespace email_markup {
+namespace email_markup
+{
 
-class CancellationToken {
-public:
-    CancellationToken() = default;
-    explicit CancellationToken(std::shared_ptr<std::atomic_bool> flag);
-    [[nodiscard]] bool is_cancelled() const noexcept;
+    class CancellationToken
+    {
+    public:
+        CancellationToken() = default;
+        explicit CancellationToken(std::shared_ptr<std::atomic_bool> flag);
+        [[nodiscard]] bool is_cancelled() const noexcept;
 
-private:
-    std::shared_ptr<std::atomic_bool> flag_;
-};
+    private:
+        std::shared_ptr<std::atomic_bool> flag_;
+    };
 
-struct CompilationLimits {
-    std::size_t maximum_source_bytes{1024 * 1024};
-    std::size_t maximum_json_bytes{1024 * 1024};
-    std::size_t maximum_includes{128};
-    std::size_t maximum_include_depth{32};
-    std::size_t maximum_expansion_depth{64};
-    std::size_t maximum_loop_iterations{10000};
-    std::size_t maximum_ast_nodes{200000};
-    std::size_t maximum_html_bytes{2 * 1024 * 1024};
-    std::size_t maximum_diagnostics{100};
-};
+    struct CompilationLimits
+    {
+        std::size_t maximum_source_bytes{1024 * 1024};
+        std::size_t maximum_json_bytes{1024 * 1024};
+        std::size_t maximum_includes{128};
+        std::size_t maximum_include_depth{32};
+        std::size_t maximum_expansion_depth{64};
+        std::size_t maximum_loop_iterations{10000};
+        std::size_t maximum_ast_nodes{200000};
+        std::size_t maximum_html_bytes{2 * 1024 * 1024};
+        std::size_t maximum_diagnostics{100};
+    };
 
-struct CompilationRequest {
-    std::filesystem::path entry_path;
-    std::string source;
-    Json data{Json::object()};
-    std::vector<std::filesystem::path> include_directories;
-    std::vector<std::filesystem::path> allowed_roots;
-    std::vector<std::filesystem::path> imports;
-    std::optional<std::filesystem::path> shell;
-    CompilationLimits limits;
-};
+    struct CompilationRequest
+    {
+        std::filesystem::path entry_path;
+        std::string source;
+        Json data{Json::object()};
+        Json context_schema = nullptr;
+        std::vector<std::filesystem::path> include_directories;
+        std::vector<std::filesystem::path> allowed_roots;
+        std::vector<std::filesystem::path> imports;
+        std::optional<std::filesystem::path> shell;
+        std::optional<std::filesystem::path> engine;
+        bool subject{};
+        ImageFetcher image_fetcher;
+        CompilationLimits limits;
+    };
 
-struct CompilationResult {
-    std::shared_ptr<const DocumentSnapshot> snapshot;
-    GeneratedHtml generated;
-    std::vector<std::filesystem::path> dependencies;
-    std::vector<Diagnostic> diagnostics;
+    enum class OutputKind
+    {
+        final_html,
+        engine_template
+    };
 
-    [[nodiscard]] bool ok() const noexcept;
-};
+    struct TargetIdentity
+    {
+        std::string name;
+        std::filesystem::path engine;
+    };
 
-[[nodiscard]] CompilationResult compile(
-    const CompilationRequest& request, FileResolver& files,
-    CancellationToken cancellation = {});
+    struct CompilationResult
+    {
+        std::shared_ptr<const DocumentSnapshot> snapshot;
+        GeneratedHtml generated;
+        OutputKind output_kind{OutputKind::final_html};
+        std::optional<TargetIdentity> target;
+        std::optional<EmirArtifact> emir;
+        std::vector<std::filesystem::path> dependencies;
+        std::vector<Diagnostic> diagnostics;
 
-}  // namespace email_markup
+        [[nodiscard]] bool ok() const noexcept;
+    };
+
+    [[nodiscard]] CompilationResult compile(
+        const CompilationRequest &request, FileResolver &files,
+        CancellationToken cancellation = {});
+
+} // namespace email_markup

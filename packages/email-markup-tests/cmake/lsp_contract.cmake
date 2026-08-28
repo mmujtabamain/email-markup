@@ -1,4 +1,14 @@
 set(URI "file://${SOURCE_DIR}/examples/lsp_contract.em")
+set(EMT_URI "file://${SOURCE_DIR}/examples/lsp_contract.emt")
+set(SCHEMA_DIR "${BINARY_DIR}/lsp-schema-contract")
+file(MAKE_DIRECTORY "${SCHEMA_DIR}")
+file(WRITE "${SCHEMA_DIR}/context.em.schema.json"
+     "{\"format\":\"email-markup-context\",\"version\":1,\"name\":\"email-context\",\"fields\":{\"business\":{\"type\":\"object\",\"required\":true,\"fields\":{\"name\":{\"type\":\"name\",\"required\":true,\"description\":\"Business display name\",\"example\":\"Acme\"}}}}}")
+file(WRITE "${SCHEMA_DIR}/em.json"
+     "{\"include\":[\"${SOURCE_DIR}/lib\"],\"imports\":[\"${SOURCE_DIR}/lib/builtins.em\"],\"context_schema\":\"context.em.schema.json\"}")
+set(SCHEMA_URI "file://${SCHEMA_DIR}/schema-preview.em")
+set(COMPONENT_URI "file://${SCHEMA_DIR}/component-preview.em")
+set(DEFERRED_URI "file://${SCHEMA_DIR}/deferred-preview.em")
 set(WIRE "")
 
 function(append_message BODY)
@@ -8,7 +18,7 @@ endfunction()
 
 append_message("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"workspaceFolders\":[{\"uri\":\"file://${SOURCE_DIR}\",\"name\":\"email-markup\"}],\"capabilities\":{}}}")
 append_message("{\"jsonrpc\":\"2.0\",\"method\":\"initialized\",\"params\":{}}")
-append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"${URI}\",\"languageId\":\"email-markup\",\"version\":1,\"text\":\"@DefineComponent(name: \\\"Card\\\")\\n  @Props\\n    title: string\\n  @/Props\\n  @Slots\\n    default: required\\n  @/Slots\\n  @Template\\n    <section>@{title}: @Slot(default);</section>\\n  @/Template\\n@/DefineComponent\\n\\n@Card(title: \\\"Greeting\\\") \\ud83d\\udc4b Hi @/Card\\n@Include(\\\"08-includes/components/notice.em\\\");\\nordinary Card prose\"}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"${URI}\",\"languageId\":\"email-markup\",\"version\":1,\"text\":\"@DefineComponent(name: \\\"Card\\\")\\n  @Props\\n    title: string(1..120)\\n  @/Props\\n  @Slots\\n    default: required\\n  @/Slots\\n  @Template\\n    <section>@{title}: @Slot(default);</section>\\n  @/Template\\n@/DefineComponent\\n\\n@Card(title: \\\"Greeting\\\") \\ud83d\\udc4b Hi @/Card\\n@Include(\\\"08-includes/components/notice.em\\\");\\nordinary Card prose\"}}}")
 append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didChange\",\"params\":{\"textDocument\":{\"uri\":\"${URI}\",\"version\":2},\"contentChanges\":[{\"range\":{\"start\":{\"line\":12,\"character\":28},\"end\":{\"line\":12,\"character\":30}},\"text\":\"Hello\"}]}}")
 append_message("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"textDocument/completion\",\"params\":{\"textDocument\":{\"uri\":\"${URI}\"},\"position\":{\"line\":12,\"character\":2}}}")
 append_message("{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"textDocument/hover\",\"params\":{\"textDocument\":{\"uri\":\"${URI}\"},\"position\":{\"line\":12,\"character\":3}}}")
@@ -33,6 +43,23 @@ append_message("{\"jsonrpc\":\"2.0\",\"id\":23,\"method\":\"textDocument/hover\"
 append_message("{\"jsonrpc\":\"2.0\",\"method\":\"$/cancelRequest\",\"params\":{\"id\":11}}")
 append_message("{\"jsonrpc\":\"2.0\",\"id\":11,\"method\":\"textDocument/completion\",\"params\":{\"textDocument\":{\"uri\":\"${URI}\"},\"position\":{\"line\":12,\"character\":2}}}")
 append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didClose\",\"params\":{\"textDocument\":{\"uri\":\"${URI}\"}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"${EMT_URI}\",\"languageId\":\"email-markup\",\"version\":1,\"text\":\"@Engine(name: \\\"django\\\", version: \\\"1\\\")\\n  @Params\\n    condition: condition\\n  @/Params\\n  @DefineTemplate(name: \\\"If\\\")\\n    @Params\\n      condition: condition\\n    @/Params\\n    @Template\\n      {% if @{condition} %}@Slot(default);{% endif %}\\n    @/Template\\n  @/DefineTemplate\\n@/Engine\\n\\n@If[recipient.active];\"}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"id\":24,\"method\":\"textDocument/completion\",\"params\":{\"textDocument\":{\"uri\":\"${EMT_URI}\"},\"position\":{\"line\":2,\"character\":15}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"id\":25,\"method\":\"textDocument/documentSymbol\",\"params\":{\"textDocument\":{\"uri\":\"${EMT_URI}\"}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"id\":26,\"method\":\"email-markup/preview\",\"params\":{\"uri\":\"${EMT_URI}\"}}")
+append_message("{\"jsonrpc\":\"2.0\",\"id\":27,\"method\":\"textDocument/hover\",\"params\":{\"textDocument\":{\"uri\":\"${EMT_URI}\"},\"position\":{\"line\":14,\"character\":2}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didClose\",\"params\":{\"textDocument\":{\"uri\":\"${EMT_URI}\"}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"${SCHEMA_URI}\",\"languageId\":\"email-markup\",\"version\":1,\"text\":\"<p>@{business.name}</p>\"}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"id\":28,\"method\":\"textDocument/completion\",\"params\":{\"textDocument\":{\"uri\":\"${SCHEMA_URI}\"},\"position\":{\"line\":0,\"character\":14}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"id\":29,\"method\":\"textDocument/hover\",\"params\":{\"textDocument\":{\"uri\":\"${SCHEMA_URI}\"},\"position\":{\"line\":0,\"character\":13}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"id\":30,\"method\":\"email-markup/preview\",\"params\":{\"uri\":\"${SCHEMA_URI}\"}}")
+append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didClose\",\"params\":{\"textDocument\":{\"uri\":\"${SCHEMA_URI}\"}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"${COMPONENT_URI}\",\"languageId\":\"email-markup\",\"version\":1,\"text\":\"@DefineComponent(name: \\\"Badge\\\")\\n  @Props\\n    label: string\\n  @/Props\\n  @Template\\n    <strong>@{label}</strong>\\n  @/Template\\n@/DefineComponent\"}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"id\":31,\"method\":\"email-markup/preview\",\"params\":{\"uri\":\"${COMPONENT_URI}\"}}")
+append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didClose\",\"params\":{\"textDocument\":{\"uri\":\"${COMPONENT_URI}\"}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didOpen\",\"params\":{\"textDocument\":{\"uri\":\"${DEFERRED_URI}\",\"languageId\":\"email-markup\",\"version\":1,\"text\":\"@Engine(\\\"engines/django.emt\\\"); <p>@[business.name]</p>\"}}}")
+append_message("{\"jsonrpc\":\"2.0\",\"id\":32,\"method\":\"email-markup/preview\",\"params\":{\"uri\":\"${DEFERRED_URI}\"}}")
+append_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/didClose\",\"params\":{\"textDocument\":{\"uri\":\"${DEFERRED_URI}\"}}}")
 append_message("{\"jsonrpc\":\"2.0\",\"id\":10,\"method\":\"shutdown\",\"params\":null}")
 append_message("{\"jsonrpc\":\"2.0\",\"method\":\"exit\",\"params\":null}")
 
@@ -56,6 +83,7 @@ foreach(REQUIRED
     "Compile data"
     "builtins.em"
     "Email Markup prop: string"
+    "1..120"
     "\\\"id\\\":3"
     "\\\"id\\\":4"
     "\\\"id\\\":5"
@@ -69,6 +97,8 @@ foreach(REQUIRED
     "\\\"id\\\":15"
     "\\\"id\\\":16"
     "Email Markup prop type"
+    "\\\"label\\\":\\\"decimal\\\""
+    "\\\"label\\\":\\\"name\\\""
     "\\\"id\\\":17"
     "Email Markup slot requirement"
     "\\\"id\\\":18"
@@ -78,7 +108,26 @@ foreach(REQUIRED
     "\\\"id\\\":21"
     "\\\"id\\\":22"
     "\\\"id\\\":23"
+    "\\\"id\\\":24"
+    "Deferred macro parameter type"
+    "\\\"id\\\":25"
+    "\\\"name\\\":\\\"If\\\""
+    "\\\"id\\\":26"
+    "\\\"output_kind\\\":\\\"engine-definition\\\""
+    "\\\"html\\\":\\\"@Engine"
+    "\\\"id\\\":27"
+    "Typed recipient-time condition"
     "\\\"html\\\":\\\""
+    "\\\"id\\\":28"
+    "business.name"
+    "Business display name"
+    "\\\"id\\\":29"
+    "\\\"id\\\":30"
+    "<p>Acme</p>"
+    "\\\"id\\\":31"
+    "<strong>String</strong>"
+    "\\\"id\\\":32"
+    "\\\"output_kind\\\":\\\"sample-html\\\""
     "\\\"version\\\":2"
     "-32800"
     "\\\"id\\\":10")

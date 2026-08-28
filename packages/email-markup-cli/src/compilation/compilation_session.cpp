@@ -8,6 +8,8 @@
 #include <nlohmann/json.hpp>
 
 #include "email-markup/platform/system.hpp"
+#include "email-markup/core/context_schema.hpp"
+#include "email-markup/core/images.hpp"
 
 namespace email_markup::cli
 {
@@ -77,8 +79,13 @@ namespace email_markup::cli
                         expand_path(value.get<std::string>(), root, assets));
                 if (json.contains("data"))
                     config.data = expand_path(json.at("data").get<std::string>(), root, assets);
+                if (json.contains("context_schema"))
+                    config.context_schema = expand_path(
+                        json.at("context_schema").get<std::string>(), root, assets);
                 if (json.contains("shell"))
                     config.shell = expand_path(json.at("shell").get<std::string>(), root, assets);
+                if (json.contains("engine"))
+                    config.engine = expand_path(json.at("engine").get<std::string>(), root, assets);
                 if (json.contains("out"))
                     config.output = expand_path(json.at("out").get<std::string>(), root, assets);
                 else
@@ -124,6 +131,14 @@ namespace email_markup::cli
         if (ignore_shell)
             config_.shell.reset();
         data_ = load_data(options_, config_, system_);
+        if (config_.context_schema)
+        {
+            context_schema_ = Json::parse(system_.read_text_file(*config_.context_schema));
+            const auto parsed = email_markup::parse_context_schema(context_schema_);
+            if (data_.empty() && !options_.data_json && !options_.data_file &&
+                !options_.data_stdin)
+                data_ = email_markup::context_schema_example(parsed);
+        }
     }
 
     const ProjectConfig &CompilationSession::config() const noexcept
@@ -138,6 +153,7 @@ namespace email_markup::cli
         request.entry_path = std::filesystem::absolute(input).lexically_normal();
         request.source = system_.read_text_file(request.entry_path);
         request.data = data_;
+        request.context_schema = context_schema_;
         request.include_directories = config_.includes;
         request.include_directories.insert(request.include_directories.end(),
                                            options_.includes.begin(), options_.includes.end());
@@ -146,7 +162,24 @@ namespace email_markup::cli
         request.imports = config_.imports;
         request.imports.insert(request.imports.end(), options_.imports.begin(),
                                options_.imports.end());
-        request.shell = options_.shell ? options_.shell : config_.shell;
+        request.shell = options_.subject
+                            ? std::nullopt
+                            : (options_.shell ? options_.shell : config_.shell);
+        request.engine = options_.engine
+                             ? std::optional<std::filesystem::path>{
+                                   std::filesystem::absolute(*options_.engine).lexically_normal()}
+                             : config_.engine;
+        request.subject = options_.subject;
+        if (options_.command == Command::compile || options_.command == Command::build)
+        {
+            request.image_fetcher =
+                [this](const std::string_view url, const std::size_t maximum_bytes)
+            {
+                auto resource = system_.fetch_http(url, maximum_bytes);
+                return email_markup::ImageResource{std::move(resource.media_type),
+                                                   std::move(resource.bytes)};
+            };
+        }
         return request;
     }
 

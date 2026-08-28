@@ -1,8 +1,12 @@
+import { cpSync, mkdirSync, rmSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { build } from "esbuild";
 
 await build({
   entryPoints: ["src/extension.ts"],
-  outfile: "dist/extension.js",
+  outfile: "dist/node/extension.js",
   bundle: true,
   external: ["vscode"],
   format: "cjs",
@@ -10,5 +14,35 @@ await build({
   platform: "node",
   target: "node20",
   sourcemap: true,
-  logLevel: "info"
+  logLevel: "info",
 });
+
+await build({
+  entryPoints: ["src/web/extension.ts"],
+  outfile: "dist/web/extension.js",
+  bundle: true,
+  external: ["vscode"],
+  format: "cjs",
+  mainFields: ["browser", "module", "main"],
+  platform: "browser",
+  target: "es2022",
+  sourcemap: true,
+  logLevel: "info",
+});
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const extensionRoot = path.resolve(here, "..");
+const browserPackage = path.resolve(extensionRoot, "../../packages/email-markup-browser/dist");
+const browserTarget = path.join(extensionRoot, "browser");
+rmSync(browserTarget, { recursive: true, force: true });
+mkdirSync(browserTarget, { recursive: true });
+cpSync(browserPackage, browserTarget, { recursive: true });
+
+// The project's own JSON schemas travel with the extension so `em.json`, context
+// contracts and EMIR artifacts validate offline. The files declare their schema
+// by URL, and a workbench under `connect-src 'self'` can never fetch one.
+const schemaSource = path.resolve(extensionRoot, "../../schema");
+const schemaTarget = path.join(extensionRoot, "schemas");
+rmSync(schemaTarget, { recursive: true, force: true });
+mkdirSync(schemaTarget, { recursive: true });
+cpSync(schemaSource, schemaTarget, { recursive: true });

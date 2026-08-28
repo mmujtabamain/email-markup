@@ -3,13 +3,21 @@ from __future__ import annotations
 import argparse
 import hashlib
 import os
+import re
 import shutil
 import subprocess
 import zipfile
 from pathlib import Path
 
 
-VERSION = "1.1.0"
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+
+
+def release_version() -> str:
+    version = (REPOSITORY_ROOT / "VERSION").read_text(encoding="utf-8").strip()
+    if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
+        raise RuntimeError("VERSION must contain a semantic version in X.Y.Z form")
+    return version
 
 
 def npm_executable(platform: str = os.name) -> str:
@@ -46,6 +54,7 @@ def main() -> int:
     parser.add_argument("--extension", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     arguments = parser.parse_args()
+    version = release_version()
 
     install = arguments.install.resolve()
     extension = arguments.extension.resolve()
@@ -56,8 +65,8 @@ def main() -> int:
     reported = subprocess.run(
         [str(emc), "--version"], check=True, capture_output=True, text=True
     ).stdout.strip()
-    if reported != f"emc {VERSION}":
-        raise RuntimeError(f"expected emc {VERSION}, got {reported!r}")
+    if reported != f"emc {version}":
+        raise RuntimeError(f"expected emc {version}, got {reported!r}")
 
     output.mkdir(parents=True, exist_ok=True)
     runtime_archive = output / f"email-markup-{arguments.platform}.zip"
@@ -71,7 +80,7 @@ def main() -> int:
     shutil.copy2(lsp, server / lsp.name)
     shutil.copytree(install / "share" / "email-markup" / "lib", server / "lib")
     subprocess.run([npm_executable(), "run", "package"], cwd=extension, check=True)
-    built = next(extension.glob(f"email-markup-language-{VERSION}.vsix"))
+    built = next(extension.glob(f"email-markup-language-{version}.vsix"))
     vsix = output / f"email-markup-language-{arguments.platform}.vsix"
     shutil.move(built, vsix)
     write_checksum(vsix)

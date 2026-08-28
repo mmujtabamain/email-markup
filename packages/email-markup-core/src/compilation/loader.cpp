@@ -36,6 +36,8 @@ namespace email_markup::detail
                     count += count_nodes(loop->body);
                 else if (const auto *slot = std::get_if<SlotNode>(&node->value))
                     count += count_nodes(slot->body);
+                else if (const auto *deferred = std::get_if<DeferredCallNode>(&node->value))
+                    count += count_nodes(deferred->children);
             }
             return count;
         }

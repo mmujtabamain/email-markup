@@ -8,6 +8,7 @@ import {
 } from "vscode-languageclient/node";
 
 import { previewDocument } from "./preview";
+import { registerRemoteImageAudit } from "./remoteImages";
 import { registerWebFeatures } from "./webFeatures";
 
 const protocolVersion = 1;
@@ -23,22 +24,41 @@ let previewRefreshTimer: ReturnType<typeof setTimeout> | undefined;
 let previewRequest = 0;
 let remoteImagesEnabled = false;
 
+function escapePreviewCode(source: string): string {
+  return source
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
 function platformDirectory(): string {
-  const platform = process.platform === "darwin" ? "darwin" :
-    process.platform === "win32" ? "win32" : "linux";
+  const platform =
+    process.platform === "darwin"
+      ? "darwin"
+      : process.platform === "win32"
+        ? "win32"
+        : "linux";
   return `${platform}-${process.arch}`;
 }
 
 function serverExecutable(context: vscode.ExtensionContext): string {
-  const configured = vscode.workspace.getConfiguration("email-markup").get<string>("server.path", "").trim();
+  const configured = vscode.workspace
+    .getConfiguration("email-markup")
+    .get<string>("server.path", "")
+    .trim();
   if (configured) return configured;
-  const executable = process.platform === "win32" ? "email-markup-lsp.exe" : "email-markup-lsp";
-  return context.asAbsolutePath(path.join("server", platformDirectory(), executable));
+  const executable =
+    process.platform === "win32" ? "email-markup-lsp.exe" : "email-markup-lsp";
+  return context.asAbsolutePath(
+    path.join("server", platformDirectory(), executable),
+  );
 }
 
 async function startServer(context: vscode.ExtensionContext): Promise<void> {
   if (!vscode.workspace.isTrusted) {
-    output?.warn("Language server disabled because the workspace is not trusted.");
+    output?.warn(
+      "Language server disabled because the workspace is not trusted.",
+    );
     return;
   }
   const executable = serverExecutable(context);
@@ -47,22 +67,33 @@ async function startServer(context: vscode.ExtensionContext): Promise<void> {
     run: { command: executable, transport: TransportKind.stdio },
     debug: { command: executable, transport: TransportKind.stdio },
   };
-  const watcher = vscode.workspace.createFileSystemWatcher("**/{*.em,em.json,*.json}");
+  const watcher = vscode.workspace.createFileSystemWatcher(
+    "**/{*.em,*.emt,em.json,*.json}",
+  );
   context.subscriptions.push(watcher);
   const clientOptions: LanguageClientOptions = {
     documentSelector: [{ scheme: "file", language: "email-markup" }],
     outputChannel: output,
     synchronize: { fileEvents: watcher },
   };
-  client = new LanguageClient("email-markup", "Email Markup Language Server", serverOptions, clientOptions);
+  client = new LanguageClient(
+    "email-markup",
+    "Email Markup Language Server",
+    serverOptions,
+    clientOptions,
+  );
   context.subscriptions.push(client);
   await client.start();
   output?.info("Language server started.");
-  const version = await client.sendRequest<{ version: number }>("email-markup/protocolVersion");
+  const version = await client.sendRequest<{ version: number }>(
+    "email-markup/protocolVersion",
+  );
   if (version.version !== protocolVersion) {
     await client.stop();
     client = undefined;
-    throw new Error(`Email Markup client protocol ${protocolVersion} does not match server protocol ${version.version}.`);
+    throw new Error(
+      `Email Markup client protocol ${protocolVersion} does not match server protocol ${version.version}.`,
+    );
   }
   output?.info(`Protocol version ${version.version} confirmed.`);
 }
@@ -81,19 +112,35 @@ function clearPreviewSession(): void {
   ++previewRequest;
 }
 
-async function refreshPreview(document: vscode.TextDocument, reveal: boolean): Promise<void> {
+async function refreshPreview(
+  document: vscode.TextDocument,
+  reveal: boolean,
+): Promise<void> {
   if (!client || previewUri !== document.uri.toString()) return;
   const uri = previewUri;
   const request = ++previewRequest;
   const params: { uri: string; data?: unknown } = { uri };
   if (previewData !== undefined) params.data = previewData;
-  let result: { version: number; html: unknown };
+  let result: { version: number; html: unknown; output_kind?: unknown };
   try {
-    result = await client.sendRequest<{ version: number; html: unknown }>("email-markup/preview", params);
+    result = await client.sendRequest<{
+      version: number;
+      html: unknown;
+      output_kind?: unknown;
+    }>(
+      "email-markup/preview",
+      params,
+    );
   } catch (error) {
     if (request === previewRequest && previewUri === uri) {
-      output?.error(`Preview refresh failed for ${document.uri.fsPath}.`, error);
-      if (reveal) void vscode.window.showErrorMessage("Email Markup preview failed. See Output → Email Markup.");
+      output?.error(
+        `Preview refresh failed for ${document.uri.fsPath}.`,
+        error,
+      );
+      if (reveal)
+        void vscode.window.showErrorMessage(
+          "Email Markup preview failed. See Output → Email Markup.",
+        );
     }
     return;
   }
@@ -103,16 +150,27 @@ async function refreshPreview(document: vscode.TextDocument, reveal: boolean): P
     return;
   }
   if (result.html === null) {
-    output?.warn("Preview was not generated because the document has compilation errors.");
+    output?.warn(
+      "Preview was not generated because the document has compilation errors.",
+    );
     return;
   }
   if (typeof result.html !== "string") {
     const actual = Array.isArray(result.html) ? "array" : typeof result.html;
-    output?.error(`Language server returned invalid preview HTML (${actual} instead of string).`);
-    void vscode.window.showErrorMessage("Email Markup language server returned an invalid preview response. See Output → Email Markup.");
+    output?.error(
+      `Language server returned invalid preview HTML (${actual} instead of string).`,
+    );
+    void vscode.window.showErrorMessage(
+      "Email Markup language server returned an invalid preview response. See Output → Email Markup.",
+    );
     return;
   }
-  previewHtml = result.html;
+  const deferred =
+    result.output_kind === "engine-template" ||
+    result.output_kind === "engine-definition";
+  previewHtml = deferred
+    ? `<main style="font:14px/1.5 ui-monospace,monospace;padding:24px;color:#202124"><h1 style="font:600 18px/1.4 system-ui,sans-serif">Template not rendered</h1><p style="font-family:system-ui,sans-serif">This is deferred target source. Email Markup preview does not execute Django.</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere">${escapePreviewCode(result.html)}</pre></main>`
+    : result.html;
   remoteImagesEnabled = false;
   if (!previewPanel) {
     previewPanel = vscode.window.createWebviewPanel(
@@ -127,46 +185,62 @@ async function refreshPreview(document: vscode.TextDocument, reveal: boolean): P
       output?.info("Preview detached from its Email Markup document.");
     });
   }
-  previewPanel.title = `Email Markup Preview: ${path.basename(document.uri.fsPath)}`;
+  previewPanel.title = deferred
+    ? `Email Markup Template Source: ${path.basename(document.uri.fsPath)}`
+    : `Email Markup Preview: ${path.basename(document.uri.fsPath)}`;
   previewPanel.webview.html = previewDocument(previewHtml, false);
   if (reveal) previewPanel.reveal(vscode.ViewColumn.Beside, true);
-  output?.debug(`Preview refreshed for ${document.uri.fsPath} at version ${document.version}.`);
+  output?.debug(
+    `Preview refreshed for ${document.uri.fsPath} at version ${document.version}.`,
+  );
 }
 
 async function openPreview(withData: boolean): Promise<void> {
   output?.info(`Preview requested${withData ? " with inline JSON data" : ""}.`);
   if (!vscode.workspace.isTrusted) {
     output?.warn("Preview blocked because the workspace is not trusted.");
-    void vscode.window.showWarningMessage("Trust this workspace before compiling an Email Markup preview.");
+    void vscode.window.showWarningMessage(
+      "Trust this workspace before compiling an Email Markup preview.",
+    );
     return;
   }
   if (!client) {
-    output?.error("Preview unavailable because the language server is not running.");
-    void vscode.window.showErrorMessage("Email Markup language server is not running.");
+    output?.error(
+      "Preview unavailable because the language server is not running.",
+    );
+    void vscode.window.showErrorMessage(
+      "Email Markup language server is not running.",
+    );
     return;
   }
   const editor = activeEmailMarkupEditor();
   if (!editor) {
-    output?.warn("Preview ignored because the active editor is not an Email Markup document.");
+    output?.warn(
+      "Preview ignored because the active editor is not an Email Markup document.",
+    );
     return;
   }
   let data: unknown;
   if (withData) {
     const raw = await vscode.window.showInputBox({
       title: "Unsaved preview JSON",
-      prompt: "Enter one JSON object. It is sent to email-markup-lsp for this preview only.",
+      prompt:
+        "Enter one JSON object. It is sent to email-markup-lsp for this preview only.",
       value: "{}",
       ignoreFocusOut: true,
     });
     if (raw === undefined) return;
-    try { data = JSON.parse(raw); }
-    catch {
+    try {
+      data = JSON.parse(raw);
+    } catch {
       output?.warn("Preview data is not valid JSON.");
       void vscode.window.showErrorMessage("Preview data must be valid JSON.");
       return;
     }
     if (typeof data !== "object" || data === null || Array.isArray(data)) {
-      void vscode.window.showErrorMessage("Preview data must be a JSON object.");
+      void vscode.window.showErrorMessage(
+        "Preview data must be a JSON object.",
+      );
       return;
     }
   }
@@ -176,15 +250,26 @@ async function openPreview(withData: boolean): Promise<void> {
   await refreshPreview(editor.document, true);
 }
 
-export async function activate(context: vscode.ExtensionContext): Promise<void> {
+export async function activate(
+  context: vscode.ExtensionContext,
+): Promise<void> {
   output = vscode.window.createOutputChannel("Email Markup", { log: true });
   context.subscriptions.push(output);
-  output.info(`Activating Email Markup Language Support ${context.extension.packageJSON.version ?? "unknown"}.`);
+  output.info(
+    `Activating Email Markup Language Support ${context.extension.packageJSON.version ?? "unknown"}.`,
+  );
   registerWebFeatures(context);
-  output.info("Registered Email Markup commands and embedded HTML/CSS editor features.");
+  registerRemoteImageAudit(context);
+  output.info(
+    "Registered Email Markup commands and embedded HTML/CSS editor features.",
+  );
   context.subscriptions.push(
-    vscode.commands.registerCommand("email-markup.preview", () => openPreview(false)),
-    vscode.commands.registerCommand("email-markup.previewWithData", () => openPreview(true)),
+    vscode.commands.registerCommand("email-markup.preview", () =>
+      openPreview(false),
+    ),
+    vscode.commands.registerCommand("email-markup.previewWithData", () =>
+      openPreview(true),
+    ),
     vscode.commands.registerCommand("email-markup.loadRemoteImages", () => {
       if (!previewPanel || !previewHtml || remoteImagesEnabled) return;
       remoteImagesEnabled = true;
@@ -205,10 +290,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
   );
   if (vscode.workspace.isTrusted) {
-    try { await startServer(context); }
-    catch (error) {
+    try {
+      await startServer(context);
+    } catch (error) {
       output.error("Language server failed to start.", error);
-      void vscode.window.showErrorMessage(`Email Markup language server failed to start: ${String(error)}`);
+      void vscode.window.showErrorMessage(
+        `Email Markup language server failed to start: ${String(error)}`,
+      );
     }
   } else {
     output.warn("Workspace is untrusted; only syntax highlighting is enabled.");

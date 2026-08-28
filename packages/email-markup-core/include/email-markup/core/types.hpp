@@ -8,15 +8,29 @@
 #include "email-markup/core/diagnostic.hpp"
 #include "email-markup/core/expr.hpp"
 
-namespace email_markup {
+namespace email_markup
+{
 
-[[nodiscard]] std::vector<PropDeclaration> parse_prop_declarations(
-    std::string_view text, SourceRange range, std::vector<Diagnostic>& diagnostics);
-[[nodiscard]] std::vector<SlotDeclaration> parse_slot_declarations(
-    std::string_view text, SourceRange range, std::vector<Diagnostic>& diagnostics);
-[[nodiscard]] bool validate_prop(const PropDeclaration& declaration,
-                                 const Json& value,
-                                 std::vector<Diagnostic>& diagnostics,
-                                 SourceRange value_range);
+    enum class DeclarationContext
+    {
+        component_prop,
+        deferred_parameter
+    };
 
-}  // namespace email_markup
+    [[nodiscard]] std::vector<Declaration> parse_declarations(
+        std::string_view text, SourceRange range, DeclarationContext context,
+        std::vector<Diagnostic> &diagnostics);
+    [[nodiscard]] std::vector<PropDeclaration> parse_prop_declarations(
+        std::string_view text, SourceRange range, std::vector<Diagnostic> &diagnostics);
+    [[nodiscard]] std::vector<SlotDeclaration> parse_slot_declarations(
+        std::string_view text, SourceRange range, std::vector<Diagnostic> &diagnostics);
+    [[nodiscard]] bool validate_prop(const PropDeclaration &declaration,
+                                     const Json &value,
+                                     std::vector<Diagnostic> &diagnostics,
+                                     SourceRange value_range);
+    [[nodiscard]] bool validate_deferred_parameter(
+        const Declaration &declaration, std::string_view value,
+        std::vector<Diagnostic> &diagnostics, SourceRange value_range);
+    [[nodiscard]] std::string format_declaration(const Declaration &declaration);
+
+} // namespace email_markup
