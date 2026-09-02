@@ -49,3 +49,17 @@ test("WASM build is browser-only and exports the stable C boundary", () => {
   assert.match(build, /EMAIL_MARKUP_BROWSER_ONLY=ON/);
   assert.match(build, /email-markup-browser-wasm/);
 });
+
+test("the Emscripten build asks for exception support when it compiles", () => {
+  // Requesting it only at link time is what silently removed every `catch` in
+  // the compiler, so a bad request reached the host as a WebAssembly trap
+  // instead of the protocol's error envelope. The flag has to be on the compile
+  // line, and this is the cheapest place to notice if it stops being there.
+  const cmake = readFileSync(path.join(root, "CMakeLists.txt"), "utf8");
+  const emscripten = cmake.slice(cmake.indexOf("if(EMSCRIPTEN)"));
+  assert.match(emscripten, /add_compile_options\(-fexceptions\)/);
+  assert.ok(
+    cmake.indexOf("if(EMSCRIPTEN)") < cmake.indexOf("add_subdirectory(packages/email-markup-core)"),
+    "core has to be compiled with exception support too — most of the catches live there",
+  );
+});

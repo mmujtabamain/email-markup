@@ -1,0 +1,22 @@
+name: Browser compiler
+
+# The browser package ships the compiler that Growth Console's editor loads, and
+# nothing ran its tests: the release workflow builds and tests the native
+# toolchain and the VS Code extension, and never touches `packages/email-markup-browser`.
+# These suites need only Node and the packaged artifact, so they can run on every
+# push and every pull request.
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Test the worker and the packaged WebAssembly compiler
+        working-directory: packages/email-markup-browser
+        run: npm run test:all

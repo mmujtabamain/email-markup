@@ -48,6 +48,9 @@ if(EMSCRIPTEN)
             "-sINITIAL_MEMORY=33554432"
             "-sMAXIMUM_MEMORY=268435456"
             "-sNO_EXIT_RUNTIME=1"
+            # Kept for the link step; the matching compile-time `-fexceptions`
+            # is set for the whole Emscripten build in the root CMakeLists,
+            # because this setting alone does not restore a `catch`.
             "-sDISABLE_EXCEPTION_CATCHING=0"
             # Without these an exception that escapes to JavaScript arrives as a
             # bare pointer, and the editor can only report the number it was

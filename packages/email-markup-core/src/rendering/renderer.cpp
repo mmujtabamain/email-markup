@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <charconv>
 #include <cctype>
+#include <memory>
 #include <regex>
 #include <unordered_set>
 
@@ -63,10 +64,25 @@ namespace email_markup::detail
             return output;
         }
 
+        struct RenderScope;
+
+        /**
+         * The content a caller passed into one slot, together with where it was
+         * written.
+         *
+         * `origin` is the scope the fill was authored in, and it is what makes a
+         * forwarded slot terminate. Without it, `@Slot(name)` inside slot content
+         * was resolved against the scope of the component being *rendered*, so a
+         * component whose template forwards its own default slot into another
+         * component — `@Panel @Slot(default); @/Panel` — bound that reference to
+         * itself and expanded forever. The slot's own body must be rendered with
+         * the caller's slots, not the callee's.
+         */
         struct SlotContent
         {
             std::vector<NodePtr> nodes;
             EvaluationContext context;
+            std::shared_ptr<const RenderScope> origin;
         };
 
         struct RenderScope
@@ -444,9 +460,22 @@ namespace email_markup::detail
                 const auto found = scope.slots.find(slot.name);
                 if (found == scope.slots.end())
                     return;
-                auto call_scope = scope;
-                call_scope.evaluation = found->second.context;
-                render_nodes(found->second.nodes, call_scope, depth);
+                // Slot content belongs to the caller, so it is expanded in the
+                // caller's scope. Depth grows with it: a forwarding chain is a
+                // form of expansion, and leaving it out is what let a cycle run
+                // past the expansion limit instead of being reported by it.
+                if (depth >= limits_.maximum_expansion_depth)
+                {
+                    diagnostic("EM0904", "Component expansion depth limit exceeded.",
+                               node.range);
+                    return;
+                }
+                const auto content = found->second;
+                RenderScope call_scope;
+                if (content.origin)
+                    call_scope = *content.origin;
+                call_scope.evaluation = content.context;
+                render_nodes(content.nodes, call_scope, depth + 1);
             }
 
             void render_node(const ComponentNode &call, const Node &node, RenderScope &scope,
@@ -542,7 +571,9 @@ namespace email_markup::detail
                         if (nested.slots.contains(fill->name))
                             diagnostic("EM0724", "Slot “" + fill->name + "” is filled more than once.",
                                        child->range);
-                        nested.slots[fill->name] = {fill->body, scope.evaluation};
+                        nested.slots[fill->name] = {
+                            fill->body, scope.evaluation,
+                            std::make_shared<RenderScope>(scope)};
                     }
                     else
                     {
@@ -550,7 +581,8 @@ namespace email_markup::detail
                     }
                 }
                 if (!default_nodes.empty())
-                    nested.slots["default"] = {default_nodes, scope.evaluation};
+                    nested.slots["default"] = {default_nodes, scope.evaluation,
+                                               std::make_shared<RenderScope>(scope)};
                 for (const auto &[name, content] : nested.slots)
                 {
                     const auto declaration = std::find_if(

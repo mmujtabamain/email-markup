@@ -32,6 +32,24 @@ if(EMAIL_MARKUP_SANITIZERS AND CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     add_link_options("-fsanitize=${EMAIL_MARKUP_SANITIZERS}" -fno-omit-frame-pointer)
 endif()
 
+if(EMSCRIPTEN)
+    # Exception support has to be requested when the code is COMPILED. Emscripten
+    # disables catching by default, which compiles every `catch` clause away, and
+    # a link-time `-sDISABLE_EXCEPTION_CATCHING=0` arrives far too late to put
+    # them back — it only emits the trampolines and the JavaScript helpers, which
+    # is why the setting looked as though it had been applied.
+    #
+    # The consequence was that the compiler's error handling did not exist in the
+    # browser. `handle_request` catches everything it can and answers with the
+    # protocol's error envelope; with the catch clauses gone, an ordinary bad
+    # request — an unsupported file extension, a duplicated virtual path, a
+    # missing position — escaped WebAssembly as a bare pointer instead. The
+    # editor received a number where a diagnosable error belonged, and the worker
+    # threw away and reloaded a compiler that had nothing wrong with it.
+    add_compile_options(-fexceptions)
+    add_link_options(-fexceptions)
+endif()
+
 include(GNUInstallDirs)
 include(CTest)
 

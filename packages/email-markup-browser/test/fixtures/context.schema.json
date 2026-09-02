@@ -1,0 +1,28 @@
+{
+  "$schema": "https://email-markup.dev/schema/context-v1.schema.json",
+  "format": "email-markup-context",
+  "version": 1,
+  "name": "email-context",
+  "fields": {
+    "business": {
+      "type": "object",
+      "required": true,
+      "description": "The business receiving the email.",
+      "fields": {
+        "name": {"type": "string", "required": true, "maxLength": 300, "example": "Amina Coffee Roasters"},
+        "website": {"type": "url", "maxLength": 2048, "example": "https://example.invalid/amina-coffee"},
+        "category": {"type": "string", "maxLength": 300, "example": "Coffee shop"},
+        "rating": {"type": "number", "nullable": true, "minimum": 0, "maximum": 5, "example": 4.8},
+        "review_count": {"type": "int", "nullable": true, "minimum": 0, "example": 182}
+      }
+    },
+    "message": {
+      "type": "object",
+      "required": true,
+      "fields": {
+        "unsubscribe_url": {"type": "url", "required": true, "maxLength": 2048, "example": "https://example.invalid/unsubscribe/preview"},
+        "tracking_identifier": {"type": "string", "required": true, "maxLength": 255, "example": "00000000-0000-0000-0000-000000000000"}
+      }
+    }
+  }
+}

@@ -893,6 +893,16 @@ namespace email_markup::browser
             if (!envelope.contains("method") || !envelope.at("method").is_string())
                 throw std::invalid_argument("method must be a string");
             const auto method = envelope.at("method").get<std::string>();
+            // The method is checked here rather than after the workspace is
+            // parsed. Reaching an unknown method only at the end meant a host
+            // asking for something this build does not serve was told its
+            // `entry_path` was missing, or that its method required a position —
+            // never that the method itself was the problem, which is the one
+            // thing a host on a newer protocol needs to hear.
+            static const std::set<std::string> supported{
+                "capabilities", "analyze", "format", "complete", "hover", "signature"};
+            if (!supported.contains(method))
+                throw std::invalid_argument("unsupported method " + method);
             const auto params = envelope.value("params", Json::object());
             if (method == "capabilities")
             {
@@ -922,10 +932,8 @@ namespace email_markup::browser
                        "\n";
             if (method == "hover")
                 return response(id, hover(workspace, params.at("position"))).dump() + "\n";
-            if (method == "signature")
-                return response(id, signature(workspace, params.at("position"))).dump() +
-                       "\n";
-            throw std::invalid_argument("unsupported method " + method);
+            return response(id, signature(workspace, params.at("position"))).dump() +
+                   "\n";
         }
         catch (const Json::exception &error)
         {

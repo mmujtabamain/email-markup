@@ -14,8 +14,19 @@ function createModule() {
     .then(({ default: createEmailMarkup }) => createEmailMarkup());
 }
 
+/**
+ * A load that failed is not an answer worth keeping. Caching the rejected
+ * promise meant one bad fetch of the `.wasm` — a cold cache, a dropped
+ * connection, a proxy hiccup — retired the compiler for the lifetime of the
+ * worker: every later request inherited the same rejection and the editor
+ * stayed silent until the page was reloaded. Forgetting it costs one retry and
+ * lets the next keystroke recover.
+ */
 function loadModule() {
-  modulePromise ??= createModule();
+  modulePromise ??= createModule().catch((error) => {
+    resetModule();
+    throw error;
+  });
   return modulePromise;
 }
 
