@@ -15,12 +15,12 @@
       "sha256": "b8f356595d543a9a0a855d75cf97f1d8cb360d489e5b07644219e7e0ec264ff4"
     },
     "email-markup-browser.mjs": {
-      "bytes": 21636,
-      "sha256": "113816548b75f44fe5e2770df3e2bbfca5e43e3204e8498fd40d0245b40a8cb1"
+      "bytes": 23803,
+      "sha256": "8c99260db64b3ea9b489e63394369cdfd4941f75d960b65d30be0b2ccb42a325"
     },
     "email-markup-browser.wasm": {
-      "bytes": 962361,
-      "sha256": "443a818ce92b320344378453102f19c6ccccfce2e5da93cd44deb9386b480929"
+      "bytes": 1261035,
+      "sha256": "91ca0d914f50f595691be42f0f2d4752700fe14601ff6effbc7eafdc3c134275"
     },
     "browser-protocol-v1.schema.json": {
       "bytes": 5118,
