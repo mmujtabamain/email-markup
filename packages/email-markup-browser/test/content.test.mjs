@@ -12,14 +12,6 @@ import test from "node:test";
 
 import { readDistFile, readFixture, send } from "./helpers/compiler.mjs";
 
-const STALE_ARTIFACT = {
-  todo:
-    "dist/email-markup-browser.wasm predates the compile-time -fexceptions fix " +
-    "and the slot-forwarding fix in " +
-    "packages/email-markup-core/src/rendering/renderer.cpp; rebuild with " +
-    "`npm run verify:wasm` and remove this marker",
-};
-
 const builtins = readDistFile("lib/builtins.em");
 const django = readDistFile("lib/engines/django.emt");
 const contextSchema = JSON.parse(readFixture("context.schema.json"));
@@ -124,7 +116,6 @@ test("an unclosed component is reported, not silently accepted", async () => {
 
 test(
   "a mistyped merge field is a diagnostic, not the end of the compiler",
-  STALE_ARTIFACT,
   async () => {
     // Typing a field name wrong is the most ordinary mistake there is. In the
     // shipped artifact it escapes WebAssembly as `std::runtime_error: expression
@@ -150,7 +141,6 @@ test(
 
 test(
   "a component missing a required prop is a diagnostic, not the end of the compiler",
-  STALE_ARTIFACT,
   async () => {
     const { result } = await send(
       "analyze",
@@ -206,7 +196,6 @@ test("analysing the same checkout twice gives byte-identical answers", async () 
 
 test(
   "a template that uses the shared Notice component compiles",
-  STALE_ARTIFACT,
   async () => {
     const { result } = await send("analyze", checkout(), "notice");
     assert.equal(result.success, true, JSON.stringify(result.diagnostics));
@@ -214,7 +203,7 @@ test(
   },
 );
 
-test("opening the Notice component itself previews it", STALE_ARTIFACT, async () => {
+test("opening the Notice component itself previews it", async () => {
   // Analysing a definition-only file renders a preview of each component it
   // declares, so this is what the editor does the moment the file is opened.
   const { result } = await send(
