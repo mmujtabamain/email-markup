@@ -756,6 +756,21 @@ namespace email_markup::browser
                                                       prefix.end(), ',')}};
         }
 
+        /// A contract type error — a field that can be missing, used outside an
+        /// @If — blocks publishing but not the preview: it is fixed while
+        /// looking at the email it affects.
+        bool renders_despite_errors(const CompilationResult &result)
+        {
+            if (!result.emir)
+                return false;
+            return std::all_of(result.diagnostics.begin(), result.diagnostics.end(),
+                               [](const auto &diagnostic)
+                               {
+                                   return diagnostic.severity != Severity::error ||
+                                          diagnostic.code == "EM0910";
+                               });
+        }
+
         Json analyze(const Workspace &workspace)
         {
             if (workspace.request.entry_path.extension() == ".emt")
@@ -806,7 +821,7 @@ namespace email_markup::browser
                           {"dependencies", dependencies},
                           {"symbols", symbols_for(workspace.request.entry_path,
                                                   workspace.request.source)}};
-            if (result.ok())
+            if (result.ok() || renders_despite_errors(result))
             {
                 if (result.output_kind == OutputKind::engine_template)
                     response["preview"] = result.emir
