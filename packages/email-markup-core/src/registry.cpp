@@ -15,7 +15,13 @@ namespace email_markup
                 if (const auto found = destination.find(name); found != destination.end() &&
                                                                !entry_document)
                 {
-                    diagnostics.push_back({"EM0601", Severity::warning, std::string{kind} + " “" + name + "” replaces an earlier included definition.", definition.range, {{found->second.range, "Earlier definition is here."}}});
+                    // Two components of one name would make every call ambiguous:
+                    // a copy of a library component has to be renamed, so this is
+                    // an error. A token or style overridden later stays a warning.
+                    if (kind == "Component")
+                        diagnostics.push_back({"EM0605", Severity::error, "Component “" + name + "” is defined twice. Rename one of them.", definition.range, {{found->second.range, "The other definition is here."}}});
+                    else
+                        diagnostics.push_back({"EM0601", Severity::warning, std::string{kind} + " “" + name + "” replaces an earlier included definition.", definition.range, {{found->second.range, "Earlier definition is here."}}});
                 }
                 destination[name] = definition;
             }

@@ -215,3 +215,25 @@ TEST_CASE("without a context contract nothing is checked")
 {
     CHECK(guard_errors(compile("<p>@[business.category]</p>", false, false)).empty());
 }
+
+TEST_CASE("two components of one name are an error")
+{
+    email_markup::MemoryFileResolver resolver{{
+        {"/project/components/button.em",
+         "@DefineComponent(name: \"Button\")\n  @Template\n    <b>mine</b>\n  @/Template\n@/DefineComponent\n"},
+        {"/lib/builtins.em",
+         "@DefineComponent(name: \"Button\")\n  @Template\n    <b>library</b>\n  @/Template\n@/DefineComponent\n"},
+    }};
+    email_markup::CompilationRequest request;
+    request.entry_path = "/project/message.em";
+    request.source = "<p>@Button;</p>";
+    request.imports = {"/lib/builtins.em", "/project/components/button.em"};
+    request.allowed_roots = {"/"};
+    const auto result = email_markup::compile(request, resolver);
+    const auto found = std::find_if(result.diagnostics.begin(), result.diagnostics.end(),
+                                    [](const auto &diagnostic) { return diagnostic.code == "EM0605"; });
+    REQUIRE(found != result.diagnostics.end());
+    CHECK(found->severity == email_markup::Severity::error);
+    CHECK(found->message == "Component “Button” is defined twice. Rename one of them.");
+    CHECK_FALSE(result.ok());
+}
