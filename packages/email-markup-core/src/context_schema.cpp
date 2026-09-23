@@ -42,7 +42,10 @@ namespace email_markup
             if (type == "object")
             {
                 if (!value->is_object()) { errors.push_back(path + " must be an object"); return; }
-                for (const auto &[name, child] : field.value("fields", Json::object()).items())
+                // Named, not iterated in place: `.items()` of the temporary that
+                // `value()` returns dangles before C++23's range-for lifetime rules.
+                const auto children = field.value("fields", Json::object());
+                for (const auto &[name, child] : children.items())
                     validate_value(child, value->contains(name) ? &value->at(name) : nullptr,
                                    path.empty() ? name : path + "." + name, errors);
                 return;
