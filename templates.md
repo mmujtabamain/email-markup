@@ -76,6 +76,30 @@ Body arity remains syntactic, as it is for component calls:
 - Named bodies use the existing `@Slot(name) … @/Slot` fill syntax. `@Else`
   remains exclusive to compiler-owned `@If(…)` and is not repurposed.
 
+### Values that can be missing
+
+With a context schema (`em.json` `context_schema`), a recipient value the
+schema does not mark `required`, or marks `nullable` — or one whose parent can
+be missing — has to be used inside an `@If[…]` that proves it present. Anywhere
+else, `@[path]` is error `EM0910`, "`path` can be missing", reported at the
+reference:
+
+```email-markup
+@If[business.category]
+  <p>Loved by @[business.category] fans.</p>
+  @Slot(else)
+    <p>Loved by its customers.</p>
+  @/Slot
+@/If
+```
+
+A branch proves a path present when its condition is that path, an `and` that
+includes it, or the else of a `not` of it; a present parent proves a child the
+schema requires there. The `else` slot of `@If[path]`, `or`, and comparisons
+prove nothing. Values bound by `@For[…]` are not context fields, and the
+packaged library is not checked. The template still lowers, so a preview can
+show it while the guard is added; the compile fails, so it cannot be released.
+
 A selected engine may declare a macro named `If` or `For` without ambiguity:
 parentheses select the compiler construct and brackets select the engine macro.
 Names that collide with ordinary components are likewise distinguished by the

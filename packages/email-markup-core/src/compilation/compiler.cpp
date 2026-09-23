@@ -1,4 +1,5 @@
 #include "pipeline.hpp"
+#include "context_guards.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -238,6 +239,30 @@ namespace email_markup
                     result.output_kind = OutputKind::engine_template;
                     result.target = TargetIdentity{engine->name,
                                                    engine->canonical_path};
+                    /* Strict optionality: a field the contract lets be missing
+                       has to be used inside an @If that proves it present.
+                       The packaged library is not the project's to fix. */
+                    if (!request.context_schema.is_null())
+                    {
+                        const auto schema = parse_context_schema(request.context_schema);
+                        const auto library = engine->canonical_path.lexically_normal()
+                                                 .parent_path()
+                                                 .parent_path();
+                        const auto &sources = *loader.sources;
+                        auto findings = detail::check_context_guards(
+                            result.emir->value["document"]["children"], schema,
+                            [&](SourceId id)
+                            {
+                                if (id >= sources.size())
+                                    return false;
+                                const auto path = sources.get(id).path.lexically_normal();
+                                const auto relative = path.lexically_relative(library);
+                                return relative.empty() ||
+                                       relative.native().starts_with("..");
+                            });
+                        loader.diagnostics.insert(loader.diagnostics.end(),
+                                                  findings.begin(), findings.end());
+                    }
                 }
             }
             else if (!request.subject)

@@ -6,6 +6,7 @@ add_executable(
     src/image_tests.cpp
     src/conformance_tests.cpp
     src/context_schema_tests.cpp
+    src/context_guard_tests.cpp
     src/css_lint_tests.cpp
     src/declaration_tests.cpp
     src/deferred_tests.cpp

@@ -2,6 +2,7 @@ add_library(
     email-markup-core
     src/css.cpp
     src/compilation/compiler.cpp
+    src/compilation/context_guards.cpp
     src/compilation/loader.cpp
     src/compilation/tokens.cpp
     src/context_schema.cpp
